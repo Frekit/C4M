@@ -26,11 +26,26 @@ export async function markClientSubmitted(
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
-    include: { contract: true },
+    include: {
+      contract: true,
+      campaign: { include: { client: true } },
+    },
   });
 
   if (items.length !== ids.length) {
     return { ok: false, error: "Alguno de esos contenidos ya no existe." };
+  }
+
+  const notPlatform = items.filter(
+    (item) => item.campaign?.client?.requiresPlatformSubmit !== true
+  );
+
+  if (notPlatform.length > 0) {
+    return {
+      ok: false,
+      error:
+        "Ese cliente no tiene plataforma: con Publicado en redes ya está entregado.",
+    };
   }
 
   const notReady = items.filter(

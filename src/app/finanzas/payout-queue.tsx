@@ -53,9 +53,9 @@ export function PayoutQueue({ groups }: { groups: PayoutGroup[] }) {
         <CardHeader>
           <CardTitle>Todavía no hay nada que pagar</CardTitle>
           <CardDescription>
-            Cuando Finanzas marque los publicados como subidos a la plataforma
-            del cliente, aparecen aquí agrupados por perfil, con cuenta e
-            importe.
+            Cuando Finanzas marque como submitted los de plataforma, o se
+            cierre el pack de un cliente tradicional, aparecen aquí agrupados
+            por perfil, con cuenta e importe.
           </CardDescription>
         </CardHeader>
       </Card>

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { CAMPAIGN_STATUS } from "@/lib/domain/enums";
+import { CAMPAIGN_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import { fieldErrorsFrom } from "@/lib/domain/validation";
 
 export type CampaignActionResult = {
@@ -28,11 +28,56 @@ const optionalDate = z
 
 const campaignSchema = z.object({
   name: z.string().trim().min(2, "Ponle un nombre").max(120),
-  clientName: z.string().trim().max(120).optional().or(z.literal("")),
+  clientId: z.string().trim().optional().or(z.literal("")),
+  newClientName: z.string().trim().max(120).optional().or(z.literal("")),
+  newSettlementMode: z
+    .enum([SETTLEMENT_MODE.PER_CONTENT, SETTLEMENT_MODE.PACK])
+    .optional(),
+  newRequiresPlatformSubmit: z
+    .any()
+    .optional()
+    .transform((value) => value === "1" || value === "true" || value === "on"),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
   startsAt: optionalDate,
   endsAt: optionalDate,
 });
+
+async function resolveClientId(data: {
+  clientId?: string;
+  newClientName?: string;
+  newSettlementMode?: string;
+  newRequiresPlatformSubmit?: boolean;
+}): Promise<{ ok: true; clientId: string | null } | { ok: false; error: string; field?: string }> {
+  if (data.clientId && data.clientId !== "__new__") {
+    const existing = await prisma.client.findUnique({
+      where: { id: data.clientId },
+    });
+    if (!existing) {
+      return { ok: false, error: "Ese cliente no existe.", field: "clientId" };
+    }
+    return { ok: true, clientId: existing.id };
+  }
+
+  const newName = data.newClientName?.trim() ?? "";
+  if (!newName) {
+    return { ok: true, clientId: null };
+  }
+
+  const duplicate = await prisma.client.findUnique({ where: { name: newName } });
+  if (duplicate) {
+    return { ok: true, clientId: duplicate.id };
+  }
+
+  const created = await prisma.client.create({
+    data: {
+      name: newName,
+      settlementMode: data.newSettlementMode ?? SETTLEMENT_MODE.PER_CONTENT,
+      requiresPlatformSubmit: data.newRequiresPlatformSubmit ?? true,
+    },
+  });
+
+  return { ok: true, clientId: created.id };
+}
 
 export async function createCampaign(
   _prev: CampaignActionResult | null,
@@ -42,7 +87,10 @@ export async function createCampaign(
 
   const parsed = campaignSchema.safeParse({
     name: formData.get("name"),
-    clientName: formData.get("clientName"),
+    clientId: formData.get("clientId"),
+    newClientName: formData.get("newClientName"),
+    newSettlementMode: formData.get("newSettlementMode") || undefined,
+    newRequiresPlatformSubmit: formData.get("newRequiresPlatformSubmit"),
     description: formData.get("description"),
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt"),
@@ -61,6 +109,13 @@ export async function createCampaign(
     };
   }
 
+  if (data.clientId === "__new__" && !data.newClientName) {
+    return {
+      ok: false,
+      fieldErrors: { newClientName: "Ponle un nombre al cliente." },
+    };
+  }
+
   const existing = await prisma.campaign.findUnique({
     where: { name: data.name },
   });
@@ -69,10 +124,19 @@ export async function createCampaign(
     return { ok: false, fieldErrors: { name: "Ya existe una campaña así." } };
   }
 
+  const client = await resolveClientId(data);
+  if (!client.ok) {
+    return {
+      ok: false,
+      fieldErrors: client.field ? { [client.field]: client.error } : undefined,
+      error: client.field ? undefined : client.error,
+    };
+  }
+
   const campaign = await prisma.campaign.create({
     data: {
       name: data.name,
-      clientName: data.clientName || null,
+      clientId: client.clientId,
       description: data.description || null,
       startsAt: data.startsAt,
       endsAt: data.endsAt,
@@ -85,11 +149,12 @@ export async function createCampaign(
     entityId: campaign.id,
     action: "CREATED",
     actor: user,
-    metadata: { name: campaign.name },
+    metadata: { name: campaign.name, clientId: client.clientId },
   });
 
   revalidatePath("/campanas");
   revalidatePath("/contenidos");
+  revalidatePath("/finanzas");
 
   return { ok: true };
 }

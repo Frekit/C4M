@@ -18,7 +18,9 @@ import { prisma } from "@/lib/db";
 import {
   CAMPAIGN_STATUS,
   CAMPAIGN_STATUS_LABELS,
+  SETTLEMENT_MODE_LABELS,
   type CampaignStatus,
+  type SettlementMode,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { countPublished } from "@/lib/domain/rules";
@@ -34,14 +36,18 @@ export default async function CampaignsPage() {
   const user = await requireUser("/campanas");
   const canManage = can(user.role, "campaigns:manage");
 
-  const campaigns = await prisma.campaign.findMany({
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    include: {
-      deliverables: {
-        select: { id: true, status: true, contract: { select: { creatorId: true } } },
+  const [campaigns, clients] = await Promise.all([
+    prisma.campaign.findMany({
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      include: {
+        client: true,
+        deliverables: {
+          select: { id: true, status: true, contract: { select: { creatorId: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.client.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -50,8 +56,8 @@ export default async function CampaignsPage() {
           Campañas
         </h1>
         <p className="text-sm text-muted-foreground">
-          Agrupan contenidos de distintos creators y contratos. Cada contenido
-          puede pertenecer a una.
+          Agrupan contenidos de distintos creators bajo un cliente. Higgsfield
+          se liquida pieza a pieza; Many Chat, cuando el perfil termina el pack.
         </p>
       </div>
 
@@ -65,7 +71,7 @@ export default async function CampaignsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CampaignForm />
+            <CampaignForm clients={clients} />
           </CardContent>
         </Card>
       ) : null}
@@ -109,7 +115,9 @@ export default async function CampaignsPage() {
                     </Badge>
                   </div>
                   <CardDescription>
-                    {campaign.clientName ? `${campaign.clientName} · ` : ""}
+                    {campaign.client
+                      ? `${campaign.client.name} · ${SETTLEMENT_MODE_LABELS[campaign.client.settlementMode as SettlementMode]}${campaign.client.requiresPlatformSubmit ? " · plataforma" : ""} · `
+                      : ""}
                     {campaign.startsAt || campaign.endsAt
                       ? `${formatDate(campaign.startsAt)} → ${formatDate(campaign.endsAt)}`
                       : "Sin fechas"}

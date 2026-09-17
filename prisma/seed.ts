@@ -51,6 +51,41 @@ async function main() {
 
   console.log(`Administrador listo: ${admin.email}`);
   console.log(`Tipos de cambio cargados: ${FX_SEED.length}`);
+
+  const higgsfield = await prisma.client.upsert({
+    where: { name: "Higgsfield" },
+    create: {
+      name: "Higgsfield",
+      settlementMode: "PER_CONTENT",
+      requiresPlatformSubmit: true,
+      notes: "Cada contenido se sube a su plataforma y se liquida por pieza.",
+    },
+    update: {
+      settlementMode: "PER_CONTENT",
+      requiresPlatformSubmit: true,
+    },
+  });
+
+  const manyChat = await prisma.client.upsert({
+    where: { name: "Many Chat" },
+    create: {
+      name: "Many Chat",
+      settlementMode: "PACK",
+      requiresPlatformSubmit: false,
+      notes: "No se cobra ni se paga hasta que el perfil termina el pack de la campaña.",
+    },
+    update: {
+      settlementMode: "PACK",
+      requiresPlatformSubmit: false,
+    },
+  });
+
+  await prisma.campaign.updateMany({
+    where: { name: "GPT ASTRA 6", clientId: null },
+    data: { clientId: higgsfield.id },
+  });
+
+  console.log(`Clientes listos: ${higgsfield.name}, ${manyChat.name}`);
 }
 
 main()

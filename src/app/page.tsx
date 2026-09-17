@@ -15,29 +15,41 @@ import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { contractTotals, deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
-import { isLiveDeliverable } from "@/lib/domain/rules";
+import { CONTRACT_STATUS, DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
+import { loadPackCampaignIds, loadPackSummaries } from "@/lib/domain/pack-sync";
+import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 export default async function DashboardPage() {
   const user = await requireUser("/");
 
-  const [creatorCount, contracts, upcomingPayments] = await Promise.all([
+  const packCampaignIds = await loadPackCampaignIds();
+  const [creatorCount, contracts, upcomingPayments, packs] = await Promise.all([
     prisma.creator.count(),
     prisma.contract.findMany({
-      include: { creator: true, deliverables: true },
+      include: {
+        creator: true,
+        deliverables: { include: { campaign: { include: { client: true } } } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.deliverable.findMany({
       where: {
-        status: DELIVERABLE_STATUS.SUBMITTED,
         paymentDueAt: { not: null },
+        OR: [
+          { status: DELIVERABLE_STATUS.SUBMITTED },
+          {
+            status: DELIVERABLE_STATUS.PUBLISHED,
+            campaignId: { in: packCampaignIds },
+          },
+        ],
       },
       orderBy: { paymentDueAt: "asc" },
       take: 8,
       include: { contract: { include: { creator: true } } },
     }),
+    loadPackSummaries(),
   ]);
 
   const live = contracts.filter(
@@ -54,16 +66,24 @@ export default async function DashboardPage() {
 
   const accruedByCurrency = live.reduce<Record<string, number>>(
     (accumulator, contract) => {
-      const published = contract.deliverables.filter((item) =>
-        isLiveDeliverable(item.status)
-      ).length;
-
-      if (published > 0) {
-        accumulator[contract.costCurrency] =
-          (accumulator[contract.costCurrency] ?? 0) +
-          published * contract.costMinorPerContent;
+      for (const item of contract.deliverables) {
+        const pack =
+          item.campaignId &&
+          item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+            ? packs.get(packKey(item.campaignId, contract.creatorId))
+            : null;
+        if (
+          isAccruedDeliverable(
+            item.status,
+            item.campaign?.client ?? null,
+            pack?.isComplete ?? false
+          )
+        ) {
+          accumulator[contract.costCurrency] =
+            (accumulator[contract.costCurrency] ?? 0) +
+            contract.costMinorPerContent;
+        }
       }
-
       return accumulator;
     },
     {}
@@ -213,16 +233,16 @@ export default async function DashboardPage() {
             <CalendarClockIcon className="size-4 text-muted-foreground" />
             <CardTitle>Próximos pagos</CardTitle>
             <CardDescription>
-              Solo los submitted: Finanzas ya los subió a la plataforma del
-              cliente. La fecha sigue saliendo de la publicación + plazo.
+              Higgsfield: cuando Finanzas los marca submitted. Packs: cuando
+              ese perfil cierra la campaña. La fecha sale de la publicación +
+              plazo (en packs, de la última pieza).
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {upcomingPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Todavía no hay contenidos submitted, así que no hay pagos a
-                perfiles. Primero se publican, luego Finanzas los sube al
-                cliente.
+                Todavía no hay pagos a perfiles. En plataforma hace falta el
+                submitted; en packs, que el perfil termine la campaña.
               </p>
             ) : (
               upcomingPayments.map((item) => {

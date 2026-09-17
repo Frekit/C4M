@@ -11,6 +11,7 @@ import {
   type DeliverableStatus,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
+import type { PackProgress } from "@/lib/domain/settlement";
 
 import { PublishConfirmDialog } from "@/app/contenidos/publish-confirm-dialog";
 import { useDeliverableAutosave } from "@/app/contenidos/use-deliverable-autosave";
@@ -27,6 +28,7 @@ export type DeliverableItem = {
   costMinor: number;
   costCurrency: string;
   contractSigned: boolean;
+  pack: PackProgress | null;
 };
 
 const controlClass =
@@ -48,7 +50,7 @@ function DeliverableRow({
   canEdit,
 }: {
   item: DeliverableItem;
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
   canEdit: boolean;
 }) {
   return (
@@ -67,7 +69,7 @@ function DeliverableRowFields({
   canEdit,
 }: {
   item: DeliverableItem;
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
   canEdit: boolean;
 }) {
   const {
@@ -107,9 +109,18 @@ function DeliverableRowFields({
             item.status}
         </Badge>
         {item.isLate ? <Badge variant="destructive">Fecha pasada</Badge> : null}
+        {item.pack ? (
+          <Badge variant={item.pack.isComplete ? "secondary" : "outline"}>
+            Pack {item.pack.published}/{item.pack.total}
+          </Badge>
+        ) : null}
         {item.paymentDueAt ? (
           <span className="text-xs text-muted-foreground">
             Pago previsto {formatDate(item.paymentDueAt)}
+          </span>
+        ) : item.pack && !item.pack.isComplete ? (
+          <span className="text-xs text-muted-foreground">
+            Se paga al cerrar el pack
           </span>
         ) : null}
         {item.postUrl ? (
@@ -199,7 +210,9 @@ function DeliverableRowFields({
             <option value="">Sin campaña</option>
             {campaigns.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
-                {campaign.name}
+                {campaign.clientName
+                  ? `${campaign.name} · ${campaign.clientName}`
+                  : campaign.name}
               </option>
             ))}
           </select>
@@ -231,6 +244,7 @@ function DeliverableRowFields({
         open={publishOpen}
         costMinor={item.costMinor}
         costCurrency={item.costCurrency}
+        pack={item.pack}
         onConfirm={confirmPublish}
         onCancel={cancelPublish}
       />
@@ -244,7 +258,7 @@ export function DeliverableList({
   canEdit,
 }: {
   deliverables: DeliverableItem[];
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
   canEdit: boolean;
 }) {
   return (
@@ -261,8 +275,9 @@ export function DeliverableList({
       </ol>
       <p className="text-xs text-muted-foreground">
         Publicado es que ya está en redes, con enlace y fecha. Submitted lo
-        marca Finanzas cuando lo ha puesto en la plataforma del cliente, y ahí
-        se puede pagar al perfil.
+        marca Finanzas solo en clientes con plataforma. En clientes pack no se
+        cobra ni se paga hasta completar los contenidos de ese perfil en la
+        campaña.
       </p>
     </div>
   );

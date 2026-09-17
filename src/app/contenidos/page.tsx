@@ -27,9 +27,12 @@ import {
   DELIVERABLE_STATUS,
   DELIVERABLE_STATUS_LABELS,
   DELIVERABLE_STATUS_ORDER,
+  SETTLEMENT_MODE,
   type DeliverableStatus,
 } from "@/lib/domain/enums";
-import { isDeliverableLate, isLiveDeliverable } from "@/lib/domain/rules";
+import { isDeliverableLate } from "@/lib/domain/rules";
+import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
+import { loadPackSummaries } from "@/lib/domain/pack-sync";
 import { toInputDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -101,7 +104,7 @@ export default async function ContentsPage({
     where.scheduledFor = { lt: new Date() };
   }
 
-  const [deliverables, creators, campaigns] = await Promise.all([
+  const [deliverables, creators, campaigns, packs] = await Promise.all([
     prisma.deliverable.findMany({
       where,
       orderBy: [
@@ -111,32 +114,52 @@ export default async function ContentsPage({
       ],
       include: {
         contract: { include: { creator: true } },
-        campaign: true,
+        campaign: { include: { client: true } },
       },
       take: 500,
     }),
     prisma.creator.findMany({ orderBy: { handle: "asc" } }),
-    prisma.campaign.findMany({ orderBy: { name: "asc" } }),
+    prisma.campaign.findMany({
+      orderBy: { name: "asc" },
+      include: { client: true },
+    }),
+    loadPackSummaries(),
   ]);
 
-  const rows: ContentRowData[] = deliverables.map((item) => ({
-    id: item.id,
-    position: item.position,
-    status: item.status,
-    campaignId: item.campaignId,
-    contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
-    paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
-    postUrl: item.postUrl,
-    isLate: isDeliverableLate(item),
-    costMinor: item.contract.costMinorPerContent,
-    costCurrency: item.contract.costCurrency,
-    creatorHandle: item.contract.creator.handle,
-    creatorId: item.contract.creatorId,
-    contractId: item.contractId,
-    contractCode: item.contract.code,
-    contractSigned: item.contract.status !== CONTRACT_STATUS.DRAFT &&
-      item.contract.status !== CONTRACT_STATUS.SENT,
+  const campaignOptions = campaigns.map((campaign) => ({
+    id: campaign.id,
+    name: campaign.name,
+    clientName: campaign.client?.name ?? null,
   }));
+
+  const rows: ContentRowData[] = deliverables.map((item) => {
+    const pack =
+      item.campaignId &&
+      item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+        ? (packs.get(packKey(item.campaignId, item.contract.creatorId)) ?? null)
+        : null;
+
+    return {
+      id: item.id,
+      position: item.position,
+      status: item.status,
+      campaignId: item.campaignId,
+      contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
+      paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
+      postUrl: item.postUrl,
+      isLate: isDeliverableLate(item),
+      costMinor: item.contract.costMinorPerContent,
+      costCurrency: item.contract.costCurrency,
+      creatorHandle: item.contract.creator.handle,
+      creatorId: item.contract.creatorId,
+      contractId: item.contractId,
+      contractCode: item.contract.code,
+      contractSigned:
+        item.contract.status !== CONTRACT_STATUS.DRAFT &&
+        item.contract.status !== CONTRACT_STATUS.SENT,
+      pack,
+    };
+  });
 
   const counts = DELIVERABLE_STATUS_ORDER.reduce<Record<string, number>>(
     (accumulator, status) => {
@@ -150,7 +173,18 @@ export default async function ContentsPage({
 
   const accruedByCurrency = deliverables.reduce<Record<string, number>>(
     (accumulator, item) => {
-      if (isLiveDeliverable(item.status)) {
+      const pack =
+        item.campaignId &&
+        item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+          ? packs.get(packKey(item.campaignId, item.contract.creatorId))
+          : null;
+      if (
+        isAccruedDeliverable(
+          item.status,
+          item.campaign?.client ?? null,
+          pack?.isComplete ?? false
+        )
+      ) {
         accumulator[item.contract.costCurrency] =
           (accumulator[item.contract.costCurrency] ?? 0) +
           item.contract.costMinorPerContent;
@@ -317,7 +351,7 @@ export default async function ContentsPage({
       </Card>
 
       {canGroup && rows.length > 0 ? (
-        <BulkCampaignBar campaigns={campaigns} />
+        <BulkCampaignBar campaigns={campaignOptions} />
       ) : null}
 
       {rows.length === 0 ? (
@@ -369,7 +403,7 @@ export default async function ContentsPage({
                   <ContentRow
                     key={row.id}
                     item={row}
-                    campaigns={campaigns}
+                    campaigns={campaignOptions}
                     canEdit={canEdit}
                   />
                 ))}
@@ -381,8 +415,9 @@ export default async function ContentsPage({
 
       <p className="text-xs text-muted-foreground">
         Los cambios se guardan solos. Para marcar como publicado hacen falta
-        el enlace y la fecha. Submitted lo marca Finanzas al subirlo a la
-        plataforma del cliente, y ahí se puede pagar al perfil.
+        el enlace y la fecha. Con clientes de plataforma, Submitted lo marca
+        Finanzas. Con clientes pack, no se cobra ni se paga hasta completar
+        todos los contenidos de ese perfil en la campaña.
       </p>
     </main>
   );

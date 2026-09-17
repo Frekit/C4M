@@ -20,13 +20,19 @@ function createPrismaClient() {
   });
 }
 
-if (
-  process.env.NODE_ENV !== "production" &&
-  globalForPrisma.prisma &&
-  globalForPrisma.prismaSchemaSignature !== schemaSignature
-) {
-  void globalForPrisma.prisma.$disconnect();
-  globalForPrisma.prisma = undefined;
+function hasClientModel(instance: PrismaClient | undefined) {
+  return (
+    typeof (instance as { client?: { findMany?: unknown } } | undefined)?.client
+      ?.findMany === "function"
+  );
+}
+
+if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
+  const staleSchema = globalForPrisma.prismaSchemaSignature !== schemaSignature;
+  if (staleSchema || !hasClientModel(globalForPrisma.prisma)) {
+    void globalForPrisma.prisma.$disconnect();
+    globalForPrisma.prisma = undefined;
+  }
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

@@ -70,6 +70,8 @@ export type DeliverableStateInput = {
   contentDate: Date | null;
   postUrl?: string | null;
   paymentTermDays: number;
+  // En liquidación por pack no se pone fecha de pago al publicar.
+  deferPayment?: boolean;
 };
 
 export type DeliverableState = {
@@ -127,8 +129,13 @@ export function resolveDeliverableState(
       };
     }
 
-    const paymentDueAt = new Date(contentDate);
-    paymentDueAt.setUTCDate(paymentDueAt.getUTCDate() + paymentTermDays);
+    const paymentDueAt = input.deferPayment
+      ? null
+      : (() => {
+          const due = new Date(contentDate);
+          due.setUTCDate(due.getUTCDate() + paymentTermDays);
+          return due;
+        })();
 
     return {
       ok: true,

@@ -7,11 +7,12 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { syncContractCompletion } from "@/lib/domain/contracts";
-import { DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import {
   canPublishDeliverables,
   resolveDeliverableState,
 } from "@/lib/domain/rules";
+import { syncPackSettlement } from "@/lib/domain/pack-sync";
 import { fieldErrorsFrom } from "@/lib/domain/validation";
 
 export type DeliverableActionResult = {
@@ -71,7 +72,7 @@ export async function updateDeliverable(
 
   const deliverable = await prisma.deliverable.findUnique({
     where: { id: data.deliverableId },
-    include: { contract: true },
+    include: { contract: true, campaign: { include: { client: true } } },
   });
 
   if (!deliverable) {
@@ -111,12 +112,23 @@ export async function updateDeliverable(
     };
   }
 
+  const nextCampaignId = data.campaignId || null;
+  const previousCampaignId = deliverable.campaignId;
+  const campaign = nextCampaignId
+    ? await prisma.campaign.findUnique({
+        where: { id: nextCampaignId },
+        include: { client: true },
+      })
+    : null;
+
   const resolved = resolveDeliverableState({
     status: data.status,
     previousStatus: deliverable.status,
     contentDate: data.contentDate,
     postUrl: data.postUrl,
     paymentTermDays: deliverable.contract.paymentTermDays,
+    deferPayment:
+      campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK,
   });
 
   if (!resolved.ok) {
@@ -126,13 +138,23 @@ export async function updateDeliverable(
   await prisma.deliverable.update({
     where: { id: deliverable.id },
     data: {
-      campaignId: data.campaignId || null,
+      campaignId: nextCampaignId,
       postUrl: data.postUrl || null,
       ...resolved.value,
     },
   });
 
   await syncContractCompletion(deliverable.contractId);
+  await syncPackSettlement({
+    campaignId: nextCampaignId,
+    creatorId: deliverable.contract.creatorId,
+  });
+  if (previousCampaignId && previousCampaignId !== nextCampaignId) {
+    await syncPackSettlement({
+      campaignId: previousCampaignId,
+      creatorId: deliverable.contract.creatorId,
+    });
+  }
 
   await recordAudit({
     entityType: "Deliverable",
@@ -171,6 +193,11 @@ export async function assignCampaign(
     return { ok: false, error: "No has seleccionado ningún contenido." };
   }
 
+  const existing = await prisma.deliverable.findMany({
+    where: { id: { in: ids } },
+    include: { contract: true },
+  });
+
   if (campaignId) {
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
@@ -186,6 +213,21 @@ export async function assignCampaign(
     data: { campaignId: campaignId || null },
   });
 
+  const packs = new Map<string, { campaignId: string | null; creatorId: string }>();
+  for (const item of existing) {
+    packs.set(`${item.campaignId ?? ""}:${item.contract.creatorId}`, {
+      campaignId: item.campaignId,
+      creatorId: item.contract.creatorId,
+    });
+    packs.set(`${campaignId || ""}:${item.contract.creatorId}`, {
+      campaignId: campaignId || null,
+      creatorId: item.contract.creatorId,
+    });
+  }
+  await Promise.all(
+    [...packs.values()].map((pack) => syncPackSettlement(pack))
+  );
+
   await recordAudit({
     entityType: "Deliverable",
     entityId: ids.join(","),
@@ -196,6 +238,8 @@ export async function assignCampaign(
 
   revalidatePath("/contenidos");
   revalidatePath("/campanas");
+  revalidatePath("/finanzas");
+  revalidatePath("/");
 
   return { ok: true };
 }

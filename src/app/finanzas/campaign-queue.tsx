@@ -53,8 +53,8 @@ export function CampaignQueue({ groups }: { groups: CampaignQueueGroup[] }) {
         <CardHeader>
           <CardTitle>Nada pendiente de subir</CardTitle>
           <CardDescription>
-            Cuando un contenido pase a Publicado y tenga enlace, aparece aquí
-            agrupado por campaña para copiarlo a la plataforma del cliente.
+            Cuando un contenido de un cliente con plataforma pase a Publicado y
+            tenga enlace, aparece aquí agrupado por campaña.
           </CardDescription>
         </CardHeader>
       </Card>

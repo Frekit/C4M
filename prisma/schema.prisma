@@ -150,11 +150,26 @@ model Deliverable {
   @@index([scheduledFor])
 }
 
+// Marca o plataforma a la que se venden los contenidos. Define cómo se liquida.
+model Client {
+  id     String @id @default(cuid())
+  name   String @unique
+  // PER_CONTENT | PACK
+  settlementMode String @default("PER_CONTENT")
+  // true = hay que subir el post a una plataforma (Higgsfield).
+  requiresPlatformSubmit Boolean @default(true)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns Campaign[]
+}
+
 // Agrupa contenidos de distintos creators y contratos bajo una misma campaña.
 model Campaign {
   id          String    @id @default(cuid())
   name        String    @unique
-  clientName  String?
+  clientId    String?
   description String?
   status      String    @default("ACTIVE") // ACTIVE | CLOSED
   startsAt    DateTime?
@@ -163,9 +178,11 @@ model Campaign {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   deliverables Deliverable[]
 
   @@index([status])
+  @@index([clientId])
 }
 
 // --- Firma del contrato por el talento o su agencia ---

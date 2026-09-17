@@ -28,7 +28,11 @@ export type SignatureWithPayee = SignatureRequest & {
 };
 
 export type ContractWithDetail = Contract & {
-  deliverables: Deliverable[];
+  deliverables: (Deliverable & {
+    campaign?: {
+      client?: { settlementMode: string } | null;
+    } | null;
+  })[];
   signatureRequests: SignatureWithPayee[];
 };
 
@@ -164,7 +168,10 @@ export async function getContractDetail(id: string) {
     where: { id },
     include: {
       creator: true,
-      deliverables: { orderBy: { position: "asc" } },
+      deliverables: {
+        orderBy: { position: "asc" as const },
+        include: { campaign: { include: { client: true } } },
+      },
       signatureRequests: {
         orderBy: { createdAt: "desc" },
         include: { payee: true },

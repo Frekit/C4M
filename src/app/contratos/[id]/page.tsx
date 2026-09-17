@@ -37,9 +37,12 @@ import {
   CONTRACT_KIND,
   CONTRACT_KIND_LABELS,
   CONTRACT_STATUS,
+  SETTLEMENT_MODE,
   paymentTermLabel,
   type ContractKind,
 } from "@/lib/domain/enums";
+import { loadPackSummaries } from "@/lib/domain/pack-sync";
+import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
 import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
 import { formatMoney, formatPercent } from "@/lib/money";
 
@@ -67,9 +70,29 @@ export default async function ContractPage({
   }
 
   const view = buildContractView(contract);
-  const chain = await getContractChain(contract);
+  const [chain, packs] = await Promise.all([
+    getContractChain(contract),
+    loadPackSummaries(),
+  ]);
   const baseUrl = await getBaseUrl();
 
+  const accruedCostMinor = contract.deliverables.reduce((total, item) => {
+    const pack =
+      item.campaignId &&
+      item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+        ? packs.get(packKey(item.campaignId, contract.creatorId))
+        : null;
+    if (
+      isAccruedDeliverable(
+        item.status,
+        item.campaign?.client ?? null,
+        pack?.isComplete ?? false
+      )
+    ) {
+      return total + contract.costMinorPerContent;
+    }
+    return total;
+  }, 0);
   const isAnnex = contract.kind === CONTRACT_KIND.ANNEX;
   const isCancelled = contract.status === CONTRACT_STATUS.CANCELLED;
   const isSigned = Boolean(view.signedSignature);
@@ -82,7 +105,11 @@ export default async function ContractPage({
   const campaigns = await prisma.campaign.findMany({
     where: { status: CAMPAIGN_STATUS.ACTIVE },
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      client: { select: { name: true } },
+    },
   });
 
   return (
@@ -182,7 +209,7 @@ export default async function ContractPage({
           <CardHeader>
             <CardDescription>Devengado al creator</CardDescription>
             <CardTitle className="text-2xl">
-              {formatMoney(view.accruedCostMinor, contract.costCurrency)}
+              {formatMoney(accruedCostMinor, contract.costCurrency)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
@@ -287,7 +314,7 @@ export default async function ContractPage({
           <CardDescription>
             {canEditDeliverables
               ? isSigned
-                ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha, y pide confirmación. Submitted lo marca Finanzas desde su panel."
+                ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha. Submitted es solo para clientes con plataforma."
                 : "Puedes poner fecha y campaña desde ya: se guardan solas. Para marcar un contenido como publicado hacen falta el contrato firmado y el enlace."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>
@@ -295,7 +322,11 @@ export default async function ContractPage({
         <CardContent>
           <DeliverableList
             canEdit={canEditDeliverables}
-            campaigns={campaigns}
+            campaigns={campaigns.map((campaign) => ({
+              id: campaign.id,
+              name: campaign.name,
+              clientName: campaign.client?.name ?? null,
+            }))}
             deliverables={contract.deliverables.map((item) => ({
               id: item.id,
               position: item.position,
@@ -308,6 +339,12 @@ export default async function ContractPage({
               costMinor: contract.costMinorPerContent,
               costCurrency: contract.costCurrency,
               contractSigned: isSigned,
+              pack:
+                item.campaignId &&
+                item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+                  ? (packs.get(packKey(item.campaignId, contract.creatorId)) ??
+                    null)
+                  : null,
             }))}
           />
         </CardContent>

@@ -19,7 +19,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   CREATORS:
     "Da de alta creators y contratos, envía a firma y marca contenidos publicados.",
   ACCOUNTING:
-    "Sube los publicados a la plataforma del cliente y paga a los perfiles.",
+    "Sube a plataforma los de clientes que lo piden, liquida packs y paga a los perfiles.",
   VIEWER: "Solo lectura, con los datos bancarios ocultos.",
 };
 
@@ -78,7 +78,7 @@ export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
 export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
   PENDING: "Todavía sin fecha.",
   SCHEDULED: "Con fecha de publicación.",
-  PUBLISHED: "Ya está publicado en redes. Finanzas lo sube a la plataforma del cliente.",
+  PUBLISHED: "Ya está publicado en redes.",
   SUBMITTED:
     "Finanzas ya lo puso en la plataforma del cliente: se puede pagar al perfil.",
 };
@@ -96,6 +96,25 @@ export const OPS_DELIVERABLE_STATUSES: DeliverableStatus[] = [
   "SCHEDULED",
   "PUBLISHED",
 ];
+
+export const SETTLEMENT_MODE = {
+  PER_CONTENT: "PER_CONTENT",
+  PACK: "PACK",
+} as const;
+
+export type SettlementMode =
+  (typeof SETTLEMENT_MODE)[keyof typeof SETTLEMENT_MODE];
+
+export const SETTLEMENT_MODE_LABELS: Record<SettlementMode, string> = {
+  PER_CONTENT: "Por contenido",
+  PACK: "Al cerrar el pack",
+};
+
+export const SETTLEMENT_MODE_HINTS: Record<SettlementMode, string> = {
+  PER_CONTENT:
+    "Cada pieza publicada se liquida por separado (como Higgsfield).",
+  PACK: "No se cobra ni se paga hasta que ese perfil termine todos los contenidos de la campaña.",
+};
 
 export const CAMPAIGN_STATUS = {
   ACTIVE: "ACTIVE",

@@ -18,8 +18,9 @@ import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS } from "@/lib/domain/enums";
-import { isLiveDeliverable } from "@/lib/domain/rules";
+import { CONTRACT_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
+import { loadPackSummaries } from "@/lib/domain/pack-sync";
+import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -39,7 +40,10 @@ export default async function CreatorPage({
     where: { id },
     include: {
       contracts: {
-        include: { deliverables: true, signatureRequests: true },
+        include: {
+          deliverables: { include: { campaign: { include: { client: true } } } },
+          signatureRequests: true,
+        },
         orderBy: { createdAt: "asc" },
       },
       payees: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -50,6 +54,7 @@ export default async function CreatorPage({
     notFound();
   }
 
+  const packs = await loadPackSummaries();
   const allDeliverables = creator.contracts.flatMap(
     (contract) => contract.deliverables
   );
@@ -57,16 +62,24 @@ export default async function CreatorPage({
 
   const accruedByCurrency = creator.contracts.reduce<Record<string, number>>(
     (accumulator, contract) => {
-      const published = contract.deliverables.filter((item) =>
-        isLiveDeliverable(item.status)
-      ).length;
-
-      if (published > 0) {
-        accumulator[contract.costCurrency] =
-          (accumulator[contract.costCurrency] ?? 0) +
-          published * contract.costMinorPerContent;
+      for (const item of contract.deliverables) {
+        const pack =
+          item.campaignId &&
+          item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+            ? packs.get(packKey(item.campaignId, contract.creatorId))
+            : null;
+        if (
+          isAccruedDeliverable(
+            item.status,
+            item.campaign?.client ?? null,
+            pack?.isComplete ?? false
+          )
+        ) {
+          accumulator[contract.costCurrency] =
+            (accumulator[contract.costCurrency] ?? 0) +
+            contract.costMinorPerContent;
+        }
       }
-
       return accumulator;
     },
     {}

@@ -11,6 +11,7 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+import type { PackProgress } from "@/lib/domain/settlement";
 
 import { PublishConfirmDialog } from "./publish-confirm-dialog";
 import { useDeliverableAutosave } from "./use-deliverable-autosave";
@@ -31,6 +32,7 @@ export type ContentRowData = {
   contractId: string;
   contractCode: string;
   contractSigned: boolean;
+  pack: PackProgress | null;
 };
 
 const inputClass =
@@ -52,7 +54,7 @@ export function ContentRow({
   canEdit,
 }: {
   item: ContentRowData;
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
   canEdit: boolean;
 }) {
   return (
@@ -71,7 +73,7 @@ function ContentRowFields({
   canEdit,
 }: {
   item: ContentRowData;
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
   canEdit: boolean;
 }) {
   const {
@@ -139,7 +141,9 @@ function ContentRowFields({
             <option value="">Sin campaña</option>
             {campaigns.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
-                {campaign.name}
+                {campaign.clientName
+                  ? `${campaign.name} · ${campaign.clientName}`
+                  : campaign.name}
               </option>
             ))}
           </select>
@@ -175,6 +179,14 @@ function ContentRowFields({
           {item.isLate ? (
             <Badge variant="destructive" className="mt-1">
               Fecha pasada
+            </Badge>
+          ) : null}
+          {item.pack ? (
+            <Badge
+              variant={item.pack.isComplete ? "secondary" : "outline"}
+              className="mt-1"
+            >
+              Pack {item.pack.published}/{item.pack.total}
             </Badge>
           ) : null}
           {!item.contractSigned ? (
@@ -228,7 +240,13 @@ function ContentRowFields({
         </TableCell>
 
         <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-          {item.paymentDueAt ? formatDate(item.paymentDueAt) : "—"}
+          {item.paymentDueAt ? (
+            formatDate(item.paymentDueAt)
+          ) : item.pack && !item.pack.isComplete ? (
+            `Pack ${item.pack.published}/${item.pack.total}`
+          ) : (
+            "—"
+          )}
         </TableCell>
 
         <TableCell className="text-xs text-muted-foreground">
@@ -257,6 +275,7 @@ function ContentRowFields({
         open={publishOpen}
         costMinor={item.costMinor}
         costCurrency={item.costCurrency}
+        pack={item.pack}
         onConfirm={confirmPublish}
         onCancel={cancelPublish}
       />

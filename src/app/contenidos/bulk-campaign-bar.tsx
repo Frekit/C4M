@@ -10,7 +10,7 @@ import { assignCampaign, type DeliverableActionResult } from "./actions";
 export function BulkCampaignBar({
   campaigns,
 }: {
-  campaigns: { id: string; name: string }[];
+  campaigns: { id: string; name: string; clientName?: string | null }[];
 }) {
   const [state, formAction, pending] = useActionState<
     DeliverableActionResult | null,
@@ -40,7 +40,9 @@ export function BulkCampaignBar({
         <option value="">Quitar campaña</option>
         {campaigns.map((campaign) => (
           <option key={campaign.id} value={campaign.id}>
-            {campaign.name}
+            {campaign.clientName
+              ? `${campaign.name} · ${campaign.clientName}`
+              : campaign.name}
           </option>
         ))}
       </select>
