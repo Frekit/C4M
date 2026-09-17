@@ -30,9 +30,8 @@ El esquema de Prisma no usa enums de base, JSON nativo ni `@db.*`. En local el p
 El salto a Postgres:
 
 ```bash
-# 1. Postgres: Neon (nameless-salad-98358301) o docker compose up -d db
-#    neon login && neon link --project-id nameless-salad-98358301 --branch production -y --no-env-pull
-#    neon env pull --file .env.neon.production
+# 1. Postgres: Neon nameless-salad-98358301 (rama production o pre) o docker compose up -d db
+#    neon env pull --file .env.neon.production --service postgres
 # 2. En prisma/schema.prisma: provider = "postgresql"
 # 3. DATABASE_URL= la pooled de Neon (o postgresql://contratos:contratos@localhost:5432/contratos)
 # 4. Primera vez, sin datos SQLite que conservar:
