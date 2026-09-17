@@ -15,7 +15,11 @@ Abre [http://localhost:43127](http://localhost:43127).
 
 ## Auth0
 
-1. Crea una aplicación **Regular Web Application** en el [dashboard de Auth0](https://manage.auth0.com/).
+Este proyecto usa `@auth0/nextjs-auth0` (SDK de servidor). No uses `@auth0/auth0-react`: ese es para SPAs que gestionan la sesión en el navegador y aquí la sesión vive en el servidor.
+
+Consecuencia práctica: la aplicación en Auth0 debe ser **Regular Web Application**, no Single Page Application. El SDK es un cliente confidencial y necesita `Client Secret`; una app de tipo SPA tiene el método de autenticación en `none` y no expone secret, por lo que no sirve.
+
+1. Crea (o cambia a) una aplicación **Regular Web Application** en el [dashboard de Auth0](https://manage.auth0.com/).
 2. Copia `.env.example` a `.env.local` y rellena:
 
 ```bash
