@@ -6,6 +6,7 @@ import {
   PAYOUT_METHOD,
   RECIPIENT_KIND,
   ROLES,
+  SETTLEMENT_MODE,
 } from "@/lib/domain/enums";
 
 // Acepta el enlace completo, con o sin www, o directamente el handle.
@@ -39,7 +40,7 @@ function fromFormString(value: unknown): string {
 }
 
 function fromFormFlag(value: unknown): boolean {
-  return value === true || value === "on" || value === "true";
+  return value === true || value === "on" || value === "true" || value === "1";
 }
 
 const formString = z.unknown().transform(fromFormString);
@@ -228,6 +229,44 @@ export const signContractSchema = z.object({
         error: "Tienes que aceptar el contrato para firmar",
       })
     ),
+});
+
+const optionalDate = formString.pipe(
+  z
+    .string()
+    .trim()
+    .transform((value) =>
+      value ? new Date(`${value}T00:00:00.000Z`) : null
+    )
+    .refine(
+      (value) => value === null || !Number.isNaN(value.getTime()),
+      "Fecha no válida"
+    )
+);
+
+export const campaignSchema = z.object({
+  name: requiredText(2, 120, "Ponle un nombre"),
+  clientId: optionalText(80),
+  newClientName: optionalText(120),
+  newSettlementMode: z.unknown().transform((raw, ctx) => {
+    const value = fromFormString(raw).trim();
+    if (value === "") return undefined;
+    if (
+      value === SETTLEMENT_MODE.PER_CONTENT ||
+      value === SETTLEMENT_MODE.PACK
+    ) {
+      return value;
+    }
+    ctx.addIssue({
+      code: "custom",
+      message: "Elige cómo se liquida",
+    });
+    return z.NEVER;
+  }),
+  newRequiresPlatformSubmit: formFlag,
+  description: optionalText(1000),
+  startsAt: optionalDate,
+  endsAt: optionalDate,
 });
 
 export const inviteSchema = z.object({

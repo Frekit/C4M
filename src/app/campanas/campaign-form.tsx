@@ -153,7 +153,9 @@ export function CampaignForm({
               Hay que subir los posts a una plataforma del cliente
             </label>
           </>
-        ) : null}
+        ) : (
+          <input type="hidden" name="newClientName" value="" />
+        )}
 
         <div className="grid gap-2">
           <Label htmlFor="startsAt">Inicio (opcional)</Label>

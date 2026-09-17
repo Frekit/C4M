@@ -1,46 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { CAMPAIGN_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
-import { fieldErrorsFrom } from "@/lib/domain/validation";
+import { campaignSchema, fieldErrorsFrom } from "@/lib/domain/validation";
 
 export type CampaignActionResult = {
   ok: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
 };
-
-const optionalDate = z
-  .string()
-  .trim()
-  .optional()
-  .or(z.literal(""))
-  .transform((value) => (value ? new Date(`${value}T00:00:00.000Z`) : null))
-  .refine(
-    (value) => value === null || !Number.isNaN(value.getTime()),
-    "Fecha no válida"
-  );
-
-const campaignSchema = z.object({
-  name: z.string().trim().min(2, "Ponle un nombre").max(120),
-  clientId: z.string().trim().optional().or(z.literal("")),
-  newClientName: z.string().trim().max(120).optional().or(z.literal("")),
-  newSettlementMode: z
-    .enum([SETTLEMENT_MODE.PER_CONTENT, SETTLEMENT_MODE.PACK])
-    .optional(),
-  newRequiresPlatformSubmit: z
-    .any()
-    .optional()
-    .transform((value) => value === "1" || value === "true" || value === "on"),
-  description: z.string().trim().max(1000).optional().or(z.literal("")),
-  startsAt: optionalDate,
-  endsAt: optionalDate,
-});
 
 async function resolveClientId(data: {
   clientId?: string;
@@ -89,7 +61,7 @@ export async function createCampaign(
     name: formData.get("name"),
     clientId: formData.get("clientId"),
     newClientName: formData.get("newClientName"),
-    newSettlementMode: formData.get("newSettlementMode") || undefined,
+    newSettlementMode: formData.get("newSettlementMode"),
     newRequiresPlatformSubmit: formData.get("newRequiresPlatformSubmit"),
     description: formData.get("description"),
     startsAt: formData.get("startsAt"),
