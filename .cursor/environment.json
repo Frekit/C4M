@@ -1,0 +1,17 @@
+{
+  "name": "Contratos local",
+  "install": "npm install && npx prisma generate && npx prisma migrate deploy",
+  "terminals": [
+    {
+      "name": "Dev server",
+      "command": "npm run dev",
+      "description": "Next.js en el puerto 43127. Entorno local: SQLite y AUTH_MODE=local. No uses secretos de prod."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 43127
+    }
+  ]
+}

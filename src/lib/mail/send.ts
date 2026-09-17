@@ -1,3 +1,5 @@
+import { mailSubjectFor } from "@/lib/runtime-env";
+
 export type MailSendResult =
   | { status: "sent"; id?: string }
   | { status: "skipped"; reason: "not_configured" }
@@ -43,7 +45,7 @@ export async function sendMail(input: {
       body: JSON.stringify({
         from: mailFromAddress(),
         to: [input.to],
-        subject: input.subject,
+        subject: mailSubjectFor(input.subject),
         text: input.text,
         html: input.html,
       }),

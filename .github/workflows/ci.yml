@@ -16,3 +16,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run verify
+      - run: npm run check:env -- --strict
+        env:
+          APP_ENV: local
+          AUTH_MODE: local
+          DATABASE_URL: file:./dev.db

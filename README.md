@@ -91,6 +91,18 @@ Entra por `http://localhost:43127`, no por `127.0.0.1`: Auth0 trata esos hosts c
 
 Con Auth0 activo, la identidad la da Auth0 y el rol la base de datos: una cuenta válida en Auth0 sin invitación acaba en `/sin-acceso`.
 
+## Entornos (local / pre / prod)
+
+El vibe coding no debe apuntar a la campaña real. Mismo código, secretos distintos:
+
+- **Local** — SQLite + `AUTH_MODE=local`. Es el Cloud Agent y tu portátil.
+- **Pre** — Preview de Vercel (o `https://pre…`): Postgres y Auth0 de ensayo. Banner ámbar. Los correos salen con `[PRE]`.
+- **Prod** — solo `main` en Vercel Production.
+
+La parte **pública** es `/firmar/[token]` y `GET /api/salud`. El resto pide invitación.
+
+Plantillas: `.env.example`, `.env.pre.example`, `.env.prod.example`. Checklist en [docs/environments.md](docs/environments.md). `npm run check:env` valida el combo.
+
 ## Migrar a PostgreSQL
 
 El esquema se escribió para que el salto sea barato: sin enums de base de datos, sin campos `Json`, sin tipos nativos y con importes en enteros. La checklist de Auth0, Postgres y Resend está en [docs/production.md](docs/production.md).

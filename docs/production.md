@@ -2,6 +2,8 @@
 
 SQLite y `AUTH_MODE=local` son de desarrollo. **Antes de una campaña de 1.000–2.000 talentos** hace falta Postgres, índices y cola de correo. El recorte de trabajo es la campaña, no el número de usuarios de la app.
 
+Local, pre y prod no se mezclan: ver [environments.md](environments.md). `APP_ENV` (o `VERCEL_ENV`) decide las reglas; el arranque corta pre/prod si hay `AUTH_MODE=local` o SQLite.
+
 ## Auth0
 
 1. `AUTH_MODE=auth0` (no `local`).

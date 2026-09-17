@@ -28,6 +28,14 @@ function startOfUtcDay(date = new Date()) {
 }
 
 async function main() {
+  const { getRuntimeEnv } = await import("../src/lib/runtime-env");
+  const runtime = getRuntimeEnv();
+  if (!runtime.allowSeed) {
+    throw new Error(
+      "La semilla no corre en producción. Si de verdad hace falta, ALLOW_PROD_SEED=1."
+    );
+  }
+
   const admin = await prisma.user.upsert({
     where: { email: BOOTSTRAP_ADMIN_EMAIL },
     create: {

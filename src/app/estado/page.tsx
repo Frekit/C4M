@@ -22,6 +22,7 @@ import { getCompany } from "@/lib/company";
 import { prisma } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
+import { envLabel, getRuntimeEnv } from "@/lib/runtime-env";
 import { isMailConfigured } from "@/lib/mail/send";
 
 import { FxRateForm } from "./fx-rate-form";
@@ -38,6 +39,7 @@ export default async function StatusPage() {
   const modeSetting = getAuthModeSetting();
   const envStatus = getAuth0EnvStatus();
   const company = getCompany();
+  const runtime = getRuntimeEnv();
 
   const [creators, contracts, signatures, pendingMail, rates] = await Promise.all([
     prisma.creator.count(),
@@ -62,6 +64,55 @@ export default async function StatusPage() {
           .
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Entorno</CardTitle>
+          <CardDescription>
+            {envLabel(runtime.env)} · origen {runtime.source}. Local, pre y
+            prod no comparten base ni Auth0.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">APP_ENV</span>
+            <Badge variant={runtime.env === "prod" ? "default" : "outline"}>
+              {runtime.env}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Base</span>
+            <span>
+              {runtime.databaseKind === "postgres"
+                ? "PostgreSQL"
+                : runtime.databaseKind === "sqlite"
+                  ? "SQLite (solo local)"
+                  : "Sin URL"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Semilla</span>
+            <span>{runtime.allowSeed ? "Permitida" : "Bloqueada"}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Indexable</span>
+            <span>{runtime.noIndex ? "No (pre/local)" : "Sí"}</span>
+          </div>
+          {runtime.issues.length > 0 ? (
+            <ul className="mt-1 grid gap-1 text-destructive">
+              {runtime.issues.map((issue) => (
+                <li key={issue.message}>
+                  {issue.level === "error" ? "Error" : "Aviso"}: {issue.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">
+              Este proceso cumple las reglas de {runtime.env}.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -96,7 +147,11 @@ export default async function StatusPage() {
         <Card>
           <CardHeader>
             <CardTitle>Datos cargados</CardTitle>
-            <CardDescription>Base SQLite de desarrollo.</CardDescription>
+            <CardDescription>
+              {runtime.databaseKind === "postgres"
+                ? "PostgreSQL de este entorno."
+                : "Base de este proceso (SQLite en local)."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
             <div className="flex justify-between">

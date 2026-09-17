@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getAuth0Client } from "./lib/auth/auth0";
 import { isAuth0Active } from "./lib/auth/config";
 import { rewriteLoopbackUrl } from "./lib/auth/loopback";
+import { getRuntimeEnv } from "./lib/runtime-env";
 import {
   LOCAL_SESSION_COOKIE,
   parseLocalIdentity,
@@ -11,7 +12,13 @@ import {
 
 // Rutas accesibles sin sesión. El enlace de firma es público a propósito: lo
 // abre el talento o su agencia, que no tienen cuenta en la plataforma.
-const PUBLIC_PREFIXES = ["/iniciar-sesion", "/sin-acceso", "/firmar", "/auth"];
+const PUBLIC_PREFIXES = [
+  "/iniciar-sesion",
+  "/sin-acceso",
+  "/firmar",
+  "/auth",
+  "/api/salud",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PREFIXES.some(
@@ -37,6 +44,18 @@ export async function proxy(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+  const runtime = getRuntimeEnv();
+  const envHeaders = {
+    "x-app-env": runtime.env,
+    ...(runtime.noIndex ? { "x-robots-tag": "noindex, nofollow" } : {}),
+  };
+
+  function withEnvHeaders(response: NextResponse) {
+    for (const [key, value] of Object.entries(envHeaders)) {
+      response.headers.set(key, value);
+    }
+    return response;
+  }
 
   if (pathname === "/auth/callback") {
     const oauthError = request.nextUrl.searchParams.get("error");
@@ -52,10 +71,10 @@ export async function proxy(request: NextRequest) {
     const auth0 = getAuth0Client();
 
     if (!auth0) {
-      return NextResponse.next();
+      return withEnvHeaders(NextResponse.next());
     }
 
-    const response = await auth0.middleware(request);
+    const response = withEnvHeaders(await auth0.middleware(request));
 
     if (!isPublicPath(pathname)) {
       const session = await auth0.getSession(request);
@@ -64,7 +83,7 @@ export async function proxy(request: NextRequest) {
         const login = request.nextUrl.clone();
         login.pathname = "/auth/login";
         login.search = `?returnTo=${encodeURIComponent(pathname)}`;
-        return NextResponse.redirect(login);
+        return withEnvHeaders(NextResponse.redirect(login));
       }
     }
 
@@ -76,7 +95,7 @@ export async function proxy(request: NextRequest) {
     const login = request.nextUrl.clone();
     login.pathname = "/iniciar-sesion";
     login.search = "?motivo=auth0";
-    return NextResponse.redirect(login);
+    return withEnvHeaders(NextResponse.redirect(login));
   }
 
   if (
@@ -86,10 +105,10 @@ export async function proxy(request: NextRequest) {
     const login = request.nextUrl.clone();
     login.pathname = "/iniciar-sesion";
     login.search = `?returnTo=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(login);
+    return withEnvHeaders(NextResponse.redirect(login));
   }
 
-  return NextResponse.next();
+  return withEnvHeaders(NextResponse.next());
 }
 
 export const config = {
