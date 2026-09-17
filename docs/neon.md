@@ -1,40 +1,43 @@
 # Neon
 
-Proyecto: `nameless-salad-98358301`. Política en `neon.ts`. Skills del agente en `.agents/skills/neon*`. MCP de Cursor: `.cursor/mcp.json` → `https://mcp.neon.tech/mcp`.
+Proyecto: `nameless-salad-98358301` (eu-west-2, Postgres 18). Política en `neon.ts`. Skills en `.agents/skills/neon*`. MCP: `.cursor/mcp.json` → `https://mcp.neon.tech/mcp`.
 
-Local sigue en SQLite. Neon es pre/prod. No copies `DATABASE_URL` de production al `.env` del Cloud Agent.
+Local sigue en SQLite (`file:./dev.db`). La URL de production vive en `.env.neon.production` (gitignorado, modo `600`). No la copies al `.env` del Cloud Agent ni al grupo Preview de Vercel.
 
-## En el portátil (hace falta tu sesión)
+Comprobado contra el pooler: usuario `neondb_owner`, base `neondb`, esquema `public` vacío (solo `plpgsql`). `neon inspect db table-sizes --db-url` y un `SELECT` de catálogo responden. No se ha corrido `prisma migrate` ni seed contra esta rama.
 
-El CLI no puede terminar `neon login` en este Cloud Agent: el callback es `http://127.0.0.1/…` de la VM, no de tu navegador. En tu máquina:
+Esta región no tiene Object Storage / Functions / AI Gateway (solo `aws-us-east-2`, `aws-us-east-1`, `aws-eu-central-1`, `aws-ap-southeast-1`). `neon.ts` se queda en `defineConfig({})`.
+
+## URLs
+
+En `.env.neon.production`:
+
+| Variable | Uso |
+| --- | --- |
+| `DATABASE_URL` | Pooler, tal cual la console (`sslmode=require&channel_binding=require`) |
+| `DATABASE_URL_POOLED` | Misma host pooler, `sslmode=require` (Prisma / node-pg) |
+| `DATABASE_URL_UNPOOLED` | Host sin `-pooler`, para `prisma migrate` |
+
+Vercel Production: `DATABASE_URL` = pooled. Preview: otra rama, otra URL.
+
+## CLI (link / deploy)
+
+Hace falta `neon login` en el portátil o `NEON_API_KEY`. La URL de Postgres no autentica el API:
 
 ```bash
 npm i -g neon@latest
 neon login
-cd /ruta/del/repo
 neon link --project-id nameless-salad-98358301 --branch production -y --no-env-pull
 neon deploy --no-env-pull
-neon env pull --file .env.neon.production
+neon checkout pre --create --no-env-pull
+neon env pull --file .env.neon.pre
 ```
 
-O exporta `NEON_API_KEY` (console → Account settings → API keys) y los mismos `link` / `deploy` funcionan aquí sin navegador.
+`--no-env-pull` no pisa el SQLite local.
 
-`--no-env-pull` deja intacto el `DATABASE_URL=file:./dev.db`. La URL de Neon va a `.env.neon.production` (gitignorado) y a Vercel.
-
-## Ramas
-
-| Rama Neon | Uso |
-| --- | --- |
-| `production` | prod. Solo Vercel Production. |
-| una rama hija (p. ej. `pre`) | Preview / ensayo. Créala con `neon checkout pre --create --no-env-pull` cuando esté el login. |
-
-No operes la campaña de 1.000–2.000 talentos contra `production` desde el agente.
-
-## Comprobar
+## Comprobar la base (sin API)
 
 ```bash
-neon --version
-neon profile list -o json    # account distinto de "-"
-neon projects get nameless-salad-98358301
-neon config plan
+set -a && source .env.neon.production && set +a
+neon inspect db table-sizes --db-url "$DATABASE_URL_POOLED"
 ```

@@ -48,7 +48,7 @@ No reutilices Client Secret. Un tenant `*-dev` y otro de prod es lo más limpio.
 
 Local: `file:./dev.db`. Pre/prod: Neon (proyecto `nameless-salad-98358301`) o `docker compose up -d db`.
 
-El CLI de Neon y `neon.ts` viven en este repo. El Cloud Agent **no** abre el navegador de Álvaro: `neon login` hay que hacerlo en el portátil (o pasar `NEON_API_KEY`). Después:
+El CLI de Neon y `neon.ts` viven en este repo. La URL de production ya está en `.env.neon.production` (gitignorado; la base está vacía). El Cloud Agent **no** abre el navegador de Álvaro: `neon link` / `neon deploy` / crear la rama `pre` piden `neon login` en el portátil o `NEON_API_KEY`. Después:
 
 ```bash
 neon link --project-id nameless-salad-98358301 --branch production -y --no-env-pull
