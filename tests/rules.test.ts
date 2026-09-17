@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  canCreateConditionsAnnex,
   canDeleteContract,
+  canEditContractParticulars,
   canPublishDeliverables,
   countPublished,
   isAnnexAllowed,
@@ -83,4 +85,21 @@ test("cuenta los contenidos ya en redes, publicados o submitted", () => {
     2
   );
   assert.equal(countPublished([]), 0);
+});
+
+test("las particulares se editan en borrador o enviado, no si ya firmó", () => {
+  assert.equal(canEditContractParticulars("DRAFT", false), true);
+  assert.equal(canEditContractParticulars("SENT", false), true);
+  assert.equal(canEditContractParticulars("SENT", true), false);
+  assert.equal(canEditContractParticulars("SIGNED", false), false);
+  assert.equal(canEditContractParticulars("CANCELLED", false), false);
+});
+
+test("el anexo de condiciones solo nace de un contrato ya firmado", () => {
+  assert.equal(canCreateConditionsAnnex("SIGNED"), true);
+  assert.equal(canCreateConditionsAnnex("COMPLETED"), true);
+  assert.equal(canCreateConditionsAnnex("RENEWED"), true);
+  assert.equal(canCreateConditionsAnnex("DRAFT"), false);
+  assert.equal(canCreateConditionsAnnex("SENT"), false);
+  assert.equal(canCreateConditionsAnnex("CANCELLED"), false);
 });

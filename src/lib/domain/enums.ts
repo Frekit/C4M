@@ -47,6 +47,7 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
 export const CONTRACT_KIND = {
   ORIGINAL: "ORIGINAL",
   ANNEX: "ANNEX",
+  CONDITIONS_ANNEX: "CONDITIONS_ANNEX",
   RENEWAL: "RENEWAL",
 } as const;
 
@@ -54,7 +55,8 @@ export type ContractKind = (typeof CONTRACT_KIND)[keyof typeof CONTRACT_KIND];
 
 export const CONTRACT_KIND_LABELS: Record<ContractKind, string> = {
   ORIGINAL: "Contrato inicial",
-  ANNEX: "Anexo",
+  ANNEX: "Anexo de contenidos",
+  CONDITIONS_ANNEX: "Anexo de condiciones",
   RENEWAL: "Renovación",
 };
 

@@ -22,6 +22,7 @@ import {
   CONTRACT_STATUS,
   SIGNATURE_STATUS,
 } from "@/lib/domain/enums";
+import { signSummaryBullets } from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { formatDateTime } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -68,6 +69,7 @@ export default async function SignPage({
 
   const { contract } = request;
   const isAnnex = contract.kind === CONTRACT_KIND.ANNEX;
+  const isConditionsAnnex = contract.kind === CONTRACT_KIND.CONDITIONS_ANNEX;
   const totalCost = contract.costMinorPerContent * contract.deliverableCount;
 
   const isSigned = request.status === SIGNATURE_STATUS.SIGNED;
@@ -90,9 +92,11 @@ export default async function SignPage({
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{company.legalName}</p>
         <h1 className="font-heading text-2xl font-medium tracking-tight">
-          {isAnnex
-            ? `Anexo al contrato ${contract.parent?.code ?? ""}`
-            : "Contrato de creación de contenido"}
+          {isConditionsAnnex
+            ? `Anexo de condiciones al contrato ${contract.parent?.code ?? ""}`
+            : isAnnex
+              ? `Anexo al contrato ${contract.parent?.code ?? ""}`
+              : "Contrato de creación de contenido orgánico"}
         </h1>
         <p className="text-sm text-muted-foreground">
           Referencia {contract.code} · para @{contract.creator.handle}
@@ -108,6 +112,21 @@ export default async function SignPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
+          <ul className="grid gap-2 text-sm text-muted-foreground">
+            {signSummaryBullets.map((bullet) => (
+              <li key={bullet} className="pl-4">
+                <span className="-ml-4 mr-2">·</span>
+                {bullet}
+              </li>
+            ))}
+          </ul>
+
+          {isConditionsAnnex ? (
+            <p className="text-sm">
+              Este anexo no cambia el número de contenidos ni los importes del
+              contrato {contract.parent?.code ?? "de origen"}.
+            </p>
+          ) : (
           <dl className="grid gap-2 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Contenidos</dt>
@@ -140,6 +159,7 @@ export default async function SignPage({
               </dd>
             </div>
           </dl>
+          )}
 
           {contract.notes ? (
             <div className="rounded-lg border bg-muted/30 p-3">

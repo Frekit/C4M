@@ -21,7 +21,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getBaseUrl } from "@/lib/base-url";
@@ -47,8 +46,10 @@ import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
 import { formatMoney, formatPercent } from "@/lib/money";
 
 import { revokeSignature } from "../actions";
+import { ConditionsAnnexForm } from "./conditions-annex-form";
 import { DangerZone } from "./danger-zone";
 import { DeliverableList } from "./deliverable-list";
+import { ParticularsForm } from "./particulars-form";
 import { SendSignatureCard } from "./send-signature-card";
 
 export const metadata: Metadata = {
@@ -91,8 +92,10 @@ export default async function ContractPage({
     return total;
   }, 0);
   const isAnnex = contract.kind === CONTRACT_KIND.ANNEX;
+  const isConditionsAnnex = contract.kind === CONTRACT_KIND.CONDITIONS_ANNEX;
   const isCancelled = contract.status === CONTRACT_STATUS.CANCELLED;
   const isSigned = Boolean(view.signedSignature);
+  const canWriteContracts = can(user.role, "contracts:write");
 
   // Planificar fechas y campañas se puede siempre. Publicado se puede forzar
   // con el contrato aún sin firmar; cancelado no se toca.
@@ -136,8 +139,10 @@ export default async function ContractPage({
               @{contract.creator.handle}
             </Link>
             {isAnnex && contract.parent
-              ? ` · anexo de ${contract.parent.code}`
-              : ""}
+              ? ` · anexo de contenidos de ${contract.parent.code}`
+              : isConditionsAnnex && contract.parent
+                ? ` · anexo de condiciones de ${contract.parent.code}`
+                : ""}
             {" · creado el "}
             {formatDate(contract.createdAt)}
           </p>
@@ -159,7 +164,9 @@ export default async function ContractPage({
             <FileTextIcon />
             Ver PDF
           </Button>
-          {can(user.role, "contracts:renew") && !isCancelled ? (
+          {can(user.role, "contracts:renew") &&
+          !isCancelled &&
+          !isConditionsAnnex ? (
             <Button
               size="sm"
               nativeButton={false}
@@ -193,6 +200,16 @@ export default async function ContractPage({
         </Alert>
       ) : null}
 
+      {isConditionsAnnex ? (
+        <Alert>
+          <AlertTitle>Sin cambio de contenidos ni importes</AlertTitle>
+          <AlertDescription>
+            Este anexo solo actualiza las condiciones particulares. El precio, el
+            plazo y los contenidos de {contract.parent?.code ?? "origen"} siguen
+            igual.
+          </AlertDescription>
+        </Alert>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
@@ -234,10 +251,12 @@ export default async function ContractPage({
           </CardContent>
         </Card>
       </div>
+      )}
 
+      {isConditionsAnnex ? null : (
       <Card>
         <CardHeader>
-          <CardTitle>Condiciones</CardTitle>
+          <CardTitle>Condiciones económicas</CardTitle>
           <CardDescription>
             El tipo de cambio queda congelado al crear el contrato, así el margen
             no se mueve después.
@@ -303,19 +322,40 @@ export default async function ContractPage({
               </dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+      )}
 
-          {contract.notes ? (
-            <div className="sm:col-span-2">
-              <Separator className="mb-3" />
-              <p className="text-xs font-medium">Condiciones particulares</p>
-              <p className="mt-1 text-sm whitespace-pre-line text-muted-foreground">
-                {contract.notes}
-              </p>
-            </div>
-          ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Condiciones particulares</CardTitle>
+          <CardDescription>
+            {view.canEditParticulars
+              ? "Pactadas con este talento. El PDF se regenera al guardar."
+              : "Pactadas con este talento. Si el contrato ya está firmado, cualquier cambio va en un anexo."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {canWriteContracts && view.canEditParticulars ? (
+            <ParticularsForm
+              contractId={contract.id}
+              notes={contract.notes}
+              hasLiveSignature={Boolean(view.activeSignature)}
+            />
+          ) : contract.notes ? (
+            <p className="text-sm whitespace-pre-line text-muted-foreground">
+              {contract.notes}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No hay condiciones particulares además de las cláusulas generales
+              del contrato.
+            </p>
+          )}
         </CardContent>
       </Card>
 
+      {isConditionsAnnex ? null : (
       <Card>
         <CardHeader>
           <CardTitle>Contenidos</CardTitle>
@@ -360,6 +400,7 @@ export default async function ContractPage({
           />
         </CardContent>
       </Card>
+      )}
 
       {view.signedSignature ? (
         <Card>
@@ -449,6 +490,13 @@ export default async function ContractPage({
         payee={view.signedSignature?.payee ?? null}
         canSeeFullAccount={can(user.role, "payees:read_full")}
       />
+
+      {canWriteContracts && view.canCreateConditionsAnnex && !isCancelled ? (
+        <ConditionsAnnexForm
+          parentId={contract.id}
+          parentCode={contract.code}
+        />
+      ) : null}
 
       {chain.length > 1 ? (
         <Card>

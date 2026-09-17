@@ -31,6 +31,23 @@ export function isSignedContract(contractStatus: string): boolean {
   );
 }
 
+// Particulares se editan en el mismo PDF mientras no haya firma.
+export function canEditContractParticulars(
+  status: string,
+  hasSignedSignature: boolean
+): boolean {
+  if (hasSignedSignature) return false;
+  if (status === CONTRACT_STATUS.CANCELLED) return false;
+  return (
+    status === CONTRACT_STATUS.DRAFT || status === CONTRACT_STATUS.SENT
+  );
+}
+
+// Si ya firmó, el jurídico nuevo va en un anexo de condiciones.
+export function canCreateConditionsAnnex(status: string): boolean {
+  return isSignedContract(status);
+}
+
 // Un borrador no pasa a Completado aunque estén todos los posts en redes:
 // la firma sigue pendiente.
 export function nextContractStatusAfterProgress(

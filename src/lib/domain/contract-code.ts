@@ -24,8 +24,13 @@ export async function nextContractCode(options: {
     return `${prefix}${String(lastNumber + 1).padStart(3, "0")}`;
   }
 
-  const rootCode = options.parentCode.replace(/-(A|R)\d+$/, "");
-  const suffix = options.kind === CONTRACT_KIND.ANNEX ? "A" : "R";
+  const rootCode = options.parentCode.replace(/-(A|R|C)\d+$/, "");
+  const suffix =
+    options.kind === CONTRACT_KIND.ANNEX
+      ? "A"
+      : options.kind === CONTRACT_KIND.CONDITIONS_ANNEX
+        ? "C"
+        : "R";
 
   const siblings = await prisma.contract.findMany({
     where: { code: { startsWith: `${rootCode}-${suffix}` } },

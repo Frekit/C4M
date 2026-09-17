@@ -221,10 +221,13 @@ export async function signContract(
   const pdfInput = await loadContractPdfInput(request.contractId);
 
   if (pdfInput) {
-    const { sha256 } = await buildContractPdf(pdfInput);
+    const { sha256, bytes } = await buildContractPdf(pdfInput);
     await prisma.signatureRequest.update({
       where: { id: request.id },
-      data: { documentSha256: sha256 },
+      data: {
+        documentSha256: sha256,
+        documentPdf: Buffer.from(bytes),
+      },
     });
   }
 

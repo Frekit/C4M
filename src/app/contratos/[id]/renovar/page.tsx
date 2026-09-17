@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CAMPAIGN_STATUS, CONTRACT_STATUS, SETTLEMENT_MODE_LABELS, type SettlementMode } from "@/lib/domain/enums";
+import {
+  CAMPAIGN_STATUS,
+  CONTRACT_KIND,
+  CONTRACT_STATUS,
+  SETTLEMENT_MODE_LABELS,
+  type SettlementMode,
+} from "@/lib/domain/enums";
 import { formatMoney } from "@/lib/money";
 import { fromMinorUnits } from "@/lib/money";
 
@@ -31,6 +37,13 @@ export default async function RenewContractPage({
   });
 
   if (!contract) {
+    notFound();
+  }
+
+  if (
+    contract.kind === CONTRACT_KIND.CONDITIONS_ANNEX ||
+    contract.deliverableCount === 0
+  ) {
     notFound();
   }
 

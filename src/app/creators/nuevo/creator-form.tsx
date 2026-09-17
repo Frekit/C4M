@@ -6,6 +6,7 @@ import { AtSignIcon } from "lucide-react";
 
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
 import { FormErrorSummary } from "@/components/form-error-summary";
+import { ParticularsNotesField } from "@/components/particulars-notes-field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import { ClientCampaignFields, type CampaignChoice, type ClientOption } from "@/components/client-campaign-fields";
 
@@ -33,7 +33,7 @@ const FIELD_LABELS: Record<string, string> = {
   costPerContent: "Coste por contenido",
   fxUnitsPerUsd: "Tipo de cambio",
   paymentTermDays: "Plazo de pago",
-  notes: "Notas",
+  notes: "Condiciones particulares",
   clientId: "Cliente",
   campaignId: "Campaña",
 };
@@ -138,18 +138,7 @@ export function CreatorForm({
             fieldErrors={state?.fieldErrors}
           />
 
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notas del acuerdo (opcional)</Label>
-            <Textarea
-              id="notes"
-              name="notes"
-              rows={3}
-              placeholder="Formato, plazos de entrega, exclusividad, usos…"
-            />
-            <p className="text-xs text-muted-foreground">
-              Se incluyen en el contrato como condiciones particulares.
-            </p>
-          </div>
+          <ParticularsNotesField error={state?.fieldErrors?.notes} rows={4} />
         </CardContent>
       </Card>
 

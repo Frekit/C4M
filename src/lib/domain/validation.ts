@@ -174,7 +174,7 @@ export const createCreatorContractSchema = z.object({
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: formPaymentTerm,
-  notes: optionalText(2000),
+  notes: optionalText(8000),
   clientId: formClientId,
   campaignId: optionalText(80),
 });
@@ -189,7 +189,7 @@ export const newClientContractSchema = z.object({
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: formPaymentTerm,
-  notes: optionalText(2000),
+  notes: optionalText(8000),
 });
 
 export const renewalSchema = z.object({
@@ -204,7 +204,7 @@ export const renewalSchema = z.object({
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: formPaymentTerm,
-  notes: optionalText(2000),
+  notes: optionalText(8000),
   campaignId: optionalText(80),
 });
 
@@ -302,6 +302,20 @@ export const campaignSchema = z.object({
   description: optionalText(1000),
   startsAt: optionalDate,
   endsAt: optionalDate,
+});
+
+export const contractParticularsSchema = z.object({
+  contractId: formString.pipe(z.string().min(1)),
+  notes: optionalText(8000),
+});
+
+export const conditionsAnnexSchema = z.object({
+  parentId: formString.pipe(z.string().min(1)),
+  notes: requiredText(
+    20,
+    8000,
+    "Escribe las condiciones pactadas con este talento"
+  ),
 });
 
 export const inviteSchema = z.object({

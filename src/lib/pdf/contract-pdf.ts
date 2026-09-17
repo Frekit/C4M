@@ -3,6 +3,18 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 
 import { getCompany } from "@/lib/company";
 import { CONTRACT_KIND } from "@/lib/domain/enums";
+import {
+  companyDutiesCopy,
+  creatorDutiesCopy,
+  dmAutomationCopy,
+  durationCopy,
+  governingLawCopy,
+  ipCopy,
+  organicObjectCopy,
+  paidMediaCopy,
+  paymentRuleCopy,
+  privacyCopy,
+} from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -121,20 +133,29 @@ export async function buildContractPdf(
   ) {
     const font = options.font ?? regular;
     const size = options.size ?? 10;
-    const lines = wrap(text, font, size, PAGE_WIDTH - MARGIN * 2);
+    const blocks = sanitize(text).split(/\n/);
 
-    for (const line of lines) {
-      ensureSpace(LINE);
-      cursor.page.drawText(line, {
-        x: MARGIN,
-        y: cursor.y,
-        size,
-        font,
-        color: options.color
-          ? rgb(options.color[0], options.color[1], options.color[2])
-          : rgb(0.1, 0.1, 0.1),
-      });
-      cursor.y -= LINE;
+    for (const block of blocks) {
+      if (!block.trim()) {
+        cursor.y -= LINE / 2;
+        continue;
+      }
+
+      const lines = wrap(block, font, size, PAGE_WIDTH - MARGIN * 2);
+
+      for (const line of lines) {
+        ensureSpace(LINE);
+        cursor.page.drawText(line, {
+          x: MARGIN,
+          y: cursor.y,
+          size,
+          font,
+          color: options.color
+            ? rgb(options.color[0], options.color[1], options.color[2])
+            : rgb(0.1, 0.1, 0.1),
+        });
+        cursor.y -= LINE;
+      }
     }
 
     cursor.y -= options.gap ?? 6;
@@ -187,15 +208,21 @@ export async function buildContractPdf(
   }
 
   const isAnnex = input.contract.kind === CONTRACT_KIND.ANNEX;
+  const isConditionsAnnex =
+    input.contract.kind === CONTRACT_KIND.CONDITIONS_ANNEX;
   const totalCost =
     input.contract.costMinorPerContent * input.contract.deliverableCount;
 
   // --- Encabezado ---
   paragraph(
-    isAnnex
-      ? `ANEXO AL CONTRATO ${input.parentCode ?? ""}`.trim()
-      : "CONTRATO DE PRESTACIÓN DE SERVICIOS DE CREACIÓN DE CONTENIDO",
-    { font: bold, size: 14, gap: 2 }
+    isConditionsAnnex
+      ? `ANEXO DE CONDICIONES AL CONTRATO ${input.parentCode ?? ""}`.trim()
+      : isAnnex
+        ? `ANEXO AL CONTRATO ${input.parentCode ?? ""}`.trim()
+        : input.contract.kind === CONTRACT_KIND.RENEWAL
+          ? "CONTRATO DE RENOVACIÓN DE SERVICIOS DE CREACIÓN DE CONTENIDO ORGÁNICO"
+          : "CONTRATO DE PRESTACIÓN DE SERVICIOS DE CREACIÓN DE CONTENIDO ORGÁNICO",
+    { font: bold, size: 13, gap: 2 }
   );
   paragraph(
     `Referencia ${input.contract.code} · ${formatDate(input.contract.createdAt)}`,
@@ -203,7 +230,6 @@ export async function buildContractPdf(
   );
   rule();
 
-  // --- Partes ---
   heading("1. Partes");
   paragraph(
     `De una parte, ${company.legalName}, con NIF ${company.taxId} y domicilio en ${company.address} (en adelante, "la Empresa").`
@@ -221,51 +247,81 @@ export async function buildContractPdf(
     );
   }
 
-  // --- Objeto ---
-  heading(isAnnex ? "2. Objeto del anexo" : "2. Objeto");
-  if (isAnnex) {
+  heading(isAnnex || isConditionsAnnex ? "2. Objeto del anexo" : "2. Objeto");
+  paragraph(
+    organicObjectCopy({
+      kind: input.contract.kind,
+      parentCode: input.parentCode,
+      deliverableCount: input.contract.deliverableCount,
+      instagramUrl: input.creator.instagramUrl,
+    })
+  );
+
+  heading("3. Contenido orgánico y paid media");
+  paragraph(paidMediaCopy);
+
+  heading("4. Mensajes directos y herramientas");
+  paragraph(dmAutomationCopy);
+
+  if (!isConditionsAnnex) {
+    heading("5. Condiciones económicas y pago");
+    keyValue("Contenidos", String(input.contract.deliverableCount));
+    keyValue(
+      "Importe por contenido",
+      formatMoney(input.contract.costMinorPerContent, input.contract.costCurrency, {
+        withCode: true,
+      })
+    );
+    keyValue(
+      "Importe total",
+      formatMoney(totalCost, input.contract.costCurrency, { withCode: true })
+    );
+    const payment = contractPaymentCopy({
+      settlementMode: input.contract.settlementMode,
+      paymentTermDays: input.contract.paymentTermDays,
+    });
+    keyValue("Plazo de pago", payment.term);
+    cursor.y -= 4;
+    paragraph(paymentRuleCopy);
+    paragraph(payment.body);
     paragraph(
-      `Las partes acuerdan ampliar el contrato ${input.parentCode ?? ""} con ${input.contract.deliverableCount} contenido(s) adicional(es), manteniendo inalteradas las condiciones económicas por contenido y el resto de estipulaciones del contrato original.`
+      "Los importes indicados son base imponible. Los impuestos indirectos y las retenciones aplicables se añadirán o practicarán conforme a la normativa vigente y al régimen fiscal declarado por el Creador."
     );
   } else {
+    heading("5. Condiciones económicas");
     paragraph(
-      `El Creador se compromete a producir y publicar ${input.contract.deliverableCount} contenido(s) en su cuenta de Instagram ${input.creator.instagramUrl}, conforme a las indicaciones y calendario acordados con la Empresa.`
+      `Este anexo no modifica el número de contenidos ni los importes del contrato ${input.parentCode ?? "de origen"}. ${paymentRuleCopy}`
     );
   }
 
-  // --- Condiciones económicas ---
-  heading("3. Condiciones económicas");
-  keyValue("Contenidos", String(input.contract.deliverableCount));
-  keyValue(
-    "Importe por contenido",
-    formatMoney(input.contract.costMinorPerContent, input.contract.costCurrency, {
-      withCode: true,
-    })
-  );
-  keyValue(
-    "Importe total",
-    formatMoney(totalCost, input.contract.costCurrency, { withCode: true })
-  );
-  const payment = contractPaymentCopy({
-    settlementMode: input.contract.settlementMode,
-    paymentTermDays: input.contract.paymentTermDays,
-  });
-  keyValue("Plazo de pago", payment.term);
-  cursor.y -= 4;
-  paragraph(payment.body);
-  paragraph(
-    "Los importes indicados son base imponible. Los impuestos indirectos y las retenciones aplicables se añadirán o practicarán conforme a la normativa vigente y al régimen fiscal declarado por el Creador."
-  );
+  heading("6. Obligaciones del Creador");
+  paragraph(creatorDutiesCopy);
 
-  // --- Condiciones particulares ---
+  heading("7. Obligaciones de la Empresa");
+  paragraph(companyDutiesCopy);
+
+  heading("8. Propiedad intelectual y usos");
+  paragraph(ipCopy);
+
+  heading("9. Duración y resolución");
+  paragraph(durationCopy);
+
+  heading("10. Protección de datos");
+  paragraph(privacyCopy);
+
+  heading("11. Ley aplicable y fuero");
+  paragraph(governingLawCopy);
+
   if (input.contract.notes) {
-    heading("4. Condiciones particulares");
+    heading("12. Condiciones particulares");
+    paragraph(
+      "Las siguientes condiciones, pactadas para este Creador y esta campaña, prevalecen sobre las cláusulas generales en lo que las contradigan:"
+    );
     paragraph(input.contract.notes);
   }
 
-  // --- Datos de pago ---
   if (input.payee) {
-    heading(input.contract.notes ? "5. Datos de pago" : "4. Datos de pago");
+    heading(input.contract.notes ? "13. Datos de pago" : "12. Datos de pago");
     keyValue("Titular", input.payee.accountHolder);
     if (input.payee.payoutMethod === "ZEXEL") {
       keyValue("Método", "Zexel Pay");

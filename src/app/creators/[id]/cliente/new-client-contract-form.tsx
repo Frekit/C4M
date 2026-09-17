@@ -10,6 +10,7 @@ import {
 } from "@/components/client-campaign-fields";
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
 import { FormErrorSummary } from "@/components/form-error-summary";
+import { ParticularsNotesField } from "@/components/particulars-notes-field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 import {
   createClientContract,
@@ -113,10 +112,7 @@ export function NewClientContractForm({
             fieldErrors={state?.fieldErrors}
             defaults={defaults}
           />
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notas (opcional)</Label>
-            <Textarea id="notes" name="notes" rows={3} />
-          </div>
+          <ParticularsNotesField error={state?.fieldErrors?.notes} rows={4} />
         </CardContent>
       </Card>
 

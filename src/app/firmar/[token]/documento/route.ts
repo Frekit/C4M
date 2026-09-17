@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/db";
-import { buildContractPdf } from "@/lib/pdf/contract-pdf";
-import { loadContractPdfInput } from "@/lib/pdf/contract-pdf-input";
+import { loadContractPdfFile } from "@/lib/pdf/load-contract-pdf-file";
 
-// El firmante no tiene cuenta: el token del enlace es su credencial.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -18,18 +16,16 @@ export async function GET(
     return new Response("Enlace no válido", { status: 404 });
   }
 
-  const input = await loadContractPdfInput(signatureRequest.contractId);
+  const file = await loadContractPdfFile(signatureRequest.contractId);
 
-  if (!input) {
+  if (!file) {
     return new Response("Contrato no encontrado", { status: 404 });
   }
 
-  const { bytes } = await buildContractPdf(input);
-
-  return new Response(bytes as BodyInit, {
+  return new Response(file.bytes as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${input.contract.code}.pdf"`,
+      "Content-Disposition": `inline; filename="${file.filename}"`,
       "Cache-Control": "no-store",
     },
   });

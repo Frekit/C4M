@@ -19,11 +19,15 @@ import {
 } from "@/lib/domain/enums";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
 import {
+  canCreateConditionsAnnex,
   canDeleteContract,
+  canEditContractParticulars,
   countPublished,
   isAnnexAllowed,
 } from "@/lib/domain/rules";
 import {
+  conditionsAnnexSchema,
+  contractParticularsSchema,
   fieldErrorsFrom,
   newClientContractSchema,
   renewalSchema,
@@ -36,7 +40,18 @@ export type ContractActionResult = {
   error?: string;
   fieldErrors?: Record<string, string>;
   signatureUrl?: string;
+  message?: string;
 };
+
+async function revokeLiveSignatures(contractId: string) {
+  await prisma.signatureRequest.updateMany({
+    where: {
+      contractId,
+      status: { in: [SIGNATURE_STATUS.PENDING, SIGNATURE_STATUS.VIEWED] },
+    },
+    data: { status: SIGNATURE_STATUS.REVOKED },
+  });
+}
 
 export async function sendToSignature(
   _prev: ContractActionResult | null,
@@ -80,13 +95,7 @@ export async function sendToSignature(
   }
 
   // Solo puede haber un enlace vivo a la vez.
-  await prisma.signatureRequest.updateMany({
-    where: {
-      contractId,
-      status: { in: [SIGNATURE_STATUS.PENDING, SIGNATURE_STATUS.VIEWED] },
-    },
-    data: { status: SIGNATURE_STATUS.REVOKED },
-  });
+  await revokeLiveSignatures(contractId);
 
   const token = randomBytes(32).toString("base64url");
 
@@ -257,6 +266,17 @@ export async function createRenewal(
 
   if (!parent) {
     return { ok: false, error: "El contrato de origen no existe." };
+  }
+
+  if (
+    parent.kind === CONTRACT_KIND.CONDITIONS_ANNEX ||
+    parent.deliverableCount === 0
+  ) {
+    return {
+      ok: false,
+      error:
+        "Este anexo no añade contenidos. Amplía o renueva el contrato de origen.",
+    };
   }
 
   const parsed = renewalSchema.safeParse({
@@ -505,5 +525,150 @@ export async function createClientContract(
   revalidatePath("/contenidos");
   revalidatePath("/campanas");
   revalidatePath("/finanzas");
+  redirect(`/contratos/${contract.id}`);
+}
+
+export async function updateContractParticulars(
+  _prev: ContractActionResult | null,
+  formData: FormData
+): Promise<ContractActionResult> {
+  const user = await requirePermission("contracts:write", "/contratos");
+
+  const parsed = contractParticularsSchema.safeParse({
+    contractId: formData.get("contractId"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const { contractId, notes } = parsed.data;
+
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    include: { signatureRequests: true },
+  });
+
+  if (!contract) {
+    return { ok: false, error: "El contrato no existe." };
+  }
+
+  const hasSigned = contract.signatureRequests.some(
+    (request) => request.status === SIGNATURE_STATUS.SIGNED
+  );
+
+  if (!canEditContractParticulars(contract.status, hasSigned)) {
+    return {
+      ok: false,
+      error:
+        "Este contrato ya está firmado o cancelado. Si hay que cambiar el jurídico, crea un anexo de condiciones.",
+    };
+  }
+
+  const hadLiveLink = contract.signatureRequests.some(
+    (request) =>
+      request.status === SIGNATURE_STATUS.PENDING ||
+      request.status === SIGNATURE_STATUS.VIEWED
+  );
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: { notes: notes || null },
+  });
+
+  if (hadLiveLink) {
+    await revokeLiveSignatures(contractId);
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: { status: CONTRACT_STATUS.DRAFT },
+    });
+  }
+
+  await recordAudit({
+    entityType: "Contract",
+    entityId: contractId,
+    action: "PARTICULARS_UPDATED",
+    actor: user,
+    metadata: { revokedSignature: hadLiveLink },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/contratos");
+  revalidatePath(`/contratos/${contractId}`);
+
+  return {
+    ok: true,
+    message: hadLiveLink
+      ? "Guardado. El enlace de firma anterior ya no vale: genera uno nuevo para que firme este PDF."
+      : "Condiciones particulares actualizadas.",
+  };
+}
+
+export async function createConditionsAnnex(
+  _prev: ContractActionResult | null,
+  formData: FormData
+): Promise<ContractActionResult> {
+  const user = await requirePermission("contracts:write", "/contratos");
+
+  const parsed = conditionsAnnexSchema.safeParse({
+    parentId: formData.get("parentId"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const parent = await prisma.contract.findUnique({
+    where: { id: parsed.data.parentId },
+  });
+
+  if (!parent) {
+    return { ok: false, error: "El contrato de origen no existe." };
+  }
+
+  if (!canCreateConditionsAnnex(parent.status)) {
+    return {
+      ok: false,
+      error:
+        "El anexo de condiciones solo se usa cuando el contrato ya está firmado. Si aún no ha firmado, edita las particulares en este mismo documento.",
+    };
+  }
+
+  const contract = await createContract({
+    creatorId: parent.creatorId,
+    kind: CONTRACT_KIND.CONDITIONS_ANNEX,
+    parent,
+    clientId: parent.clientId,
+    economics: {
+      deliverableCount: 0,
+      salePriceCentsPerContent: parent.salePriceCentsPerContent,
+      costCurrency: parent.costCurrency,
+      costMinorPerContent: parent.costMinorPerContent,
+      costUsdCentsPerContent: parent.costUsdCentsPerContent,
+      fxUnitsPerUsd: parent.fxUnitsPerUsd,
+      fxRateAt: parent.fxRateAt,
+      fxSource: parent.fxSource,
+      paymentTermDays: parent.paymentTermDays,
+      notes: parsed.data.notes,
+    },
+    createdBy: user.email,
+  });
+
+  await recordAudit({
+    entityType: "Contract",
+    entityId: contract.id,
+    action: "CONDITIONS_ANNEX_CREATED",
+    actor: user,
+    metadata: {
+      code: contract.code,
+      parentCode: parent.code,
+    },
+  });
+
+  revalidatePath(`/creators/${parent.creatorId}`);
+  revalidatePath("/contratos");
+  revalidatePath(`/contratos/${parent.id}`);
   redirect(`/contratos/${contract.id}`);
 }

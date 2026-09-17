@@ -73,7 +73,7 @@ model Contract {
   // Los descendientes guardan rootId para poder leer la cadena de una vez.
   parentId String?
   rootId   String?
-  kind     String // ORIGINAL | ANNEX | RENEWAL
+  kind     String // ORIGINAL | ANNEX | CONDITIONS_ANNEX | RENEWAL
   status   String @default("DRAFT")
 
   deliverableCount Int
@@ -218,6 +218,8 @@ model SignatureRequest {
   signerIp        String?
   signerUserAgent String?
   documentSha256  String?
+  // PDF firmado tal cual se aceptó. Si el generador cambia, este blob no.
+  documentPdf     Bytes?
 
   payeeProfileId String? @unique
 

@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
 import { FormErrorSummary } from "@/components/form-error-summary";
+import { ParticularsNotesField } from "@/components/particulars-notes-field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,8 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { NativeSelectField } from "@/components/native-select-field";
 import { CONTRACT_KIND } from "@/lib/domain/enums";
 
@@ -174,10 +173,7 @@ export function RenewalForm({
             lockCostReason={`Fijado por ${parentCode}. Si tiene que cambiar, elige Renovación.`}
           />
 
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notas (opcional)</Label>
-            <Textarea id="notes" name="notes" rows={3} />
-          </div>
+          <ParticularsNotesField error={state?.fieldErrors?.notes} rows={4} />
         </CardContent>
       </Card>
 

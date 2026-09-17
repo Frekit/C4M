@@ -20,9 +20,16 @@ import {
   type ContractTotals,
   type DeliverableProgress,
 } from "@/lib/domain/contract-math";
-import { canDeleteContract, countPublished, isLiveDeliverable, nextContractStatusAfterProgress } from "@/lib/domain/rules";
+import {
+  canCreateConditionsAnnex,
+  canDeleteContract,
+  canEditContractParticulars,
+  countPublished,
+  isLiveDeliverable,
+  nextContractStatusAfterProgress,
+} from "@/lib/domain/rules";
 
-export type SignatureWithPayee = SignatureRequest & {
+export type SignatureWithPayee = Omit<SignatureRequest, "documentPdf"> & {
   payee?: PayeeProfile | null;
 };
 
@@ -43,6 +50,8 @@ export type ContractView = {
   activeSignature: SignatureWithPayee | null;
   signedSignature: SignatureWithPayee | null;
   canEditEconomics: boolean;
+  canEditParticulars: boolean;
+  canCreateConditionsAnnex: boolean;
   canDelete: boolean;
   hasCommitment: boolean;
 };
@@ -93,6 +102,11 @@ export function buildContractView(contract: ContractWithDetail): ContractView {
     signedSignature,
     canEditEconomics:
       contract.status === CONTRACT_STATUS.DRAFT && !hasCommitment,
+    canEditParticulars: canEditContractParticulars(
+      contract.status,
+      Boolean(signedSignature)
+    ),
+    canCreateConditionsAnnex: canCreateConditionsAnnex(contract.status),
     canDelete: canDeleteContract({
       status: contract.status,
       signatureCount: contract.signatureRequests.length,
@@ -154,15 +168,19 @@ export async function createContract(input: {
       notes: input.economics.notes || null,
       createdBy: input.createdBy,
       clientId: input.clientId ?? input.parent?.clientId ?? null,
-      deliverables: {
-        create: Array.from(
-          { length: input.economics.deliverableCount },
-          (_, index) => ({
-            position: index + 1,
-            campaignId: input.campaignId || null,
-          })
-        ),
-      },
+      ...(input.economics.deliverableCount > 0
+        ? {
+            deliverables: {
+              create: Array.from(
+                { length: input.economics.deliverableCount },
+                (_, index) => ({
+                  position: index + 1,
+                  campaignId: input.campaignId || null,
+                })
+              ),
+            },
+          }
+        : {}),
     },
     include: { deliverables: true, signatureRequests: true },
   });
@@ -179,7 +197,8 @@ export async function getContractDetail(id: string) {
         include: { campaign: { include: { client: true } } },
       },
       signatureRequests: {
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" as const },
+        omit: { documentPdf: true },
         include: { payee: true },
       },
       parent: true,
@@ -193,7 +212,10 @@ export async function getContractChain(contract: Contract) {
 
   return prisma.contract.findMany({
     where: { OR: [{ id: rootId }, { rootId }] },
-    include: { deliverables: true, signatureRequests: true },
+    include: {
+      deliverables: true,
+      signatureRequests: { omit: { documentPdf: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 }
