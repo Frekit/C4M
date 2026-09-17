@@ -200,10 +200,17 @@ export const signContractSchema = z.object({
   postalCode: requiredText(3, 20),
   region: optionalText(80),
 
-  accountHolder: requiredText(2, 200),
-  payoutMethod: z.enum([PAYOUT_METHOD.BANK_TRANSFER, PAYOUT_METHOD.WISE], {
-    error: "Elige cómo quieres cobrar",
-  }),
+  accountHolder: optionalText(200),
+  payoutMethod: formString.pipe(
+    z
+      .enum([
+        PAYOUT_METHOD.ZEXEL,
+        PAYOUT_METHOD.BANK_TRANSFER,
+        PAYOUT_METHOD.WISE,
+      ])
+      .or(z.literal(""))
+      .transform((value) => value || PAYOUT_METHOD.ZEXEL)
+  ),
   iban: optionalText(60),
   swiftBic: optionalText(20),
   bankName: optionalText(120),

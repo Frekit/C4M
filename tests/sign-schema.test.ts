@@ -14,9 +14,9 @@ function completePayload() {
     city: "Barcelona",
     postalCode: "08036",
     region: "",
-    accountHolder: "Aida Domenech Perez",
-    payoutMethod: "BANK_TRANSFER",
-    iban: "ES9121000418450200051332",
+    accountHolder: "",
+    payoutMethod: "ZEXEL",
+    iban: "",
     swiftBic: "",
     bankName: "",
     wiseEmail: "",
@@ -73,11 +73,10 @@ test("sin aceptar el contrato no se puede firmar", () => {
   }
 });
 
-test("los desplegables sin valor dan error localizable", () => {
+test("firmas como y moneda siguen siendo obligatorios", () => {
   const payload = {
     ...completePayload(),
     kind: null,
-    payoutMethod: null,
     payoutCurrency: null,
   };
 
@@ -87,8 +86,36 @@ test("los desplegables sin valor dan error localizable", () => {
   if (!result.success) {
     const paths = result.error.issues.map((issue) => issue.path[0]);
     assert.ok(paths.includes("kind"));
-    assert.ok(paths.includes("payoutMethod"));
     assert.ok(paths.includes("payoutCurrency"));
+  }
+});
+
+test("el email de cobro es obligatorio para Zexel", () => {
+  const payload = { ...completePayload(), billingEmail: "" };
+  const result = signContractSchema.safeParse(payload);
+
+  assert.equal(result.success, false);
+  if (!result.success) {
+    assert.ok(
+      result.error.issues.some((issue) => issue.path[0] === "billingEmail")
+    );
+  }
+});
+
+test("sin método de pago se asume Zexel y no se pide IBAN", () => {
+  const payload = {
+    ...completePayload(),
+    payoutMethod: null,
+    iban: "",
+  };
+  const result = signContractSchema.safeParse(payload);
+  assert.equal(
+    result.success,
+    true,
+    result.success ? "" : JSON.stringify(result.error.issues, null, 2)
+  );
+  if (result.success) {
+    assert.equal(result.data.payoutMethod, "ZEXEL");
   }
 });
 
@@ -117,7 +144,11 @@ test("campos ocultos que el navegador omite no invalidan el formulario", () => {
 });
 
 test("Wise con un email mal formado falla con un mensaje entendible", () => {
-  const payload = { ...completePayload(), wiseEmail: "no-es-un-email" };
+  const payload = {
+    ...completePayload(),
+    payoutMethod: "WISE",
+    wiseEmail: "no-es-un-email",
+  };
   const result = signContractSchema.safeParse(payload);
 
   assert.equal(result.success, false);

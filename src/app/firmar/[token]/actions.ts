@@ -147,19 +147,19 @@ export async function signContract(
 
   const data = parsed.data;
 
-  // Sin datos de cobro completos no se puede pagar después, así que aquí se
-  // exige lo que corresponda al método elegido.
+  if (data.payoutMethod === "WISE" && !data.wiseEmail) {
+    return fail(_prev, formData, {
+      fieldErrors: { wiseEmail: "Necesitamos el email de la cuenta de Wise" },
+    });
+  }
+
   if (data.payoutMethod === "BANK_TRANSFER" && !data.iban) {
     return fail(_prev, formData, {
       fieldErrors: { iban: "Necesitamos el IBAN o número de cuenta" },
     });
   }
 
-  if (data.payoutMethod === "WISE" && !data.wiseEmail) {
-    return fail(_prev, formData, {
-      fieldErrors: { wiseEmail: "Necesitamos el email de la cuenta de Wise" },
-    });
-  }
+  const accountHolder = data.accountHolder || data.legalName;
 
   const context = await requestContext();
   const signedAt = new Date();
@@ -175,7 +175,7 @@ export async function signContract(
       city: data.city,
       postalCode: data.postalCode,
       region: data.region || null,
-      accountHolder: data.accountHolder,
+      accountHolder,
       payoutMethod: data.payoutMethod,
       iban: data.iban || null,
       swiftBic: data.swiftBic || null,

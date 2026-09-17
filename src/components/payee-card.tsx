@@ -11,6 +11,7 @@ import {
 import { maskAccount } from "@/lib/auth/permissions";
 import {
   PAYEE_KIND_LABELS,
+  PAYOUT_METHOD,
   PAYOUT_METHOD_LABELS,
   type PayeeKind,
   type PayoutMethod,
@@ -23,6 +24,10 @@ function Row({ label, value }: { label: string; value: string }) {
       <dd className="text-right break-words">{value}</dd>
     </div>
   );
+}
+
+function methodLabel(method: string) {
+  return PAYOUT_METHOD_LABELS[method as PayoutMethod] ?? "Zexel Pay";
 }
 
 export function PayeeCard({
@@ -38,16 +43,22 @@ export function PayeeCard({
         <CardHeader>
           <CardTitle>Datos de pago</CardTitle>
           <CardDescription>
-            Se rellenan solos cuando el talento o su agencia firman el contrato
-            desde el enlace de firma.
+            Se rellenan solos cuando el talento o su agencia firman. El cobro
+            sale por Zexel: hace falta el email.
           </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  const account =
-    payee.payoutMethod === "WISE"
+  const email = canSeeFullAccount
+    ? payee.billingEmail
+    : maskAccount(payee.billingEmail);
+  const showLegacyAccount =
+    payee.payoutMethod === PAYOUT_METHOD.WISE ||
+    payee.payoutMethod === PAYOUT_METHOD.BANK_TRANSFER;
+  const legacyAccount =
+    payee.payoutMethod === PAYOUT_METHOD.WISE
       ? (payee.wiseEmail ?? "—")
       : (payee.iban ?? "—");
 
@@ -56,7 +67,10 @@ export function PayeeCard({
       <CardHeader>
         <CardTitle>Datos de pago</CardTitle>
         <CardDescription>
-          Los facilitó el firmante. {canSeeFullAccount ? "" : "La cuenta se muestra parcialmente según tu rol."}
+          Los facilitó el firmante. El lote de Zexel usa el email de cobro.
+          {canSeeFullAccount
+            ? ""
+            : " El email se muestra parcialmente según tu rol."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -64,9 +78,7 @@ export function PayeeCard({
           <Badge variant="outline">
             {PAYEE_KIND_LABELS[payee.kind as PayeeKind]}
           </Badge>
-          <Badge variant="secondary">
-            {PAYOUT_METHOD_LABELS[payee.payoutMethod as PayoutMethod]}
-          </Badge>
+          <Badge variant="secondary">{methodLabel(payee.payoutMethod)}</Badge>
           {payee.vatApplies ? (
             <Badge variant="outline">IVA {payee.vatRate ?? 0}%</Badge>
           ) : null}
@@ -86,20 +98,22 @@ export function PayeeCard({
               payee.region ? ` (${payee.region})` : ""
             }, ${payee.country}`}
           />
-          <Row label="Titular de la cuenta" value={payee.accountHolder} />
-          <Row
-            label={payee.payoutMethod === "WISE" ? "Cuenta Wise" : "IBAN"}
-            value={canSeeFullAccount ? account : maskAccount(account)}
-          />
-          {payee.swiftBic ? (
+          <Row label="Email de cobro (Zexel)" value={email} />
+          <Row label="Moneda de pago" value={payee.payoutCurrency} />
+          {showLegacyAccount ? (
             <Row
-              label="SWIFT / BIC"
-              value={canSeeFullAccount ? payee.swiftBic : maskAccount(payee.swiftBic)}
+              label={
+                payee.payoutMethod === PAYOUT_METHOD.WISE
+                  ? "Cuenta Wise (histórico)"
+                  : "IBAN (histórico)"
+              }
+              value={
+                canSeeFullAccount
+                  ? legacyAccount
+                  : maskAccount(legacyAccount)
+              }
             />
           ) : null}
-          {payee.bankName ? <Row label="Banco" value={payee.bankName} /> : null}
-          <Row label="Moneda de pago" value={payee.payoutCurrency} />
-          <Row label="Email de facturación" value={payee.billingEmail} />
           {payee.phone ? <Row label="Teléfono" value={payee.phone} /> : null}
           {payee.contactPerson ? (
             <Row label="Contacto" value={payee.contactPerson} />

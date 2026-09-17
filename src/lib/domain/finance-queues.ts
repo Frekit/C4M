@@ -1,4 +1,3 @@
-import { PAYOUT_METHOD } from "@/lib/domain/enums";
 import { isLiveDeliverable } from "@/lib/domain/rules";
 import { packKey, packProgress } from "@/lib/domain/settlement";
 
@@ -76,8 +75,7 @@ export type PayoutGroup = {
   creatorId: string;
   creatorHandle: string;
   payeeName: string | null;
-  payoutMethod: string | null;
-  account: string | null;
+  zexelEmail: string | null;
   payoutCurrency: string | null;
   items: PayoutItem[];
 };
@@ -134,9 +132,7 @@ export type PayoutQueueSource = {
 
 export type PayeeSnapshot = {
   legalName: string;
-  payoutMethod: string;
-  wiseEmail: string | null;
-  iban: string | null;
+  billingEmail: string;
   payoutCurrency: string;
 };
 
@@ -314,11 +310,7 @@ export function groupPayoutQueue(
       creatorId: item.creatorId,
       creatorHandle: item.creatorHandle,
       payeeName: payee?.legalName ?? null,
-      payoutMethod: payee?.payoutMethod ?? null,
-      account:
-        payee?.payoutMethod === PAYOUT_METHOD.WISE
-          ? (payee.wiseEmail ?? null)
-          : (payee?.iban ?? null),
+      zexelEmail: payee?.billingEmail?.trim() || null,
       payoutCurrency: payee?.payoutCurrency ?? null,
       items: [row],
     });

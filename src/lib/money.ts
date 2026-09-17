@@ -73,6 +73,11 @@ export function formatMoney(
   return options.withCode ? `${formatted} (${currency.toUpperCase()})` : formatted;
 }
 
+// Zexel exige siempre dos decimales en el CSV del lote.
+export function formatZexelAmount(minor: number, currency: string): string {
+  return fromMinorUnits(minor, currency).toFixed(2);
+}
+
 export function formatPercent(ratio: number): string {
   return new Intl.NumberFormat("es-ES", {
     style: "percent",

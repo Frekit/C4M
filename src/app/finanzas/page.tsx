@@ -33,10 +33,9 @@ export default async function FinanzasPage() {
           Finanzas
         </h1>
         <p className="text-sm text-muted-foreground">
-          Higgsfield: sube los publicados a la plataforma y luego paga. Many
-          Chat y similares: se cobra y se paga cuando el perfil cierra el pack
-          de esa campaña. En Pagar perfiles marca Ya está pagado para vaciar
-          la cola.
+          Higgsfield: sube los publicados a la plataforma. Many Chat y
+          similares: espera a que el perfil cierre el pack. El cobro a
+          perfiles sale en un lote de Zexel (CSV con email, importe y moneda).
         </p>
       </div>
 
@@ -67,7 +66,7 @@ export default async function FinanzasPage() {
           </TabsTrigger>
           <TabsTrigger value="pagos">
             <WalletIcon />
-            Pagar perfiles
+            Lote Zexel
           </TabsTrigger>
         </TabsList>
 

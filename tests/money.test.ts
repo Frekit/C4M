@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   convertToUsdCents,
   currencyDecimals,
+  formatZexelAmount,
   fromMinorUnits,
   parseAmountToMinorUnits,
   toMinorUnits,
@@ -22,6 +23,8 @@ test("los importes se guardan en unidades mínimas", () => {
   assert.equal(toMinorUnits(1200, "JPY"), 1200);
   assert.equal(fromMinorUnits(120000, "EUR"), 1200);
   assert.equal(fromMinorUnits(1200, "JPY"), 1200);
+  assert.equal(formatZexelAmount(20000, "EUR"), "200.00");
+  assert.equal(formatZexelAmount(50, "JPY"), "50.00");
 });
 
 test("acepta coma o punto como separador decimal", () => {

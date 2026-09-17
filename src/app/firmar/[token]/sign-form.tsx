@@ -4,7 +4,6 @@ import { useActionState, useEffect, useState } from "react";
 import {
   BanknoteIcon,
   BuildingIcon,
-  ChevronDownIcon,
   PhoneIcon,
   ReceiptIcon,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import {
   PAYEE_KIND,
   PAYEE_KIND_LABELS,
   PAYOUT_METHOD,
-  PAYOUT_METHOD_LABELS,
 } from "@/lib/domain/enums";
 
 import {
@@ -55,17 +53,11 @@ const FIELD_LABELS: Record<string, string> = {
   city: "Ciudad",
   postalCode: "Código postal",
   region: "Provincia o estado",
-  accountHolder: "Titular de la cuenta",
-  payoutMethod: "Método de pago",
-  iban: "IBAN o número de cuenta",
-  swiftBic: "SWIFT / BIC",
-  bankName: "Banco",
-  wiseEmail: "Email de Wise",
+  billingEmail: "Email de cobro (Zexel)",
   payoutCurrency: "Moneda de cobro",
   vatRate: "Tipo de IVA",
   withholdingRate: "Tipo de retención",
   taxRegime: "Régimen fiscal",
-  billingEmail: "Email de facturación",
   phone: "Teléfono",
   contactPerson: "Persona de contacto",
   signerFullName: "Nombre completo del firmante",
@@ -78,15 +70,17 @@ function Field({
   error,
   children,
   hint,
+  className,
 }: {
   name: string;
   label: string;
   error?: string;
   children: React.ReactNode;
   hint?: string;
+  className?: string;
 }) {
   return (
-    <div className="grid gap-2">
+    <div className={className ? `grid gap-2 ${className}` : "grid gap-2"}>
       <Label htmlFor={name}>{label}</Label>
       {children}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
@@ -152,9 +146,6 @@ function SignFormFields({
   formAction: (payload: FormData) => void;
   pending: boolean;
 }) {
-  const [payoutMethod, setPayoutMethod] = useState(
-    values?.payoutMethod || PAYOUT_METHOD.BANK_TRANSFER
-  );
   const [vatApplies, setVatApplies] = useState(Boolean(values?.vatApplies));
   const [withholdingApplies, setWithholdingApplies] = useState(
     Boolean(values?.withholdingApplies)
@@ -288,113 +279,39 @@ function SignFormFields({
       <Card>
         <CardHeader>
           <BanknoteIcon className="size-4 text-muted-foreground" />
-          <CardTitle>Datos de cobro</CardTitle>
+          <CardTitle>Cobro por Zexel</CardTitle>
           <CardDescription>
-            Es la cuenta donde se pagarán los contenidos publicados.
+            Pagamos en lotes a través de Zexel Pay. Con este email te llega el
+            cobro; ellos recogen tu cuenta y el KYC. No hace falta IBAN ni
+            Wise aquí.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <input type="hidden" name="payoutMethod" value={PAYOUT_METHOD.ZEXEL} />
+
           <Field
-            name="accountHolder"
-            label="Titular de la cuenta"
-            error={errors.accountHolder}
+            name="billingEmail"
+            label="Email de cobro"
+            error={errors.billingEmail}
+            hint="El mismo con el que te darás de alta en Zexel, si aún no tienes cuenta."
+            className="sm:col-span-2"
           >
             <Input
-              id="accountHolder"
-              name="accountHolder"
-              defaultValue={values?.accountHolder ?? ""}
-              aria-invalid={Boolean(errors.accountHolder)}
+              id="billingEmail"
+              name="billingEmail"
+              type="email"
+              autoComplete="email"
+              defaultValue={values ? values.billingEmail : defaultEmail}
+              aria-invalid={Boolean(errors.billingEmail)}
               required
             />
           </Field>
-
-          <div className="grid gap-2">
-            <Label htmlFor="payoutMethod">Método de pago</Label>
-            <div className="relative">
-              <select
-                id="payoutMethod"
-                name="payoutMethod"
-                value={payoutMethod}
-                onChange={(event) => setPayoutMethod(event.target.value)}
-                required
-                className="h-8 w-full appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-              >
-                {Object.values(PAYOUT_METHOD).map((method) => (
-                  <option key={method} value={method}>
-                    {PAYOUT_METHOD_LABELS[method]}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 text-muted-foreground" />
-            </div>
-            {errors.payoutMethod ? (
-              <p className="text-xs text-destructive">{errors.payoutMethod}</p>
-            ) : null}
-          </div>
-
-          {payoutMethod === PAYOUT_METHOD.WISE ? (
-            <Field
-              name="wiseEmail"
-              label="Email de la cuenta de Wise"
-              error={errors.wiseEmail}
-            >
-              <Input
-                id="wiseEmail"
-                name="wiseEmail"
-                type="email"
-                defaultValue={values?.wiseEmail ?? ""}
-                aria-invalid={Boolean(errors.wiseEmail)}
-              />
-            </Field>
-          ) : (
-            <>
-              <Field
-                name="iban"
-                label="IBAN o número de cuenta"
-                error={errors.iban}
-              >
-                <Input
-                  id="iban"
-                  name="iban"
-                  autoComplete="off"
-                  defaultValue={values?.iban ?? ""}
-                  aria-invalid={Boolean(errors.iban)}
-                />
-              </Field>
-              <Field
-                name="swiftBic"
-                label="SWIFT / BIC (opcional)"
-                error={errors.swiftBic}
-              >
-                <Input
-                  id="swiftBic"
-                  name="swiftBic"
-                  autoComplete="off"
-                  defaultValue={values?.swiftBic ?? ""}
-                />
-              </Field>
-              <Field
-                name="bankName"
-                label="Banco (opcional)"
-                error={errors.bankName}
-              >
-                <Input
-                  id="bankName"
-                  name="bankName"
-                  autoComplete="off"
-                  defaultValue={values?.bankName ?? ""}
-                />
-              </Field>
-            </>
-          )}
 
           <NativeSelectField
             name="payoutCurrency"
             label="Moneda en la que quieres cobrar"
             options={CURRENCY_OPTIONS}
-            defaultValue={
-              values?.payoutCurrency || defaultCurrency
-            }
+            defaultValue={values?.payoutCurrency || defaultCurrency}
             error={errors.payoutCurrency}
             className="sm:col-span-2"
             required
@@ -480,23 +397,6 @@ function SignFormFields({
           <CardTitle>Contacto</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Field
-            name="billingEmail"
-            label="Email de facturación"
-            error={errors.billingEmail}
-          >
-            <Input
-              id="billingEmail"
-              name="billingEmail"
-              type="email"
-              defaultValue={
-                values ? values.billingEmail : defaultEmail
-              }
-              aria-invalid={Boolean(errors.billingEmail)}
-              required
-            />
-          </Field>
-
           <Field name="phone" label="Teléfono (opcional)" error={errors.phone}>
             <Input
               id="phone"

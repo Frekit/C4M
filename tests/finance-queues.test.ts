@@ -118,9 +118,7 @@ test("al cerrar el pack, las piezas en redes salen a pagar y se agrupan por perf
         "ct-3",
         {
           legalName: "Marcos SL",
-          payoutMethod: "WISE",
-          wiseEmail: "marcos@wise.test",
-          iban: null,
+          billingEmail: "marcos@zexel.test",
           payoutCurrency: "EUR",
         },
       ],
@@ -132,7 +130,7 @@ test("al cerrar el pack, las piezas en redes salen a pagar y se agrupan por perf
   assert.equal(payable.length, 2);
   assert.equal(payouts.length, 1);
   assert.equal(payouts[0]?.payeeName, "Marcos SL");
-  assert.equal(payouts[0]?.account, "marcos@wise.test");
+  assert.equal(payouts[0]?.zexelEmail, "marcos@zexel.test");
   assert.equal(payouts[0]?.items.length, 2);
 });
 

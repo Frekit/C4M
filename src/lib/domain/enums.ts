@@ -19,7 +19,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   CREATORS:
     "Da de alta creators y contratos, envía a firma y marca contenidos publicados.",
   ACCOUNTING:
-    "Sube a plataforma los de clientes que lo piden, liquida packs y paga a los perfiles.",
+    "Sube a plataforma los de clientes que lo piden, arma el lote de Zexel y marca pagado.",
   VIEWER: "Solo lectura, con los datos bancarios ocultos.",
 };
 
@@ -161,6 +161,7 @@ export const PAYEE_KIND_LABELS: Record<PayeeKind, string> = {
 };
 
 export const PAYOUT_METHOD = {
+  ZEXEL: "ZEXEL",
   BANK_TRANSFER: "BANK_TRANSFER",
   WISE: "WISE",
 } as const;
@@ -168,6 +169,7 @@ export const PAYOUT_METHOD = {
 export type PayoutMethod = (typeof PAYOUT_METHOD)[keyof typeof PAYOUT_METHOD];
 
 export const PAYOUT_METHOD_LABELS: Record<PayoutMethod, string> = {
+  ZEXEL: "Zexel Pay",
   BANK_TRANSFER: "Transferencia bancaria",
   WISE: "Wise",
 };

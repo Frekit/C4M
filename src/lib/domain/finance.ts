@@ -249,9 +249,7 @@ export async function loadFinanceQueues() {
             payee: {
               select: {
                 legalName: true,
-                payoutMethod: true,
-                wiseEmail: true,
-                iban: true,
+                billingEmail: true,
                 payoutCurrency: true,
               },
             },

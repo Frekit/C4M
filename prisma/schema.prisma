@@ -244,9 +244,10 @@ model PayeeProfile {
   postalCode  String
   region      String?
 
-  // Bancarios
+  // El cobro sale por Zexel Pay: el dato que hace falta es el email.
+  // IBAN / Wise se conservan en fichas antiguas, ya no se piden al firmar.
   accountHolder  String
-  payoutMethod   String // BANK_TRANSFER | WISE
+  payoutMethod   String // ZEXEL | BANK_TRANSFER | WISE
   iban           String?
   swiftBic       String?
   bankName       String?

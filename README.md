@@ -30,9 +30,9 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 1. **Registrar influencer** (`/creators/nuevo`): Instagram, cliente (Higgsfield, Many Chat, …), contenidos y precios. Al guardar se crea el contrato de ese cliente, en borrador.
 6. **Ampliar o renovar** es de **ese cliente**. Si el coste no cambia, anexo; si cambia, renovación. Para meterle en Many Chat (u otro) mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha, que abre una cadena nueva.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
-3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
+3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, **email de cobro (Zexel)**, moneda, situación fiscal y contacto, y aceptan. El IBAN y Wise los gestiona Zexel. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
 4. **Marcar contenidos publicados** (`/contenidos`): hacen falta el enlace del post y una sola fecha. Si el contrato aún no está firmado, se puede forzar (confirma en el diálogo); el acuerdo sigue pendiente de firma. La tabla pagina de 60 en 60; los contadores (estado, retrasados, devengo) miran todo el conjunto filtrado, no solo la página.
-5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces, se marcan como **submitted** y entonces se puede pagar. **Many Chat** y similares (pack): no se cobra al cliente ni se paga al perfil hasta que ese creator termine todos los contenidos de esa campaña. En **Pagar perfiles**, **Ya está pagado** saca el ítem de la cola. La pantalla carga tres colas (plataforma, packs, pagos) más los pagados recientes, no el histórico entero.
+5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces y se marcan como **submitted**. **Many Chat** y similares (pack): no se cobra ni se paga hasta que ese creator termine todos los contenidos de esa campaña. El cobro a perfiles se ejecuta **en un lote de Zexel**: CSV `email;importe_destino;moneda_destino`, se sube a Zexel Pay y **Lote ya pagado** vacía la cola.
 6. **Ampliar o renovar** sigue en el mismo cliente. Anexo si el coste no cambia; renovación si cambia. Para Many Chat u otro cliente mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha (contrato original nuevo).
 
 ### Reglas de negocio que el sistema impone
@@ -41,7 +41,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 - Un anexo solo es válido si el coste por contenido del creator no cambia.
 - El tipo de cambio se congela al crear el contrato, así el margen no se mueve después.
 - Los importes se guardan en unidades mínimas (enteros), nunca en coma flotante.
-- Los datos bancarios completos solo los ven Admin y Contabilidad.
+- Los emails de cobro completos solo los ven Admin y Contabilidad. El pago sale por Zexel, no hace falta IBAN en esta app.
 - El contrato es de **un cliente**. Ampliar/renovar sigue en Higgsfield; Many Chat se abre como contrato nuevo desde la ficha del creator.
 - La liquidación la marca el cliente: por contenido (con o sin plataforma) o al cerrar el pack de esa campaña con ese perfil. El PDF y la pantalla de firma usan esa cláusula: Many Chat no dice que se pague cada pieza publicada.
 
@@ -53,7 +53,7 @@ El acceso es solo por invitación: un administrador invita desde `/equipo` y la 
 | --- | --- |
 | Admin / Finanzas | todo, incluido gestionar el equipo |
 | Gestión de creators | registrar creators, crear y renovar contratos, enviar a firma, marcar publicados |
-| Contabilidad / Pagos | panel de finanzas: plataforma, packs y pago a perfiles |
+| Contabilidad / Pagos | panel de finanzas: plataforma, packs y lote Zexel |
 | Lectura | solo consultar, con los datos bancarios enmascarados |
 
 ## Auth0

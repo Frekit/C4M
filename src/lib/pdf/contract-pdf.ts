@@ -267,18 +267,24 @@ export async function buildContractPdf(
   if (input.payee) {
     heading(input.contract.notes ? "5. Datos de pago" : "4. Datos de pago");
     keyValue("Titular", input.payee.accountHolder);
-    keyValue(
-      "Método",
-      input.payee.payoutMethod === "WISE" ? "Wise" : "Transferencia bancaria"
-    );
-    keyValue(
-      input.payee.payoutMethod === "WISE" ? "Cuenta Wise" : "IBAN",
-      (input.payee.payoutMethod === "WISE"
-        ? input.payee.wiseEmail
-        : input.payee.iban) ?? "-"
-    );
-    keyValue("Moneda de pago", input.payee.payoutCurrency);
-    keyValue("Email de facturación", input.payee.billingEmail);
+    if (input.payee.payoutMethod === "ZEXEL") {
+      keyValue("Método", "Zexel Pay");
+      keyValue("Email de cobro", input.payee.billingEmail);
+      keyValue("Moneda de pago", input.payee.payoutCurrency);
+    } else {
+      keyValue(
+        "Método",
+        input.payee.payoutMethod === "WISE" ? "Wise" : "Transferencia bancaria"
+      );
+      keyValue(
+        input.payee.payoutMethod === "WISE" ? "Cuenta Wise" : "IBAN",
+        (input.payee.payoutMethod === "WISE"
+          ? input.payee.wiseEmail
+          : input.payee.iban) ?? "-"
+      );
+      keyValue("Moneda de pago", input.payee.payoutCurrency);
+      keyValue("Email de facturación", input.payee.billingEmail);
+    }
   }
 
   // --- Firma ---

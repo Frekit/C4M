@@ -26,8 +26,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "deliverables:publish",
     "campaigns:manage",
   ],
-  // Contabilidad necesita los datos bancarios para pagar, pero no crea ni
-  // cancela contratos.
+  // Contabilidad arma el lote de Zexel; el email de cobro es el dato sensible.
   [ROLES.ACCOUNTING]: ["payees:read_full", "finance:manage"],
   [ROLES.VIEWER]: [],
 };
