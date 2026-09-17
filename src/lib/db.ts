@@ -27,9 +27,34 @@ function hasClientModel(instance: PrismaClient | undefined) {
   );
 }
 
+function runtimeDeliverableFields(instance: PrismaClient) {
+  const models = (
+    instance as {
+      _runtimeDataModel?: {
+        models?: Record<string, { fields?: Record<string, unknown> | Array<{ name: string }> }>;
+      };
+    }
+  )._runtimeDataModel?.models;
+  const model = models?.Deliverable ?? models?.deliverable;
+  if (!model?.fields) return [];
+  if (Array.isArray(model.fields)) return model.fields.map((field) => field.name);
+  return Object.keys(model.fields);
+}
+
+function isStaleDeliverableClient(instance: PrismaClient | undefined) {
+  if (!instance) return false;
+  const fields = runtimeDeliverableFields(instance);
+  if (fields.length === 0) return false;
+  return !fields.includes("campaignId") || !fields.includes("postUrlKey");
+}
+
 if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
   const staleSchema = globalForPrisma.prismaSchemaSignature !== schemaSignature;
-  if (staleSchema || !hasClientModel(globalForPrisma.prisma)) {
+  if (
+    staleSchema ||
+    !hasClientModel(globalForPrisma.prisma) ||
+    isStaleDeliverableClient(globalForPrisma.prisma)
+  ) {
     void globalForPrisma.prisma.$disconnect();
     globalForPrisma.prisma = undefined;
   }

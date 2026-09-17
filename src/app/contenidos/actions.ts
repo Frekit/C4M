@@ -201,13 +201,22 @@ export async function updateDeliverable(
     await prisma.deliverable.update({
       where: { id: deliverable.id },
       data: {
-        campaignId: nextCampaignId,
         postUrl: nextPostUrl,
         postUrlKey: nextPostUrlKey,
         ...resolved.value,
+        campaign: nextCampaignId
+          ? { connect: { id: nextCampaignId } }
+          : { disconnect: true },
       },
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      return {
+        ok: false,
+        error:
+          "No se ha podido guardar. Recarga la página e inténtalo otra vez.",
+      };
+    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
