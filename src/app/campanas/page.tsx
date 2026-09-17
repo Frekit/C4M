@@ -58,6 +58,11 @@ export default async function CampaignsPage() {
         <p className="text-sm text-muted-foreground">
           Agrupan contenidos de distintos creators bajo un cliente. Higgsfield
           se liquida pieza a pieza; Many Chat, cuando el perfil termina el pack.
+          Pack vs plataforma se cambia en{" "}
+          <Link href="/clientes" className="underline underline-offset-4">
+            Clientes
+          </Link>
+          .
         </p>
       </div>
 
@@ -115,9 +120,17 @@ export default async function CampaignsPage() {
                     </Badge>
                   </div>
                   <CardDescription>
-                    {campaign.client
-                      ? `${campaign.client.name} · ${SETTLEMENT_MODE_LABELS[campaign.client.settlementMode as SettlementMode]}${campaign.client.requiresPlatformSubmit ? " · plataforma" : ""} · `
-                      : ""}
+                    {campaign.client ? (
+                      <>
+                        <Link
+                          href={`/clientes/${campaign.client.id}`}
+                          className="underline underline-offset-4"
+                        >
+                          {campaign.client.name}
+                        </Link>
+                        {` · ${SETTLEMENT_MODE_LABELS[campaign.client.settlementMode as SettlementMode]}${campaign.client.requiresPlatformSubmit ? " · plataforma" : ""} · `}
+                      </>
+                    ) : null}
                     {campaign.startsAt || campaign.endsAt
                       ? `${formatDate(campaign.startsAt)} → ${formatDate(campaign.endsAt)}`
                       : "Sin fechas"}
@@ -156,6 +169,19 @@ export default async function CampaignsPage() {
                     >
                       Ver contenidos
                     </Button>
+
+                    {campaign.client ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        nativeButton={false}
+                        render={
+                          <Link href={`/clientes/${campaign.client.id}`} />
+                        }
+                      >
+                        Cliente
+                      </Button>
+                    ) : null}
 
                     {canManage ? (
                       <>

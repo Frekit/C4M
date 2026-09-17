@@ -73,6 +73,14 @@ export function AppNav({ user }: { user: AppUser | null }) {
             >
               Campañas
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/clientes" />}
+            >
+              Clientes
+            </Button>
             {can(user.role, "finance:manage") ? (
               <Button
                 variant="ghost"

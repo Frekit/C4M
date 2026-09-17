@@ -35,6 +35,7 @@ Eso basta para operar y para reconstruir el documento. Una firma electrónica cu
 | ¿Se devenga / se paga? | `src/lib/domain/settlement.ts` |
 | Estados de un contenido | `src/lib/domain/rules.ts` |
 | Colas de Finanzas | `src/lib/domain/finance-queues.ts` + `finance.ts` |
+| Pack vs pieza / plataforma del cliente | `/clientes` (`src/app/clientes/`) |
 | ¿Se puede marcar submitted / error / pagado? | `src/lib/domain/finance-commands.ts` |
 | Contenidos (filtros y página) | `src/lib/domain/contents-query.ts` + `contents.ts` |
 | Texto y hash del PDF | `src/lib/pdf/` y `src/lib/domain/contract-copy.ts` (+ `payment-copy.ts` para el plazo) |

@@ -11,15 +11,18 @@ export function CopyButton({
   label = "Copiar enlace",
   successMessage = "Enlace copiado",
   size = "sm",
+  disabled = false,
 }: {
   value: string;
   label?: string;
   successMessage?: string;
   size?: "xs" | "sm" | "default";
+  disabled?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
+    if (disabled || !value) return;
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
@@ -31,7 +34,13 @@ export function CopyButton({
   }
 
   return (
-    <Button type="button" variant="outline" size={size} onClick={copy}>
+    <Button
+      type="button"
+      variant="outline"
+      size={size}
+      onClick={copy}
+      disabled={disabled || !value}
+    >
       {copied ? <CheckIcon /> : <CopyIcon />}
       {copied ? "Copiado" : label}
     </Button>

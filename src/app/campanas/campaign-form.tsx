@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import { FormErrorSummary } from "@/components/form-error-summary";
@@ -106,7 +107,15 @@ function CampaignFields({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="clientId">Cliente</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="clientId">Cliente</Label>
+            <Link
+              href="/clientes"
+              className="text-xs text-muted-foreground underline underline-offset-4"
+            >
+              Editar clientes
+            </Link>
+          </div>
           <select
             id="clientId"
             name="clientId"

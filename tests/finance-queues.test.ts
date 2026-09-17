@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   groupPackQueue,
   groupPayoutQueue,
+  joinPostUrls,
   payableFromQueues,
   splitPlatformQueue,
   type PackQueueSource,
@@ -54,6 +55,19 @@ function packItem(
     ...overrides,
   };
 }
+
+test("joinPostUrls junta solo los enlaces de los ítems seleccionados", () => {
+  assert.equal(joinPostUrls([]), "");
+  assert.equal(
+    joinPostUrls([
+      { postUrl: " https://instagram.com/p/a " },
+      { postUrl: "" },
+      { postUrl: null },
+      { postUrl: "https://instagram.com/p/b" },
+    ]),
+    "https://instagram.com/p/a\nhttps://instagram.com/p/b"
+  );
+});
 
 test("la cola de plataforma agrupa por campaña y deja fuera los publicados sin enlace", () => {
   const result = splitPlatformQueue([

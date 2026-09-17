@@ -23,6 +23,13 @@ export type CampaignQueueGroup = {
   items: FinancePublishRow[];
 };
 
+export function joinPostUrls(items: { postUrl?: string | null }[]): string {
+  return items
+    .map((item) => item.postUrl?.trim())
+    .filter((url): url is string => Boolean(url))
+    .join("\n");
+}
+
 export type PackQueueItem = {
   id: string;
   position: number;

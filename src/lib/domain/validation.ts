@@ -335,6 +335,18 @@ export const campaignSchema = z.object({
   endsAt: optionalDate,
 });
 
+export const clientUpdateSchema = z.object({
+  clientId: formString.pipe(z.string().min(1)),
+  name: requiredText(2, 120, "Ponle un nombre"),
+  settlementMode: formString.pipe(
+    z.enum([SETTLEMENT_MODE.PER_CONTENT, SETTLEMENT_MODE.PACK], {
+      error: "Elige cómo se liquida",
+    })
+  ),
+  requiresPlatformSubmit: formFlag,
+  notes: optionalText(1000),
+});
+
 export const contractParticularsSchema = z.object({
   contractId: formString.pipe(z.string().min(1)),
   notes: optionalText(8000),

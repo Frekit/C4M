@@ -25,9 +25,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import type {
-  CampaignQueueGroup,
-  FinancePublishRow,
+import {
+  joinPostUrls,
+  type CampaignQueueGroup,
+  type FinancePublishRow,
 } from "@/lib/domain/finance-queues";
 
 import {
@@ -107,10 +108,10 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
   }, [errorState]);
 
   const selectedItems = group.items.filter((item) => selected[item.id]);
-  const links = group.items
-    .map((item) => item.postUrl)
-    .filter(Boolean)
-    .join("\n");
+  const selectedLinks = useMemo(
+    () => joinPostUrls(selectedItems),
+    [selectedItems]
+  );
   const selectedTotals = useMemo(
     () => totalsByCurrency(selectedItems),
     [selectedItems]
@@ -124,21 +125,13 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle>{group.campaignName}</CardTitle>
-            <CardDescription>
-              {group.clientName ? `Cliente: ${group.clientName} · ` : null}
-              {group.items.length}{" "}
-              {group.items.length === 1 ? "contenido" : "contenidos"}
-            </CardDescription>
-          </div>
-          <CopyButton
-            value={links}
-            label="Copiar enlaces de la campaña"
-            successMessage="Enlaces copiados. Ya puedes pegarlos en la plataforma del cliente."
-          />
-        </div>
+        <CardTitle>{group.campaignName}</CardTitle>
+        <CardDescription>
+          {group.clientName ? `Cliente: ${group.clientName} · ` : null}
+          {group.items.length}{" "}
+          {group.items.length === 1 ? "contenido" : "contenidos"}. Copia los
+          seleccionados y márcalos en plataforma.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-3">
@@ -230,6 +223,16 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
               ))}
             </p>
             <div className="flex flex-wrap gap-2">
+              <CopyButton
+                value={selectedLinks}
+                disabled={busy || selectedLinks.length === 0}
+                label={
+                  selectedItems.length <= 1
+                    ? "Copiar 1 enlace"
+                    : `Copiar ${selectedItems.length} enlaces`
+                }
+                successMessage="Enlaces copiados. Ya puedes pegarlos en la plataforma del cliente."
+              />
               <Button
                 type="button"
                 variant="outline"

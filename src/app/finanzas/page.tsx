@@ -40,9 +40,10 @@ export default async function FinanzasPage() {
           Finanzas
         </h1>
         <p className="text-sm text-muted-foreground">
-          Higgsfield: sube los publicados a la plataforma. Many Chat y
-          similares: espera a que el perfil cierre el pack. El cobro a
-          perfiles sale en un lote de Zexel (CSV con email, importe y moneda).
+          Higgsfield: copia los enlaces seleccionados y márcalos en
+          plataforma. Many Chat y similares: espera a que el perfil cierre el
+          pack. El cobro a perfiles sale en un lote de Zexel (CSV con email,
+          importe y moneda).
         </p>
       </div>
 
