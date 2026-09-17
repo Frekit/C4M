@@ -127,38 +127,42 @@ export default async function SignPage({
               contrato {contract.parent?.code ?? "de origen"}.
             </p>
           ) : (
-          <dl className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Contenidos</dt>
-              <dd className="font-medium">{contract.deliverableCount}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Importe por contenido</dt>
-              <dd className="font-medium">
-                {formatMoney(contract.costMinorPerContent, contract.costCurrency, {
-                  withCode: true,
-                })}
-              </dd>
-            </div>
-            <Separator className="my-1" />
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Importe total</dt>
-              <dd className="text-base font-medium">
-                {formatMoney(totalCost, contract.costCurrency, { withCode: true })}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Cobro</dt>
-              <dd>
-                {
-                  contractPaymentCopy({
-                    settlementMode: contract.client?.settlementMode,
-                    paymentTermDays: contract.paymentTermDays,
-                  }).term
-                }
-              </dd>
-            </div>
-          </dl>
+            <dl className="grid gap-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Contenidos</dt>
+                <dd className="font-medium">{contract.deliverableCount}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Importe por contenido</dt>
+                <dd className="font-medium">
+                  {formatMoney(
+                    contract.costMinorPerContent,
+                    contract.costCurrency,
+                    { withCode: true }
+                  )}
+                </dd>
+              </div>
+              <Separator className="my-1" />
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Importe total</dt>
+                <dd className="text-base font-medium">
+                  {formatMoney(totalCost, contract.costCurrency, {
+                    withCode: true,
+                  })}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Cobro</dt>
+                <dd>
+                  {
+                    contractPaymentCopy({
+                      settlementMode: contract.client?.settlementMode,
+                      paymentTermDays: contract.paymentTermDays,
+                    }).term
+                  }
+                </dd>
+              </div>
+            </dl>
           )}
 
           {contract.notes ? (
