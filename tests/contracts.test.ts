@@ -57,10 +57,10 @@ test("el plazo de pago cuenta desde la publicación", () => {
   );
 });
 
-test("solo lo publicado devenga", () => {
+test("solo lo publicado o submitted devenga", () => {
   const deliverables = [
     { status: "PUBLISHED", publishedAt: new Date(), paymentDueAt: new Date() },
-    { status: "PUBLISHED", publishedAt: new Date(), paymentDueAt: new Date() },
+    { status: "SUBMITTED", publishedAt: new Date(), paymentDueAt: new Date() },
     { status: "PENDING", publishedAt: null, paymentDueAt: null },
   ];
 

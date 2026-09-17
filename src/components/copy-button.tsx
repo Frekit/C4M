@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 export function CopyButton({
   value,
   label = "Copiar enlace",
+  successMessage = "Enlace copiado",
   size = "sm",
 }: {
   value: string;
   label?: string;
+  successMessage?: string;
   size?: "xs" | "sm" | "default";
 }) {
   const [copied, setCopied] = useState(false);
@@ -21,7 +23,7 @@ export function CopyButton({
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
-      toast.success("Enlace copiado");
+      toast.success(successMessage);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("No se ha podido copiar. Copia el enlace a mano.");

@@ -29,7 +29,7 @@ import {
   DELIVERABLE_STATUS_ORDER,
   type DeliverableStatus,
 } from "@/lib/domain/enums";
-import { isDeliverableLate } from "@/lib/domain/rules";
+import { isDeliverableLate, isLiveDeliverable } from "@/lib/domain/rules";
 import { toInputDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -149,7 +149,7 @@ export default async function ContentsPage({
 
   const accruedByCurrency = deliverables.reduce<Record<string, number>>(
     (accumulator, item) => {
-      if (item.status === DELIVERABLE_STATUS.PUBLISHED) {
+      if (isLiveDeliverable(item.status)) {
         accumulator[item.contract.costCurrency] =
           (accumulator[item.contract.costCurrency] ?? 0) +
           item.contract.costMinorPerContent;
@@ -381,9 +381,9 @@ export default async function ContentsPage({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Los cambios se guardan solos. Solo al marcar un contenido como publicado
-        pedimos confirmación: eso es lo que devenga el coste y fija la fecha de
-        pago.
+        Los cambios se guardan solos. Publicado es que ya está en redes.
+        Submitted lo marca Finanzas al subirlo a la plataforma del cliente, y
+        ahí se puede pagar al perfil.
       </p>
     </main>
   );

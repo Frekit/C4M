@@ -2,7 +2,7 @@
 
 Aplicación para registrar influencers, generar su contrato automáticamente, mandarlo a firmar al talento o a su agencia, y seguir qué contenidos se han entregado y cuándo toca pagarlos.
 
-Es la primera fase de un sistema mayor descrito en el documento de flujo financiero multi-sociedad. Lo que **sí** cubre hoy: talento, contratos, firma, contenidos entregados y devengo. Lo que **no** cubre todavía: órdenes de compra, facturas, cola de pagos, cobros de cliente, P&L, caja y multi-sociedad.
+Es la primera fase de un sistema mayor descrito en el documento de flujo financiero multi-sociedad. Lo que **sí** cubre hoy: talento, contratos, firma, contenidos, panel de finanzas (subir a la plataforma del cliente y cola de pago a perfiles). Lo que **no** cubre todavía: órdenes de compra, facturas emitidas, cobros de cliente, P&L, caja y multi-sociedad.
 
 ## Stack
 
@@ -30,8 +30,9 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 1. **Registrar influencer** (`/creators/nuevo`): enlace de Instagram, contenidos pactados, precio de venta por contenido en USD, coste por contenido en la moneda del creator y plazo de pago desde la publicación. Al guardar se crea el contrato en borrador con un contenido por cada pieza acordada.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
-4. **Marcar contenidos publicados**: cada contenido publicado devenga su coste y fija su fecha prevista de pago (publicación + plazo). Sin contrato firmado no se puede marcar nada.
-5. **Ampliar o renovar**: si el coste del creator no cambia, se crea un **anexo** que referencia al contrato original. Si cambia el coste, la moneda o el plazo, se crea una **renovación**, que es un contrato completo nuevo. Ambos quedan enlazados en la misma cadena del creator.
+4. **Marcar contenidos publicados**: el post ya está en redes. Se calcula la fecha de pago (publicación + plazo). Sin contrato firmado no se puede marcar.
+5. **Finanzas** (`/finanzas`): coge los enlaces publicados por campaña, los pone en la plataforma del cliente y los marca como **submitted**. A partir de ahí se puede pagar al perfil (datos bancarios incluidos).
+6. **Ampliar o renovar**: si el coste del creator no cambia, se crea un **anexo** que referencia al contrato original. Si cambia el coste, la moneda o el plazo, se crea una **renovación**, que es un contrato completo nuevo. Ambos quedan enlazados en la misma cadena del creator.
 
 ### Reglas de negocio que el sistema impone
 
@@ -49,7 +50,7 @@ El acceso es solo por invitación: un administrador invita desde `/equipo` y la 
 | --- | --- |
 | Admin / Finanzas | todo, incluido gestionar el equipo |
 | Gestión de creators | registrar creators, crear y renovar contratos, enviar a firma, marcar publicados |
-| Contabilidad / Pagos | consultar y ver los datos bancarios completos |
+| Contabilidad / Pagos | panel de finanzas: subir publicados al cliente (submitted) y pagar perfiles |
 | Lectura | solo consultar, con los datos bancarios enmascarados |
 
 ## Auth0

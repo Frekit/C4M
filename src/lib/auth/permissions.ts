@@ -8,6 +8,7 @@ export const PERMISSIONS = [
   "signature:send",
   "deliverables:publish",
   "campaigns:manage",
+  "finance:manage",
   "payees:read_full",
   "team:manage",
 ] as const;
@@ -27,7 +28,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ],
   // Contabilidad necesita los datos bancarios para pagar, pero no crea ni
   // cancela contratos.
-  [ROLES.ACCOUNTING]: ["payees:read_full"],
+  [ROLES.ACCOUNTING]: ["payees:read_full", "finance:manage"],
   [ROLES.VIEWER]: [],
 };
 

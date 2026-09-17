@@ -7,7 +7,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import {
   DELIVERABLE_STATUS,
   DELIVERABLE_STATUS_LABELS,
-  DELIVERABLE_STATUS_ORDER,
+  OPS_DELIVERABLE_STATUSES,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -145,12 +145,15 @@ function ContentRowFields({
             name="status"
             form={formId}
             defaultValue={item.status}
-            disabled={!canEdit}
+            disabled={!canEdit || item.status === DELIVERABLE_STATUS.SUBMITTED}
             className={inputClass}
             aria-label="Estado"
             onChange={onFieldChange}
           >
-            {DELIVERABLE_STATUS_ORDER.map((status) => (
+            {(item.status === DELIVERABLE_STATUS.SUBMITTED
+              ? [...OPS_DELIVERABLE_STATUSES, DELIVERABLE_STATUS.SUBMITTED]
+              : OPS_DELIVERABLE_STATUSES
+            ).map((status) => (
               <option
                 key={status}
                 value={status}
@@ -239,6 +242,12 @@ function ContentRowFields({
         <TableCell className="text-xs text-muted-foreground">
           <form id={formId} ref={formRef} action={formAction}>
             <input type="hidden" name="deliverableId" value={item.id} />
+            {item.status === DELIVERABLE_STATUS.SUBMITTED ? (
+              <input type="hidden" name="status" value={item.status} />
+            ) : null}
+            <button type="submit" className="sr-only">
+              Guardar
+            </button>
           </form>
           {pending ? "Guardando…" : null}
         </TableCell>

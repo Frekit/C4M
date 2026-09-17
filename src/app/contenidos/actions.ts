@@ -37,8 +37,8 @@ const updateSchema = z.object({
   status: z.enum([
     DELIVERABLE_STATUS.PENDING,
     DELIVERABLE_STATUS.SCHEDULED,
-    DELIVERABLE_STATUS.SUBMITTED,
     DELIVERABLE_STATUS.PUBLISHED,
+    DELIVERABLE_STATUS.SUBMITTED,
   ]),
   scheduledFor: dateField,
   publishedAt: dateField,
@@ -78,6 +78,28 @@ export async function updateDeliverable(
 
   if (!deliverable) {
     return { ok: false, error: "Ese contenido no existe." };
+  }
+
+  if (
+    data.status === DELIVERABLE_STATUS.SUBMITTED &&
+    deliverable.status !== DELIVERABLE_STATUS.SUBMITTED
+  ) {
+    return {
+      ok: false,
+      error:
+        "Subir un contenido a la plataforma del cliente se hace desde Finanzas, no desde esta tabla.",
+    };
+  }
+
+  if (
+    deliverable.status === DELIVERABLE_STATUS.SUBMITTED &&
+    data.status !== DELIVERABLE_STATUS.SUBMITTED
+  ) {
+    return {
+      ok: false,
+      error:
+        "Este contenido ya está en la plataforma del cliente. Si hay que sacarlo, lo hace Finanzas.",
+    };
   }
 
   if (
@@ -129,6 +151,7 @@ export async function updateDeliverable(
   });
 
   revalidatePath("/contenidos");
+  revalidatePath("/finanzas");
   revalidatePath(`/contratos/${deliverable.contractId}`);
   revalidatePath("/creators");
   revalidatePath("/");

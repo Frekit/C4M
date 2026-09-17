@@ -19,7 +19,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   CREATORS:
     "Da de alta creators y contratos, envía a firma y marca contenidos publicados.",
   ACCOUNTING:
-    "Consulta contratos y ve los datos fiscales y bancarios completos para pagar.",
+    "Sube los publicados a la plataforma del cliente y paga a los perfiles.",
   VIEWER: "Solo lectura, con los datos bancarios ocultos.",
 };
 
@@ -61,8 +61,8 @@ export const CONTRACT_KIND_LABELS: Record<ContractKind, string> = {
 export const DELIVERABLE_STATUS = {
   PENDING: "PENDING",
   SCHEDULED: "SCHEDULED",
-  SUBMITTED: "SUBMITTED",
   PUBLISHED: "PUBLISHED",
+  SUBMITTED: "SUBMITTED",
 } as const;
 
 export type DeliverableStatus =
@@ -71,21 +71,29 @@ export type DeliverableStatus =
 export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
   PENDING: "Sin agendar",
   SCHEDULED: "Agendado",
-  SUBMITTED: "Entregado",
   PUBLISHED: "Publicado",
+  SUBMITTED: "Submitted",
 };
 
 export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
   PENDING: "Todavía sin fecha.",
   SCHEDULED: "Con fecha prevista de publicación.",
-  SUBMITTED: "El contenido ya está entregado, pero aún no está publicado.",
-  PUBLISHED: "Publicado: devenga su coste y fija la fecha de pago.",
+  PUBLISHED: "Ya está publicado en redes. Finanzas lo sube a la plataforma del cliente.",
+  SUBMITTED:
+    "Finanzas ya lo puso en la plataforma del cliente: se puede pagar al perfil.",
 };
 
 export const DELIVERABLE_STATUS_ORDER: DeliverableStatus[] = [
   "PENDING",
   "SCHEDULED",
+  "PUBLISHED",
   "SUBMITTED",
+];
+
+// Contents opera hasta Publicado. Submitted lo marca Finanzas.
+export const OPS_DELIVERABLE_STATUSES: DeliverableStatus[] = [
+  "PENDING",
+  "SCHEDULED",
   "PUBLISHED",
 ];
 

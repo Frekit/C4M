@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
   DELIVERABLE_STATUS,
-  DELIVERABLE_STATUS_HINTS,
   DELIVERABLE_STATUS_LABELS,
-  DELIVERABLE_STATUS_ORDER,
+  OPS_DELIVERABLE_STATUSES,
   type DeliverableStatus,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
@@ -85,17 +84,19 @@ function DeliverableRowFields({
     cancelPublish,
   } = useDeliverableAutosave(item, canEdit);
 
-  const published = item.status === DELIVERABLE_STATUS.PUBLISHED;
+  const isLive =
+    item.status === DELIVERABLE_STATUS.PUBLISHED ||
+    item.status === DELIVERABLE_STATUS.SUBMITTED;
 
   return (
     <li
       className={`rounded-lg border p-3 ${
-        published ? "bg-muted/30" : item.isLate ? "border-destructive/40" : ""
+        isLive ? "bg-muted/30" : item.isLate ? "border-destructive/40" : ""
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">Contenido {item.position}</span>
-        <Badge variant={published ? "secondary" : "outline"}>
+        <Badge variant={isLive ? "secondary" : "outline"}>
           {DELIVERABLE_STATUS_LABELS[item.status as DeliverableStatus] ??
             item.status}
         </Badge>
@@ -127,6 +128,9 @@ function DeliverableRowFields({
         className="mt-3 grid gap-3 sm:grid-cols-5"
       >
         <input type="hidden" name="deliverableId" value={item.id} />
+        {item.status === DELIVERABLE_STATUS.SUBMITTED ? (
+          <input type="hidden" name="status" value={item.status} />
+        ) : null}
 
         <div className="grid gap-1.5">
           <Label htmlFor={`status-${item.id}`} className="text-xs">
@@ -136,11 +140,14 @@ function DeliverableRowFields({
             id={`status-${item.id}`}
             name="status"
             defaultValue={item.status}
-            disabled={!canEdit}
+            disabled={!canEdit || item.status === DELIVERABLE_STATUS.SUBMITTED}
             className={controlClass}
             onChange={onFieldChange}
           >
-            {DELIVERABLE_STATUS_ORDER.map((status) => (
+            {(item.status === DELIVERABLE_STATUS.SUBMITTED
+              ? [...OPS_DELIVERABLE_STATUSES, DELIVERABLE_STATUS.SUBMITTED]
+              : OPS_DELIVERABLE_STATUSES
+            ).map((status) => (
               <option
                 key={status}
                 value={status}
@@ -267,9 +274,9 @@ export function DeliverableList({
         ))}
       </ol>
       <p className="text-xs text-muted-foreground">
-        Los cambios se guardan solos. Publicar pide confirmación:{" "}
-        {DELIVERABLE_STATUS_HINTS.PUBLISHED} La fecha prevista puede estar en el
-        futuro y no devenga nada.
+        Publicado es que ya está en redes. Submitted lo marca Finanzas cuando
+        lo ha puesto en la plataforma del cliente, y ahí se puede pagar al
+        perfil.
       </p>
     </div>
   );

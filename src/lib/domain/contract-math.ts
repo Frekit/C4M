@@ -1,4 +1,5 @@
 import { convertToUsdCents } from "@/lib/money";
+import { isLiveDeliverable } from "@/lib/domain/rules";
 
 export type ContractEconomics = {
   deliverableCount: number;
@@ -75,8 +76,8 @@ export function deliverableProgress(
   deliverables: DeliverableLike[]
 ): DeliverableProgress {
   const total = deliverables.length;
-  const published = deliverables.filter(
-    (item) => item.status === "PUBLISHED"
+  const published = deliverables.filter((item) =>
+    isLiveDeliverable(item.status)
   ).length;
 
   return {
@@ -93,8 +94,8 @@ export function accruedMinor(
   deliverables: DeliverableLike[],
   costMinorPerContent: number
 ): number {
-  const published = deliverables.filter(
-    (item) => item.status === "PUBLISHED"
+  const published = deliverables.filter((item) =>
+    isLiveDeliverable(item.status)
   ).length;
 
   return published * costMinorPerContent;

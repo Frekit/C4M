@@ -60,7 +60,7 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     const form = formRef.current;
     if (!form || !canEdit) return;
     if (!isDirty(form, item)) return;
-    form.requestSubmit();
+    formAction(new FormData(form));
   }
 
   function scheduleSave() {
@@ -140,7 +140,8 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
       queuedRef.current = true;
       return;
     }
-    form?.requestSubmit();
+    if (!form) return;
+    formAction(new FormData(form));
   }
 
   function cancelPublish() {

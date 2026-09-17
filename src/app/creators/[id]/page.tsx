@@ -19,6 +19,7 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
 import { CONTRACT_STATUS } from "@/lib/domain/enums";
+import { isLiveDeliverable } from "@/lib/domain/rules";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -56,8 +57,8 @@ export default async function CreatorPage({
 
   const accruedByCurrency = creator.contracts.reduce<Record<string, number>>(
     (accumulator, contract) => {
-      const published = contract.deliverables.filter(
-        (item) => item.status === "PUBLISHED"
+      const published = contract.deliverables.filter((item) =>
+        isLiveDeliverable(item.status)
       ).length;
 
       if (published > 0) {

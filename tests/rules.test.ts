@@ -64,12 +64,12 @@ test("con firma, publicaciones o descendientes ya no se borra", () => {
   assert.equal(canDeleteContract({ ...virgin, status: "CANCELLED" }), false);
 });
 
-test("cuenta solo los contenidos publicados", () => {
+test("cuenta los contenidos ya en redes, publicados o submitted", () => {
   assert.equal(
     countPublished([
       { status: "PUBLISHED" },
       { status: "PENDING" },
-      { status: "PUBLISHED" },
+      { status: "SUBMITTED" },
     ]),
     2
   );

@@ -21,7 +21,7 @@ import {
   type ContractTotals,
   type DeliverableProgress,
 } from "@/lib/domain/contract-math";
-import { canDeleteContract, countPublished } from "@/lib/domain/rules";
+import { canDeleteContract, countPublished, isLiveDeliverable } from "@/lib/domain/rules";
 
 export type SignatureWithPayee = SignatureRequest & {
   payee?: PayeeProfile | null;
@@ -54,8 +54,8 @@ export function hasEconomicCommitment(contract: ContractWithDetail): boolean {
       request.status === SIGNATURE_STATUS.PENDING ||
       request.status === SIGNATURE_STATUS.VIEWED
   );
-  const published = contract.deliverables.some(
-    (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
+  const published = contract.deliverables.some((item) =>
+    isLiveDeliverable(item.status)
   );
 
   return signed || sent || published;

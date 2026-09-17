@@ -287,7 +287,7 @@ export default async function ContractPage({
           <CardDescription>
             {canEditDeliverables
               ? isSigned
-                ? "Cambia fechas, campaña o estado y se guarda solo. Publicar pide confirmación porque devenga el pago."
+                ? "Cambia fechas, campaña o estado y se guarda solo. Publicar pide confirmación. Submitted lo marca Finanzas desde su panel."
                 : "Puedes agendar fechas y campañas desde ya: se guardan solas. Para marcar un contenido como publicado hace falta el contrato firmado."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>

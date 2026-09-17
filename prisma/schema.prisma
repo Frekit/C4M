@@ -123,8 +123,9 @@ model Deliverable {
   position   Int
   title      String?
 
-  // PENDING (sin agendar) | SCHEDULED (agendado) | SUBMITTED (entregado, sin
-  // publicar) | PUBLISHED. Solo PUBLISHED devenga dinero.
+  // PENDING | SCHEDULED | PUBLISHED | SUBMITTED.
+  // Publicado = ya está en redes. Submitted = Finanzas lo puso en la
+  // plataforma del cliente; ahí se puede pagar al perfil.
   status String @default("PENDING")
 
   // Fecha prevista de publicación: puede estar en el futuro.
@@ -132,6 +133,8 @@ model Deliverable {
   publishedAt  DateTime?
   postUrl      String?
   paymentDueAt DateTime?
+  // Cuándo Finanzas lo marcó como subido a la plataforma del cliente.
+  clientSubmittedAt DateTime?
   notes        String?
 
   createdAt DateTime @default(now())

@@ -16,6 +16,7 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { contractTotals, deliverableProgress } from "@/lib/domain/contract-math";
 import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { isLiveDeliverable } from "@/lib/domain/rules";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -29,7 +30,10 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.deliverable.findMany({
-      where: { status: DELIVERABLE_STATUS.PUBLISHED, paymentDueAt: { not: null } },
+      where: {
+        status: DELIVERABLE_STATUS.SUBMITTED,
+        paymentDueAt: { not: null },
+      },
       orderBy: { paymentDueAt: "asc" },
       take: 8,
       include: { contract: { include: { creator: true } } },
@@ -50,8 +54,8 @@ export default async function DashboardPage() {
 
   const accruedByCurrency = live.reduce<Record<string, number>>(
     (accumulator, contract) => {
-      const published = contract.deliverables.filter(
-        (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
+      const published = contract.deliverables.filter((item) =>
+        isLiveDeliverable(item.status)
       ).length;
 
       if (published > 0) {
@@ -209,14 +213,16 @@ export default async function DashboardPage() {
             <CalendarClockIcon className="size-4 text-muted-foreground" />
             <CardTitle>Próximos pagos</CardTitle>
             <CardDescription>
-              Calculados desde la fecha de publicación de cada contenido.
+              Solo los submitted: Finanzas ya los subió a la plataforma del
+              cliente. La fecha sigue saliendo de la publicación + plazo.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {upcomingPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Todavía no hay contenidos publicados, así que no hay pagos
-                previstos.
+                Todavía no hay contenidos submitted, así que no hay pagos a
+                perfiles. Primero se publican, luego Finanzas los sube al
+                cliente.
               </p>
             ) : (
               upcomingPayments.map((item) => {

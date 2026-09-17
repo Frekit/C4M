@@ -48,9 +48,20 @@ export function canDeleteContract(facts: DeletionFacts): boolean {
 export function countPublished(
   deliverables: { status: string }[]
 ): number {
-  return deliverables.filter(
-    (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
-  ).length;
+  return deliverables.filter((item) => isLiveDeliverable(item.status)).length;
+}
+
+// Publicado en redes, esté o no ya en la plataforma del cliente.
+export function isLiveDeliverable(status: string): boolean {
+  return (
+    status === DELIVERABLE_STATUS.PUBLISHED ||
+    status === DELIVERABLE_STATUS.SUBMITTED
+  );
+}
+
+// Solo cuando Finanzas lo ha subido a la plataforma del cliente.
+export function isPayableDeliverable(status: string): boolean {
+  return status === DELIVERABLE_STATUS.SUBMITTED;
 }
 
 export type DeliverableStateInput = {
@@ -88,14 +99,19 @@ export function resolveDeliverableState(
     status = DELIVERABLE_STATUS.SCHEDULED;
   }
 
-  if (status === DELIVERABLE_STATUS.PUBLISHED) {
-    // Si no se indica fecha de publicación, se toma la prevista.
+  if (
+    status === DELIVERABLE_STATUS.PUBLISHED ||
+    status === DELIVERABLE_STATUS.SUBMITTED
+  ) {
     const publishedAt = input.publishedAt ?? scheduledFor;
 
     if (!publishedAt) {
       return {
         ok: false,
-        error: "Para marcarlo como publicado hace falta la fecha de publicación.",
+        error:
+          status === DELIVERABLE_STATUS.SUBMITTED
+            ? "Para marcarlo como submitted hace falta que esté publicado."
+            : "Para marcarlo como publicado hace falta la fecha de publicación.",
       };
     }
 
@@ -138,7 +154,7 @@ export function isDeliverableLate(
   deliverable: { status: string; scheduledFor: Date | null },
   now = new Date()
 ): boolean {
-  if (deliverable.status === DELIVERABLE_STATUS.PUBLISHED) return false;
+  if (isLiveDeliverable(deliverable.status)) return false;
   if (!deliverable.scheduledFor) return false;
 
   return deliverable.scheduledFor < now;

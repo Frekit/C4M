@@ -3,6 +3,8 @@ import { test } from "node:test";
 
 import {
   isDeliverableLate,
+  isLiveDeliverable,
+  isPayableDeliverable,
   resolveDeliverableState,
 } from "@/lib/domain/rules";
 
@@ -84,18 +86,24 @@ test("publicar sin ninguna fecha se rechaza", () => {
   assert.equal(result.ok, false);
 });
 
-test("entregado no fija fecha de pago", () => {
+test("submitted conserva la publicación y deja pagar", () => {
+  const publishedAt = new Date("2026-09-05T00:00:00.000Z");
   const result = resolveDeliverableState({
     status: "SUBMITTED",
+    previousStatus: "PUBLISHED",
     scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
-    publishedAt: new Date("2026-09-02T00:00:00.000Z"),
+    publishedAt,
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.value.publishedAt, null);
-    assert.equal(result.value.paymentDueAt, null);
+    assert.equal(result.value.status, "SUBMITTED");
+    assert.equal(result.value.publishedAt, publishedAt);
+    assert.equal(
+      result.value.paymentDueAt?.toISOString(),
+      "2026-10-05T00:00:00.000Z"
+    );
   }
 });
 
@@ -159,7 +167,22 @@ test("marca como retrasado lo agendado cuya fecha ya pasó", () => {
     false
   );
   assert.equal(
+    isDeliverableLate(
+      { status: "SUBMITTED", scheduledFor: new Date("2026-09-10T00:00:00.000Z") },
+      now
+    ),
+    false
+  );
+  assert.equal(
     isDeliverableLate({ status: "PENDING", scheduledFor: null }, now),
     false
   );
+});
+
+test("published está en redes y submitted es lo que se puede pagar", () => {
+  assert.equal(isLiveDeliverable("PUBLISHED"), true);
+  assert.equal(isLiveDeliverable("SUBMITTED"), true);
+  assert.equal(isLiveDeliverable("SCHEDULED"), false);
+  assert.equal(isPayableDeliverable("PUBLISHED"), false);
+  assert.equal(isPayableDeliverable("SUBMITTED"), true);
 });
