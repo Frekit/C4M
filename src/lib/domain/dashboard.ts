@@ -92,6 +92,7 @@ export async function loadDashboard() {
       prisma.deliverable.findMany({
         where: {
           paymentDueAt: { not: null },
+          paidAt: null,
           contract: liveContract,
           OR:
             packCampaignIds.length > 0

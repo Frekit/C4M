@@ -140,6 +140,8 @@ model Deliverable {
   paymentDueAt DateTime?
   // Cuándo Finanzas lo marcó como subido a la plataforma del cliente.
   clientSubmittedAt DateTime?
+  // Cuándo Finanzas lo marcó como pagado al perfil. Sale de la cola de pagos.
+  paidAt DateTime?
   notes        String?
 
   createdAt DateTime @default(now())
@@ -154,6 +156,7 @@ model Deliverable {
   @@index([scheduledFor])
   @@index([publishedAt])
   @@index([paymentDueAt])
+  @@index([paidAt])
 }
 
 // Marca o plataforma a la que se venden los contenidos. Define cómo se liquida.

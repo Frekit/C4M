@@ -20,9 +20,9 @@ import { prisma } from "@/lib/db";
 import {
   CONTRACT_KIND,
   CONTRACT_STATUS,
-  paymentTermLabel,
   SIGNATURE_STATUS,
 } from "@/lib/domain/enums";
+import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { formatDateTime } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -45,7 +45,7 @@ export default async function SignPage({
     where: { token },
     include: {
       payee: true,
-      contract: { include: { creator: true, parent: true } },
+      contract: { include: { creator: true, parent: true, client: true } },
     },
   });
 
@@ -131,8 +131,12 @@ export default async function SignPage({
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Cobro</dt>
               <dd>
-                {paymentTermLabel(contract.paymentTermDays)} tras publicar cada
-                contenido
+                {
+                  contractPaymentCopy({
+                    settlementMode: contract.client?.settlementMode,
+                    paymentTermDays: contract.paymentTermDays,
+                  }).term
+                }
               </dd>
             </div>
           </dl>

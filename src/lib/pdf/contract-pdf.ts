@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
 import { getCompany } from "@/lib/company";
-import { CONTRACT_KIND, paymentTermLabel } from "@/lib/domain/enums";
+import { CONTRACT_KIND } from "@/lib/domain/enums";
+import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -36,6 +37,7 @@ export type ContractPdfInput = {
     notes: string | null;
     createdAt: Date;
     signedAt: Date | null;
+    settlementMode?: string | null;
   };
   parentCode?: string | null;
   creator: {
@@ -244,16 +246,13 @@ export async function buildContractPdf(
     "Importe total",
     formatMoney(totalCost, input.contract.costCurrency, { withCode: true })
   );
-  keyValue(
-    "Plazo de pago",
-    `${paymentTermLabel(input.contract.paymentTermDays)} desde la publicación de cada contenido`
-  );
+  const payment = contractPaymentCopy({
+    settlementMode: input.contract.settlementMode,
+    paymentTermDays: input.contract.paymentTermDays,
+  });
+  keyValue("Plazo de pago", payment.term);
   cursor.y -= 4;
-  paragraph(
-    input.contract.paymentTermDays === 0
-      ? "El pago de cada contenido se hará efectivo de forma inmediata tras su publicación, previa recepción de la factura correspondiente cuando resulte exigible."
-      : `El pago de cada contenido se hará efectivo dentro de los ${input.contract.paymentTermDays} días siguientes a su publicación, previa recepción de la factura correspondiente cuando resulte exigible.`
-  );
+  paragraph(payment.body);
   paragraph(
     "Los importes indicados son base imponible. Los impuestos indirectos y las retenciones aplicables se añadirán o practicarán conforme a la normativa vigente y al régimen fiscal declarado por el Creador."
   );

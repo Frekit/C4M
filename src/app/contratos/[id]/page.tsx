@@ -38,9 +38,9 @@ import {
   CONTRACT_KIND_LABELS,
   CONTRACT_STATUS,
   SETTLEMENT_MODE,
-  paymentTermLabel,
   type ContractKind,
 } from "@/lib/domain/enums";
+import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
 import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
 import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
@@ -294,7 +294,12 @@ export default async function ContractPage({
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Plazo de pago</dt>
               <dd>
-                {paymentTermLabel(contract.paymentTermDays)} tras publicar
+                {
+                  contractPaymentCopy({
+                    settlementMode: contract.client?.settlementMode,
+                    paymentTermDays: contract.paymentTermDays,
+                  }).term
+                }
               </dd>
             </div>
           </dl>

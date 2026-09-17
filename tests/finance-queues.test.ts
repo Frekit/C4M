@@ -40,6 +40,7 @@ function packItem(
     publishedAt: null,
     paymentDueAt: null,
     clientSubmittedAt: null,
+    paidAt: null,
     campaignId: "camp-mc",
     campaignName: "Many Chat Q3",
     clientName: "Many Chat",
@@ -143,6 +144,7 @@ test("submitted de plataforma se paga sin esperar a packs y no se duplica", () =
       postUrl: "https://instagram.com/p/s",
       paymentDueAt: new Date("2026-09-20T00:00:00.000Z"),
       clientSubmittedAt: new Date("2026-09-02T00:00:00.000Z"),
+      paidAt: null,
       creatorId: "c2",
       creatorHandle: "g.tafalla",
       contractId: "ct-1",
@@ -164,4 +166,47 @@ test("submitted de plataforma se paga sin esperar a packs y no se duplica", () =
 
   assert.equal(payable.length, 1);
   assert.equal(payable[0]?.id, "s1");
+});
+
+test("los contenidos ya pagados salen de la cola de pagos", () => {
+  const due = new Date("2026-10-10T00:00:00.000Z");
+  const submitted: PayoutQueueSource[] = [
+    {
+      id: "s1",
+      position: 1,
+      postUrl: "https://instagram.com/p/s",
+      paymentDueAt: due,
+      clientSubmittedAt: new Date("2026-09-02T00:00:00.000Z"),
+      paidAt: new Date("2026-09-15T00:00:00.000Z"),
+      creatorId: "c2",
+      creatorHandle: "g.tafalla",
+      contractId: "ct-1",
+      contractCode: "CTR-2026-001",
+      costMinor: 12000,
+      costCurrency: "EUR",
+    },
+  ];
+  const items = [
+    packItem({
+      id: "p1",
+      creatorId: "c1",
+      status: "PUBLISHED",
+      position: 1,
+      paymentDueAt: due,
+      paidAt: new Date("2026-09-16T00:00:00.000Z"),
+    }),
+    packItem({
+      id: "p2",
+      creatorId: "c1",
+      status: "PUBLISHED",
+      position: 2,
+      paymentDueAt: due,
+      paidAt: new Date("2026-09-16T00:00:00.000Z"),
+    }),
+  ];
+  const packs = groupPackQueue(items);
+
+  assert.equal(packs[0]?.isComplete, true);
+  assert.equal(packs[0]?.allPaid, true);
+  assert.deepEqual(payableFromQueues(submitted, items, packs), []);
 });

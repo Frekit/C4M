@@ -13,6 +13,7 @@ export async function loadContractPdfInput(
     include: {
       creator: true,
       parent: true,
+      client: true,
       signatureRequests: {
         orderBy: { createdAt: "desc" },
         include: { payee: true },
@@ -38,6 +39,7 @@ export async function loadContractPdfInput(
       notes: contract.notes,
       createdAt: contract.createdAt,
       signedAt: contract.signedAt,
+      settlementMode: contract.client?.settlementMode ?? null,
     },
     parentCode: contract.parent?.code ?? null,
     creator: {

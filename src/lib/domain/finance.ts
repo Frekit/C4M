@@ -44,12 +44,14 @@ export async function loadFinanceQueues() {
     loadPackCampaignIds(),
   ]);
 
-  const [platformRows, packRows, submittedRows] = await Promise.all([
+  const [platformRows, packRows, submittedRows, recentPaidRows] =
+    await Promise.all([
     platformCampaignIds.length === 0
       ? Promise.resolve([])
       : prisma.deliverable.findMany({
           where: {
             status: DELIVERABLE_STATUS.PUBLISHED,
+            paidAt: null,
             campaignId: { in: platformCampaignIds },
             contract: liveContract,
           },
@@ -93,6 +95,7 @@ export async function loadFinanceQueues() {
             publishedAt: true,
             paymentDueAt: true,
             clientSubmittedAt: true,
+            paidAt: true,
             campaignId: true,
             contractId: true,
             campaign: {
@@ -115,6 +118,7 @@ export async function loadFinanceQueues() {
     prisma.deliverable.findMany({
       where: {
         status: DELIVERABLE_STATUS.SUBMITTED,
+        paidAt: null,
         contract: liveContract,
         ...(packCampaignIds.length > 0
           ? { NOT: { campaignId: { in: packCampaignIds } } }
@@ -127,11 +131,34 @@ export async function loadFinanceQueues() {
         postUrl: true,
         paymentDueAt: true,
         clientSubmittedAt: true,
+        paidAt: true,
         contractId: true,
         contract: {
           select: {
             code: true,
             creatorId: true,
+            costMinorPerContent: true,
+            costCurrency: true,
+            creator: { select: { handle: true } },
+          },
+        },
+      },
+    }),
+    prisma.deliverable.findMany({
+      where: {
+        paidAt: { not: null },
+        contract: liveContract,
+      },
+      orderBy: { paidAt: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        position: true,
+        paidAt: true,
+        contractId: true,
+        contract: {
+          select: {
+            code: true,
             costMinorPerContent: true,
             costCurrency: true,
             creator: { select: { handle: true } },
@@ -167,6 +194,7 @@ export async function loadFinanceQueues() {
         publishedAt: item.publishedAt,
         paymentDueAt: item.paymentDueAt,
         clientSubmittedAt: item.clientSubmittedAt,
+        paidAt: item.paidAt,
         campaignId: item.campaignId,
         campaignName: item.campaign?.name ?? "Campaña",
         clientName: item.campaign?.client?.name ?? "Cliente",
@@ -186,6 +214,7 @@ export async function loadFinanceQueues() {
     postUrl: item.postUrl,
     paymentDueAt: item.paymentDueAt,
     clientSubmittedAt: item.clientSubmittedAt,
+    paidAt: item.paidAt,
     creatorId: item.contract.creatorId,
     creatorHandle: item.contract.creator.handle,
     contractId: item.contractId,
@@ -196,6 +225,7 @@ export async function loadFinanceQueues() {
 
   const platform = splitPlatformQueue(platformItems);
   const packGroups = groupPackQueue(packItems);
+  const openPackGroups = packGroups.filter((group) => !group.allPaid);
   const payableItems = payableFromQueues(
     submittedItems,
     packItems,
@@ -238,9 +268,24 @@ export async function loadFinanceQueues() {
     platformGroups: platform.groups,
     missingLink: platform.missingLink,
     readyToUploadCount: platform.readyCount,
-    packGroups,
-    readyPacks: packGroups.filter((group) => group.isComplete).length,
+    packGroups: openPackGroups,
+    readyPacks: openPackGroups.filter((group) => group.isComplete).length,
     payoutGroups: groupPayoutQueue(payableItems, payeeByContractId),
     payableCount: payableItems.length,
+    recentPaid: recentPaidRows.flatMap((item) => {
+      if (!item.paidAt) return [];
+      return [
+        {
+          id: item.id,
+          position: item.position,
+          paidAt: item.paidAt.toISOString(),
+          costMinor: item.contract.costMinorPerContent,
+          costCurrency: item.contract.costCurrency,
+          creatorHandle: item.contract.creator.handle,
+          contractCode: item.contract.code,
+          contractId: item.contractId,
+        },
+      ];
+    }),
   };
 }

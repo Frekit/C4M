@@ -11,6 +11,7 @@ import { loadFinanceQueues } from "@/lib/domain/finance";
 import { CampaignQueue } from "./campaign-queue";
 import { PackQueue } from "./pack-queue";
 import { PayoutQueue } from "./payout-queue";
+import { RecentPaid } from "./recent-paid";
 
 export const metadata: Metadata = {
   title: "Finanzas",
@@ -34,7 +35,8 @@ export default async function FinanzasPage() {
         <p className="text-sm text-muted-foreground">
           Higgsfield: sube los publicados a la plataforma y luego paga. Many
           Chat y similares: se cobra y se paga cuando el perfil cierra el pack
-          de esa campaña.
+          de esa campaña. En Pagar perfiles marca Ya está pagado para vaciar
+          la cola.
         </p>
       </div>
 
@@ -94,7 +96,10 @@ export default async function FinanzasPage() {
 
         <TabsContent value="pagos" className="grid gap-4 pt-4">
           {canSeeFull ? (
-            <PayoutQueue groups={queues.payoutGroups} />
+            <>
+              <PayoutQueue groups={queues.payoutGroups} />
+              <RecentPaid items={queues.recentPaid} />
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Tu rol no ve las cuentas completas.

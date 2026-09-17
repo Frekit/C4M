@@ -32,7 +32,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
 4. **Marcar contenidos publicados** (`/contenidos`): hacen falta el enlace del post y una sola fecha. Si el contrato aún no está firmado, se puede forzar (confirma en el diálogo); el acuerdo sigue pendiente de firma. La tabla pagina de 60 en 60; los contadores (estado, retrasados, devengo) miran todo el conjunto filtrado, no solo la página.
-5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces, se marcan como **submitted** y entonces se puede pagar. **Many Chat** y similares (pack): no se cobra al cliente ni se paga al perfil hasta que ese creator termine todos los contenidos de esa campaña. La pantalla carga tres colas (plataforma, packs, pagos), no el histórico entero.
+5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces, se marcan como **submitted** y entonces se puede pagar. **Many Chat** y similares (pack): no se cobra al cliente ni se paga al perfil hasta que ese creator termine todos los contenidos de esa campaña. En **Pagar perfiles**, **Ya está pagado** saca el ítem de la cola. La pantalla carga tres colas (plataforma, packs, pagos) más los pagados recientes, no el histórico entero.
 6. **Ampliar o renovar** sigue en el mismo cliente. Anexo si el coste no cambia; renovación si cambia. Para Many Chat u otro cliente mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha (contrato original nuevo).
 
 ### Reglas de negocio que el sistema impone
@@ -43,7 +43,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 - Los importes se guardan en unidades mínimas (enteros), nunca en coma flotante.
 - Los datos bancarios completos solo los ven Admin y Contabilidad.
 - El contrato es de **un cliente**. Ampliar/renovar sigue en Higgsfield; Many Chat se abre como contrato nuevo desde la ficha del creator.
-- La liquidación la marca el cliente: por contenido (con o sin plataforma) o al cerrar el pack de esa campaña con ese perfil.
+- La liquidación la marca el cliente: por contenido (con o sin plataforma) o al cerrar el pack de esa campaña con ese perfil. El PDF y la pantalla de firma usan esa cláusula: Many Chat no dice que se pague cada pieza publicada.
 
 ## Acceso y roles
 

@@ -28,6 +28,7 @@ export type PackQueueItem = {
   status: string;
   postUrl: string | null;
   publishedAt: string | null;
+  paidAt: string | null;
   costMinor: number;
   costCurrency: string;
 };
@@ -42,6 +43,7 @@ export type PackQueueGroup = {
   published: number;
   total: number;
   isComplete: boolean;
+  allPaid: boolean;
   paymentDueAt: string | null;
   items: PackQueueItem[];
 };
@@ -52,6 +54,17 @@ export type PayoutItem = {
   postUrl: string | null;
   paymentDueAt: string | null;
   clientSubmittedAt: string | null;
+  costMinor: number;
+  costCurrency: string;
+  creatorHandle: string;
+  contractCode: string;
+  contractId: string;
+};
+
+export type RecentPaidItem = {
+  id: string;
+  position: number;
+  paidAt: string;
   costMinor: number;
   costCurrency: string;
   creatorHandle: string;
@@ -92,6 +105,7 @@ export type PackQueueSource = {
   publishedAt: Date | null;
   paymentDueAt: Date | null;
   clientSubmittedAt: Date | null;
+  paidAt: Date | null;
   campaignId: string;
   campaignName: string;
   clientName: string;
@@ -109,6 +123,7 @@ export type PayoutQueueSource = {
   postUrl: string | null;
   paymentDueAt: Date | null;
   clientSubmittedAt: Date | null;
+  paidAt: Date | null;
   creatorId: string;
   creatorHandle: string;
   contractId: string;
@@ -221,6 +236,7 @@ export function groupPackQueue(items: PackQueueSource[]): PackQueueGroup[] {
       published: progress.published,
       total: progress.total,
       isComplete: progress.isComplete,
+      allPaid: bucket.every((item) => item.paidAt !== null),
       paymentDueAt,
       items: bucket.map((item) => ({
         id: item.id,
@@ -228,6 +244,7 @@ export function groupPackQueue(items: PackQueueSource[]): PackQueueGroup[] {
         status: item.status,
         postUrl: item.postUrl,
         publishedAt: item.publishedAt?.toISOString() ?? null,
+        paidAt: item.paidAt?.toISOString() ?? null,
         costMinor: item.costMinor,
         costCurrency: item.costCurrency,
       })),
@@ -249,12 +266,14 @@ export function payableFromQueues(
   const result: PayoutQueueSource[] = [];
 
   for (const item of submitted) {
+    if (item.paidAt) continue;
     seen.add(item.id);
     result.push(item);
   }
 
   for (const item of packItems) {
     if (seen.has(item.id)) continue;
+    if (item.paidAt) continue;
     if (!completeKeys.has(packKey(item.campaignId, item.creatorId))) continue;
     if (!isLiveDeliverable(item.status)) continue;
     seen.add(item.id);
@@ -315,6 +334,7 @@ function toPayoutSource(item: PackQueueSource): PayoutQueueSource {
     postUrl: item.postUrl,
     paymentDueAt: item.paymentDueAt,
     clientSubmittedAt: item.clientSubmittedAt,
+    paidAt: item.paidAt,
     creatorId: item.creatorId,
     creatorHandle: item.creatorHandle,
     contractId: item.contractId,
