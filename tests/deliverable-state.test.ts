@@ -102,6 +102,7 @@ test("entregado no fija fecha de pago", () => {
 test("volver a sin agendar limpia todas las fechas", () => {
   const result = resolveDeliverableState({
     status: "PENDING",
+    previousStatus: "SCHEDULED",
     scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
     publishedAt: new Date("2026-09-02T00:00:00.000Z"),
     paymentTermDays: 30,
@@ -109,9 +110,27 @@ test("volver a sin agendar limpia todas las fechas", () => {
 
   assert.equal(result.ok, true);
   if (result.ok) {
+    assert.equal(result.value.status, "PENDING");
     assert.equal(result.value.scheduledFor, null);
     assert.equal(result.value.publishedAt, null);
     assert.equal(result.value.paymentDueAt, null);
+  }
+});
+
+test("poner fecha prevista con el estado aún en sin agendar lo agenda", () => {
+  const scheduledFor = new Date("2026-10-01T00:00:00.000Z");
+  const result = resolveDeliverableState({
+    status: "PENDING",
+    previousStatus: "PENDING",
+    scheduledFor,
+    publishedAt: null,
+    paymentTermDays: 30,
+  });
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.status, "SCHEDULED");
+    assert.equal(result.value.scheduledFor, scheduledFor);
   }
 });
 

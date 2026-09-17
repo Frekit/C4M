@@ -93,6 +93,7 @@ export async function updateDeliverable(
 
   const resolved = resolveDeliverableState({
     status: data.status,
+    previousStatus: deliverable.status,
     scheduledFor: data.scheduledFor,
     publishedAt: data.publishedAt,
     paymentTermDays: deliverable.contract.paymentTermDays,

@@ -37,7 +37,40 @@ export type ContentRowData = {
 const inputClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
+function editorKey(item: ContentRowData) {
+  return [
+    item.id,
+    item.status,
+    item.scheduledFor ?? "",
+    item.publishedAt ?? "",
+    item.campaignId ?? "",
+    item.postUrl ?? "",
+  ].join(":");
+}
+
 export function ContentRow({
+  item,
+  campaigns,
+  canEdit,
+}: {
+  item: ContentRowData;
+  campaigns: { id: string; name: string }[];
+  canEdit: boolean;
+}) {
+  // Tras guardar, React 19 resetea el formulario a los defaultValue del
+  // primer render. Remontar la fila hace que el desplegable coincida con
+  // el estado que acaba de guardar el servidor (el distintivo «Agendado»).
+  return (
+    <ContentRowFields
+      key={editorKey(item)}
+      item={item}
+      campaigns={campaigns}
+      canEdit={canEdit}
+    />
+  );
+}
+
+function ContentRowFields({
   item,
   campaigns,
   canEdit,

@@ -35,7 +35,37 @@ export type DeliverableItem = {
 const controlClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
+function editorKey(item: DeliverableItem) {
+  return [
+    item.id,
+    item.status,
+    item.scheduledFor ?? "",
+    item.publishedAt ?? "",
+    item.campaignId ?? "",
+    item.postUrl ?? "",
+  ].join(":");
+}
+
 function DeliverableRow({
+  item,
+  campaigns,
+  canEdit,
+}: {
+  item: DeliverableItem;
+  campaigns: { id: string; name: string }[];
+  canEdit: boolean;
+}) {
+  return (
+    <DeliverableRowFields
+      key={editorKey(item)}
+      item={item}
+      campaigns={campaigns}
+      canEdit={canEdit}
+    />
+  );
+}
+
+function DeliverableRowFields({
   item,
   campaigns,
   canEdit,

@@ -55,6 +55,7 @@ export function countPublished(
 
 export type DeliverableStateInput = {
   status: string;
+  previousStatus?: string;
   scheduledFor: Date | null;
   publishedAt: Date | null;
   paymentTermDays: number;
@@ -72,7 +73,20 @@ export type DeliverableState = {
 export function resolveDeliverableState(
   input: DeliverableStateInput
 ): { ok: true; value: DeliverableState } | { ok: false; error: string } {
-  const { status, scheduledFor, paymentTermDays } = input;
+  const { scheduledFor, paymentTermDays } = input;
+  let { status } = input;
+
+  // Poner una fecha prevista dejando el desplegable en «Sin agendar» equivale
+  // a agendar. Si el usuario elige «Sin agendar» sobre un contenido que ya
+  // estaba agendado, se limpian las fechas (abajo).
+  if (
+    status === DELIVERABLE_STATUS.PENDING &&
+    scheduledFor &&
+    (input.previousStatus ?? DELIVERABLE_STATUS.PENDING) ===
+      DELIVERABLE_STATUS.PENDING
+  ) {
+    status = DELIVERABLE_STATUS.SCHEDULED;
+  }
 
   if (status === DELIVERABLE_STATUS.PUBLISHED) {
     // Si no se indica fecha de publicación, se toma la prevista.
