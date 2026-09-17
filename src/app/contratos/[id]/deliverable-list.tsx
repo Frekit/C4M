@@ -20,8 +20,7 @@ export type DeliverableItem = {
   position: number;
   status: string;
   campaignId: string | null;
-  scheduledFor: string | null;
-  publishedAt: string | null;
+  contentDate: string | null;
   paymentDueAt: string | null;
   postUrl: string | null;
   isLate: boolean;
@@ -37,8 +36,7 @@ function editorKey(item: DeliverableItem) {
   return [
     item.id,
     item.status,
-    item.scheduledFor ?? "",
-    item.publishedAt ?? "",
+    item.contentDate ?? "",
     item.campaignId ?? "",
     item.postUrl ?? "",
   ].join(":");
@@ -77,6 +75,7 @@ function DeliverableRowFields({
     formAction,
     pending,
     state,
+    clientError,
     publishOpen,
     onFieldChange,
     onUrlBlur,
@@ -87,6 +86,13 @@ function DeliverableRowFields({
   const isLive =
     item.status === DELIVERABLE_STATUS.PUBLISHED ||
     item.status === DELIVERABLE_STATUS.SUBMITTED;
+
+  const errorText =
+    clientError ??
+    state?.error ??
+    (state?.fieldErrors
+      ? Object.values(state.fieldErrors).join(" · ")
+      : null);
 
   return (
     <li
@@ -125,7 +131,7 @@ function DeliverableRowFields({
       <form
         ref={formRef}
         action={formAction}
-        className="mt-3 grid gap-3 sm:grid-cols-5"
+        className="mt-3 grid gap-3 sm:grid-cols-4"
       >
         <input type="hidden" name="deliverableId" value={item.id} />
         {item.status === DELIVERABLE_STATUS.SUBMITTED ? (
@@ -164,29 +170,14 @@ function DeliverableRowFields({
         </div>
 
         <div className="grid gap-1.5">
-          <Label htmlFor={`scheduledFor-${item.id}`} className="text-xs">
-            Fecha prevista
+          <Label htmlFor={`contentDate-${item.id}`} className="text-xs">
+            Fecha
           </Label>
           <input
-            id={`scheduledFor-${item.id}`}
+            id={`contentDate-${item.id}`}
             type="date"
-            name="scheduledFor"
-            defaultValue={item.scheduledFor ?? ""}
-            disabled={!canEdit}
-            className={controlClass}
-            onChange={onFieldChange}
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor={`publishedAt-${item.id}`} className="text-xs">
-            Publicado el
-          </Label>
-          <input
-            id={`publishedAt-${item.id}`}
-            type="date"
-            name="publishedAt"
-            defaultValue={item.publishedAt ?? ""}
+            name="contentDate"
+            defaultValue={item.contentDate ?? ""}
             disabled={!canEdit}
             className={controlClass}
             onChange={onFieldChange}
@@ -231,13 +222,8 @@ function DeliverableRowFields({
           />
         </div>
 
-        {state?.error ? (
-          <p className="text-xs text-destructive sm:col-span-5">{state.error}</p>
-        ) : null}
-        {state?.fieldErrors ? (
-          <p className="text-xs text-destructive sm:col-span-5">
-            {Object.values(state.fieldErrors).join(" · ")}
-          </p>
+        {errorText ? (
+          <p className="text-xs text-destructive sm:col-span-4">{errorText}</p>
         ) : null}
       </form>
 
@@ -274,9 +260,9 @@ export function DeliverableList({
         ))}
       </ol>
       <p className="text-xs text-muted-foreground">
-        Publicado es que ya está en redes. Submitted lo marca Finanzas cuando
-        lo ha puesto en la plataforma del cliente, y ahí se puede pagar al
-        perfil.
+        Publicado es que ya está en redes, con enlace y fecha. Submitted lo
+        marca Finanzas cuando lo ha puesto en la plataforma del cliente, y ahí
+        se puede pagar al perfil.
       </p>
     </div>
   );

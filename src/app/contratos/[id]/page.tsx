@@ -287,8 +287,8 @@ export default async function ContractPage({
           <CardDescription>
             {canEditDeliverables
               ? isSigned
-                ? "Cambia fechas, campaña o estado y se guarda solo. Publicar pide confirmación. Submitted lo marca Finanzas desde su panel."
-                : "Puedes agendar fechas y campañas desde ya: se guardan solas. Para marcar un contenido como publicado hace falta el contrato firmado."
+                ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha, y pide confirmación. Submitted lo marca Finanzas desde su panel."
+                : "Puedes poner fecha y campaña desde ya: se guardan solas. Para marcar un contenido como publicado hacen falta el contrato firmado y el enlace."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>
         </CardHeader>
@@ -301,8 +301,7 @@ export default async function ContractPage({
               position: item.position,
               status: item.status,
               campaignId: item.campaignId,
-              scheduledFor: toInputDate(item.scheduledFor),
-              publishedAt: toInputDate(item.publishedAt),
+              contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
               paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
               postUrl: item.postUrl,
               isLate: isDeliverableLate(item),

@@ -35,10 +35,10 @@ export function PublishConfirmDialog({
         <DialogHeader>
           <DialogTitle>¿Confirmas que ya está publicado?</DialogTitle>
           <DialogDescription>
-            Esto registra que el post ya está en redes y calcula la fecha de
-            pago ({formatMoney(costMinor, costCurrency)}). Pagar al perfil no
-            empieza aquí: Finanzas tiene que marcarlo como submitted cuando lo
-            suba a la plataforma del cliente.
+            Esto registra que el post ya está en redes, con el enlace que has
+            puesto, y calcula la fecha de pago ({formatMoney(costMinor, costCurrency)}).
+            Pagar al perfil no empieza aquí: Finanzas tiene que marcarlo como
+            submitted cuando lo suba a la plataforma del cliente.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

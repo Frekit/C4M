@@ -20,8 +20,7 @@ export type ContentRowData = {
   position: number;
   status: string;
   campaignId: string | null;
-  scheduledFor: string | null;
-  publishedAt: string | null;
+  contentDate: string | null;
   paymentDueAt: string | null;
   postUrl: string | null;
   isLate: boolean;
@@ -41,8 +40,7 @@ function editorKey(item: ContentRowData) {
   return [
     item.id,
     item.status,
-    item.scheduledFor ?? "",
-    item.publishedAt ?? "",
+    item.contentDate ?? "",
     item.campaignId ?? "",
     item.postUrl ?? "",
   ].join(":");
@@ -81,6 +79,7 @@ function ContentRowFields({
     formAction,
     pending,
     state,
+    clientError,
     publishOpen,
     onFieldChange,
     onUrlBlur,
@@ -89,6 +88,12 @@ function ContentRowFields({
   } = useDeliverableAutosave(item, canEdit);
 
   const formId = `row-${item.id}`;
+  const errorText =
+    clientError ??
+    state?.error ??
+    (state?.fieldErrors
+      ? Object.values(state.fieldErrors).join(" · ")
+      : null);
 
   return (
     <>
@@ -182,25 +187,12 @@ function ContentRowFields({
         <TableCell>
           <input
             type="date"
-            name="scheduledFor"
+            name="contentDate"
             form={formId}
-            defaultValue={item.scheduledFor ?? ""}
+            defaultValue={item.contentDate ?? ""}
             disabled={!canEdit}
             className={inputClass}
-            aria-label="Fecha prevista"
-            onChange={onFieldChange}
-          />
-        </TableCell>
-
-        <TableCell>
-          <input
-            type="date"
-            name="publishedAt"
-            form={formId}
-            defaultValue={item.publishedAt ?? ""}
-            disabled={!canEdit}
-            className={inputClass}
-            aria-label="Fecha de publicación"
+            aria-label="Fecha"
             onChange={onFieldChange}
           />
         </TableCell>
@@ -253,13 +245,10 @@ function ContentRowFields({
         </TableCell>
       </TableRow>
 
-      {state?.error || state?.fieldErrors ? (
+      {errorText ? (
         <TableRow>
-          <TableCell colSpan={10} className="pt-0">
-            <p className="text-xs text-destructive">
-              {state.error ??
-                Object.values(state.fieldErrors ?? {}).join(" · ")}
-            </p>
+          <TableCell colSpan={9} className="pt-0">
+            <p className="text-xs text-destructive">{errorText}</p>
           </TableCell>
         </TableRow>
       ) : null}

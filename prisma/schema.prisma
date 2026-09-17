@@ -128,7 +128,8 @@ model Deliverable {
   // plataforma del cliente; ahí se puede pagar al perfil.
   status String @default("PENDING")
 
-  // Fecha prevista de publicación: puede estar en el futuro.
+  // Una sola fecha de contenido de cara al usuario. scheduledFor guarda la
+  // fecha (prevista o ya publicada). publishedAt se copia al publicar.
   scheduledFor DateTime?
   publishedAt  DateTime?
   postUrl      String?

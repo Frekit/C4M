@@ -77,7 +77,7 @@ export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
 
 export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
   PENDING: "Todavía sin fecha.",
-  SCHEDULED: "Con fecha prevista de publicación.",
+  SCHEDULED: "Con fecha de publicación.",
   PUBLISHED: "Ya está publicado en redes. Finanzas lo sube a la plataforma del cliente.",
   SUBMITTED:
     "Finanzas ya lo puso en la plataforma del cliente: se puede pagar al perfil.",

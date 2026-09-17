@@ -40,8 +40,7 @@ const updateSchema = z.object({
     DELIVERABLE_STATUS.PUBLISHED,
     DELIVERABLE_STATUS.SUBMITTED,
   ]),
-  scheduledFor: dateField,
-  publishedAt: dateField,
+  contentDate: dateField,
   postUrl: z
     .string()
     .trim()
@@ -60,8 +59,7 @@ export async function updateDeliverable(
     deliverableId: formData.get("deliverableId"),
     campaignId: formData.get("campaignId"),
     status: formData.get("status"),
-    scheduledFor: formData.get("scheduledFor"),
-    publishedAt: formData.get("publishedAt"),
+    contentDate: formData.get("contentDate"),
     postUrl: formData.get("postUrl"),
   });
 
@@ -116,8 +114,8 @@ export async function updateDeliverable(
   const resolved = resolveDeliverableState({
     status: data.status,
     previousStatus: deliverable.status,
-    scheduledFor: data.scheduledFor,
-    publishedAt: data.publishedAt,
+    contentDate: data.contentDate,
+    postUrl: data.postUrl,
     paymentTermDays: deliverable.contract.paymentTermDays,
   });
 

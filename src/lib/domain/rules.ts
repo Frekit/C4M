@@ -67,8 +67,8 @@ export function isPayableDeliverable(status: string): boolean {
 export type DeliverableStateInput = {
   status: string;
   previousStatus?: string;
-  scheduledFor: Date | null;
-  publishedAt: Date | null;
+  contentDate: Date | null;
+  postUrl?: string | null;
   paymentTermDays: number;
 };
 
@@ -79,20 +79,24 @@ export type DeliverableState = {
   paymentDueAt: Date | null;
 };
 
-// Mantiene coherentes estado y fechas, para que no se pueda quedar un contenido
-// publicado sin fecha ni un agendado con fecha de publicación.
+function hasPostUrl(value: string | null | undefined) {
+  return Boolean(value?.trim());
+}
+
+// Mantiene coherentes estado, fecha y enlace. Hay una sola fecha de contenido:
+// si está agendado es la prevista; si ya está en redes, la de publicación.
 export function resolveDeliverableState(
   input: DeliverableStateInput
 ): { ok: true; value: DeliverableState } | { ok: false; error: string } {
-  const { scheduledFor, paymentTermDays } = input;
+  const { contentDate, paymentTermDays } = input;
   let { status } = input;
 
-  // Poner una fecha prevista dejando el desplegable en «Sin agendar» equivale
-  // a agendar. Si el usuario elige «Sin agendar» sobre un contenido que ya
-  // estaba agendado, se limpian las fechas (abajo).
+  // Poner una fecha dejando el desplegable en «Sin agendar» equivale a
+  // agendar. Si el usuario elige «Sin agendar» sobre un contenido que ya
+  // estaba agendado, se limpia la fecha (abajo).
   if (
     status === DELIVERABLE_STATUS.PENDING &&
-    scheduledFor &&
+    contentDate &&
     (input.previousStatus ?? DELIVERABLE_STATUS.PENDING) ===
       DELIVERABLE_STATUS.PENDING
   ) {
@@ -103,31 +107,44 @@ export function resolveDeliverableState(
     status === DELIVERABLE_STATUS.PUBLISHED ||
     status === DELIVERABLE_STATUS.SUBMITTED
   ) {
-    const publishedAt = input.publishedAt ?? scheduledFor;
-
-    if (!publishedAt) {
+    if (!contentDate) {
       return {
         ok: false,
         error:
           status === DELIVERABLE_STATUS.SUBMITTED
-            ? "Para marcarlo como submitted hace falta que esté publicado."
-            : "Para marcarlo como publicado hace falta la fecha de publicación.",
+            ? "Para marcarlo como submitted hace falta la fecha."
+            : "Para marcarlo como publicado hace falta la fecha.",
       };
     }
 
-    const paymentDueAt = new Date(publishedAt);
+    if (!hasPostUrl(input.postUrl)) {
+      return {
+        ok: false,
+        error:
+          status === DELIVERABLE_STATUS.SUBMITTED
+            ? "Para marcarlo como submitted hace falta el enlace del contenido."
+            : "Para marcarlo como publicado hace falta el enlace del contenido.",
+      };
+    }
+
+    const paymentDueAt = new Date(contentDate);
     paymentDueAt.setUTCDate(paymentDueAt.getUTCDate() + paymentTermDays);
 
     return {
       ok: true,
-      value: { status, scheduledFor, publishedAt, paymentDueAt },
+      value: {
+        status,
+        scheduledFor: contentDate,
+        publishedAt: contentDate,
+        paymentDueAt,
+      },
     };
   }
 
-  if (status === DELIVERABLE_STATUS.SCHEDULED && !scheduledFor) {
+  if (status === DELIVERABLE_STATUS.SCHEDULED && !contentDate) {
     return {
       ok: false,
-      error: "Para agendarlo hace falta una fecha prevista.",
+      error: "Para agendarlo hace falta una fecha.",
     };
   }
 
@@ -145,7 +162,12 @@ export function resolveDeliverableState(
 
   return {
     ok: true,
-    value: { status, scheduledFor, publishedAt: null, paymentDueAt: null },
+    value: {
+      status,
+      scheduledFor: contentDate,
+      publishedAt: null,
+      paymentDueAt: null,
+    },
   };
 }
 

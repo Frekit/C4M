@@ -30,7 +30,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 1. **Registrar influencer** (`/creators/nuevo`): enlace de Instagram, contenidos pactados, precio de venta por contenido en USD, coste por contenido en la moneda del creator y plazo de pago desde la publicación. Al guardar se crea el contrato en borrador con un contenido por cada pieza acordada.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
-4. **Marcar contenidos publicados**: el post ya está en redes. Se calcula la fecha de pago (publicación + plazo). Sin contrato firmado no se puede marcar.
+4. **Marcar contenidos publicados**: hace falta el enlace del post y una sola fecha. Se calcula la fecha de pago (publicación + plazo). Sin contrato firmado no se puede marcar.
 5. **Finanzas** (`/finanzas`): coge los enlaces publicados por campaña, los pone en la plataforma del cliente y los marca como **submitted**. A partir de ahí se puede pagar al perfil (datos bancarios incluidos).
 6. **Ampliar o renovar**: si el coste del creator no cambia, se crea un **anexo** que referencia al contrato original. Si cambia el coste, la moneda o el plazo, se crea una **renovación**, que es un contrato completo nuevo. Ambos quedan enlazados en la misma cadena del creator.
 

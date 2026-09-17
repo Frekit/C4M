@@ -13,8 +13,7 @@ test("agendar admite fechas futuras y no devenga nada", () => {
 
   const result = resolveDeliverableState({
     status: "SCHEDULED",
-    scheduledFor: future,
-    publishedAt: null,
+    contentDate: future,
     paymentTermDays: 30,
   });
 
@@ -29,24 +28,26 @@ test("agendar admite fechas futuras y no devenga nada", () => {
 test("agendar sin fecha no vale", () => {
   const result = resolveDeliverableState({
     status: "SCHEDULED",
-    scheduledFor: null,
-    publishedAt: null,
+    contentDate: null,
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, false);
 });
 
-test("publicar calcula el vencimiento desde la fecha de publicación", () => {
+test("publicar calcula el vencimiento desde la fecha", () => {
+  const contentDate = new Date("2026-09-05T00:00:00.000Z");
   const result = resolveDeliverableState({
     status: "PUBLISHED",
-    scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
-    publishedAt: new Date("2026-09-05T00:00:00.000Z"),
+    contentDate,
+    postUrl: "https://instagram.com/p/abc",
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, true);
   if (result.ok) {
+    assert.equal(result.value.scheduledFor, contentDate);
+    assert.equal(result.value.publishedAt, contentDate);
     assert.equal(
       result.value.paymentDueAt?.toISOString(),
       "2026-10-05T00:00:00.000Z"
@@ -54,52 +55,46 @@ test("publicar calcula el vencimiento desde la fecha de publicación", () => {
   }
 });
 
-test("si se publica sin fecha, se toma la prevista", () => {
+test("publicar sin fecha se rechaza", () => {
   const result = resolveDeliverableState({
     status: "PUBLISHED",
-    scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
-    publishedAt: null,
-    paymentTermDays: 7,
-  });
-
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(
-      result.value.publishedAt?.toISOString(),
-      "2026-09-01T00:00:00.000Z"
-    );
-    assert.equal(
-      result.value.paymentDueAt?.toISOString(),
-      "2026-09-08T00:00:00.000Z"
-    );
-  }
-});
-
-test("publicar sin ninguna fecha se rechaza", () => {
-  const result = resolveDeliverableState({
-    status: "PUBLISHED",
-    scheduledFor: null,
-    publishedAt: null,
+    contentDate: null,
+    postUrl: "https://instagram.com/p/abc",
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, false);
 });
 
-test("submitted conserva la publicación y deja pagar", () => {
-  const publishedAt = new Date("2026-09-05T00:00:00.000Z");
+test("publicar sin enlace se rechaza", () => {
+  const result = resolveDeliverableState({
+    status: "PUBLISHED",
+    contentDate: new Date("2026-09-05T00:00:00.000Z"),
+    postUrl: "",
+    paymentTermDays: 30,
+  });
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.match(result.error, /enlace/);
+  }
+});
+
+test("submitted conserva la fecha unificada y deja pagar", () => {
+  const contentDate = new Date("2026-09-05T00:00:00.000Z");
   const result = resolveDeliverableState({
     status: "SUBMITTED",
     previousStatus: "PUBLISHED",
-    scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
-    publishedAt,
+    contentDate,
+    postUrl: "https://instagram.com/p/abc",
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(result.value.status, "SUBMITTED");
-    assert.equal(result.value.publishedAt, publishedAt);
+    assert.equal(result.value.publishedAt, contentDate);
+    assert.equal(result.value.scheduledFor, contentDate);
     assert.equal(
       result.value.paymentDueAt?.toISOString(),
       "2026-10-05T00:00:00.000Z"
@@ -107,12 +102,22 @@ test("submitted conserva la publicación y deja pagar", () => {
   }
 });
 
-test("volver a sin agendar limpia todas las fechas", () => {
+test("submitted sin enlace se rechaza", () => {
+  const result = resolveDeliverableState({
+    status: "SUBMITTED",
+    previousStatus: "PUBLISHED",
+    contentDate: new Date("2026-09-05T00:00:00.000Z"),
+    paymentTermDays: 30,
+  });
+
+  assert.equal(result.ok, false);
+});
+
+test("volver a sin agendar limpia la fecha", () => {
   const result = resolveDeliverableState({
     status: "PENDING",
     previousStatus: "SCHEDULED",
-    scheduledFor: new Date("2026-09-01T00:00:00.000Z"),
-    publishedAt: new Date("2026-09-02T00:00:00.000Z"),
+    contentDate: new Date("2026-09-01T00:00:00.000Z"),
     paymentTermDays: 30,
   });
 
@@ -125,20 +130,19 @@ test("volver a sin agendar limpia todas las fechas", () => {
   }
 });
 
-test("poner fecha prevista con el estado aún en sin agendar lo agenda", () => {
-  const scheduledFor = new Date("2026-10-01T00:00:00.000Z");
+test("poner fecha con el estado aún en sin agendar lo agenda", () => {
+  const contentDate = new Date("2026-10-01T00:00:00.000Z");
   const result = resolveDeliverableState({
     status: "PENDING",
     previousStatus: "PENDING",
-    scheduledFor,
-    publishedAt: null,
+    contentDate,
     paymentTermDays: 30,
   });
 
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(result.value.status, "SCHEDULED");
-    assert.equal(result.value.scheduledFor, scheduledFor);
+    assert.equal(result.value.scheduledFor, contentDate);
   }
 });
 

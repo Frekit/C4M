@@ -85,7 +85,7 @@ export default async function ContentsPage({
     where.status = filters.estado;
   }
 
-  // El rango de fechas mira la fecha prevista, o la de publicación si ya está.
+  // El rango mira la fecha del contenido (prevista o ya publicada).
   if (filters.desde || filters.hasta) {
     const range: Prisma.DateTimeNullableFilter = {};
     if (filters.desde) range.gte = new Date(`${filters.desde}T00:00:00.000Z`);
@@ -95,7 +95,9 @@ export default async function ContentsPage({
   }
 
   if (filters.retrasados === "1") {
-    where.status = { not: DELIVERABLE_STATUS.PUBLISHED };
+    where.status = {
+      notIn: [DELIVERABLE_STATUS.PUBLISHED, DELIVERABLE_STATUS.SUBMITTED],
+    };
     where.scheduledFor = { lt: new Date() };
   }
 
@@ -122,8 +124,7 @@ export default async function ContentsPage({
     position: item.position,
     status: item.status,
     campaignId: item.campaignId,
-    scheduledFor: toInputDate(item.scheduledFor),
-    publishedAt: toInputDate(item.publishedAt),
+    contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
     paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
     postUrl: item.postUrl,
     isLate: isDeliverableLate(item),
@@ -209,8 +210,7 @@ export default async function ContentsPage({
           <FilterIcon className="size-4 text-muted-foreground" />
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            El rango de fechas mira la fecha prevista o, si ya está publicado, la
-            de publicación.
+            El rango de fechas mira la fecha del contenido.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -357,8 +357,7 @@ export default async function ContentsPage({
                   <TableHead>Creator</TableHead>
                   <TableHead className="min-w-40">Campaña</TableHead>
                   <TableHead className="min-w-36">Estado</TableHead>
-                  <TableHead className="min-w-36">Fecha prevista</TableHead>
-                  <TableHead className="min-w-36">Publicado</TableHead>
+                  <TableHead className="min-w-36">Fecha</TableHead>
                   <TableHead className="min-w-48">Enlace</TableHead>
                   <TableHead>Coste</TableHead>
                   <TableHead>Pago previsto</TableHead>
@@ -381,9 +380,9 @@ export default async function ContentsPage({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Los cambios se guardan solos. Publicado es que ya está en redes.
-        Submitted lo marca Finanzas al subirlo a la plataforma del cliente, y
-        ahí se puede pagar al perfil.
+        Los cambios se guardan solos. Para marcar como publicado hacen falta
+        el enlace y la fecha. Submitted lo marca Finanzas al subirlo a la
+        plataforma del cliente, y ahí se puede pagar al perfil.
       </p>
     </main>
   );

@@ -10,8 +10,7 @@ export type DeliverableSnapshot = {
   id: string;
   status: string;
   campaignId: string | null;
-  scheduledFor: string | null;
-  publishedAt: string | null;
+  contentDate: string | null;
   postUrl: string | null;
 };
 
@@ -21,8 +20,7 @@ function readForm(form: HTMLFormElement): DeliverableSnapshot {
     id: String(data.get("deliverableId") ?? ""),
     status: String(data.get("status") ?? ""),
     campaignId: String(data.get("campaignId") ?? "") || null,
-    scheduledFor: String(data.get("scheduledFor") ?? "") || null,
-    publishedAt: String(data.get("publishedAt") ?? "") || null,
+    contentDate: String(data.get("contentDate") ?? "") || null,
     postUrl: String(data.get("postUrl") ?? "") || null,
   };
 }
@@ -32,10 +30,32 @@ function isDirty(form: HTMLFormElement, item: DeliverableSnapshot) {
   return (
     current.status !== item.status ||
     current.campaignId !== item.campaignId ||
-    current.scheduledFor !== (item.scheduledFor || null) ||
-    current.publishedAt !== (item.publishedAt || null) ||
+    current.contentDate !== (item.contentDate || null) ||
     current.postUrl !== (item.postUrl || null)
   );
+}
+
+function publishBlockReason(form: HTMLFormElement) {
+  const current = readForm(form);
+
+  if (!current.postUrl) {
+    return "Para marcarlo como publicado hay que poner antes el enlace del contenido.";
+  }
+
+  try {
+    const url = new URL(current.postUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "El enlace del contenido no es válido.";
+    }
+  } catch {
+    return "El enlace del contenido no es válido.";
+  }
+
+  if (!current.contentDate) {
+    return "Para marcarlo como publicado hay que poner antes la fecha.";
+  }
+
+  return null;
 }
 
 export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boolean) {
@@ -45,6 +65,7 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
   const confirmingPublish = useRef(false);
   const pendingRef = useRef(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState<
     DeliverableActionResult | null,
     FormData
@@ -95,6 +116,12 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     submitNow();
   }, [pending]);
 
+  useEffect(() => {
+    if (!state || state.ok || !confirmingPublish.current) return;
+    confirmingPublish.current = false;
+    restoreStatus();
+  }, [state]);
+
   function restoreStatus() {
     const select = formRef.current?.elements.namedItem("status");
     if (select instanceof HTMLSelectElement) {
@@ -107,6 +134,7 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
   ) {
     if (!canEdit) return;
     const { name, value } = event.target;
+    setClientError(null);
 
     if (name === "postUrl") return;
 
@@ -116,6 +144,15 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
       item.status !== DELIVERABLE_STATUS.PUBLISHED
     ) {
       clearTimer();
+      const form = formRef.current;
+      const blocked = form
+        ? publishBlockReason(form)
+        : "No se puede marcar como publicado.";
+      if (blocked) {
+        restoreStatus();
+        setClientError(blocked);
+        return;
+      }
       setPublishOpen(true);
       return;
     }
@@ -128,10 +165,20 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
   }
 
   function confirmPublish() {
+    const form = formRef.current;
+    if (!form) return;
+
+    const blocked = publishBlockReason(form);
+    if (blocked) {
+      restoreStatus();
+      setPublishOpen(false);
+      setClientError(blocked);
+      return;
+    }
+
     confirmingPublish.current = true;
     clearTimer();
-    const form = formRef.current;
-    const select = form?.elements.namedItem("status");
+    const select = form.elements.namedItem("status");
     if (select instanceof HTMLSelectElement) {
       select.value = DELIVERABLE_STATUS.PUBLISHED;
     }
@@ -140,7 +187,6 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
       queuedRef.current = true;
       return;
     }
-    if (!form) return;
     formAction(new FormData(form));
   }
 
@@ -158,6 +204,7 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     formAction,
     pending,
     state,
+    clientError,
     publishOpen,
     onFieldChange,
     onUrlBlur,

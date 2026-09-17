@@ -141,7 +141,7 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
                   <th className="p-2 font-medium">Creator</th>
                   <th className="p-2 font-medium">Contrato</th>
                   <th className="p-2 font-medium">Enlace</th>
-                  <th className="p-2 font-medium">Publicado</th>
+                  <th className="p-2 font-medium">Fecha</th>
                   <th className="p-2 font-medium text-right">Coste</th>
                 </tr>
               </thead>
