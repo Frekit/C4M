@@ -53,7 +53,12 @@ export function ContractEconomicsFields({
     defaults?.costCurrency ?? "EUR"
   );
   const [costPrice, setCostPrice] = useState(defaults?.costPerContent ?? "");
-  const [manualFx, setManualFx] = useState("");
+  const [manualFx, setManualFx] = useState(() => {
+    const currency = defaults?.costCurrency ?? "EUR";
+    if (currency === "USD") return "";
+    const stored = fxRates[currency];
+    return stored ? String(stored) : "";
+  });
   const [paymentTerm, setPaymentTerm] = useState(
     String(defaults?.paymentTermDays ?? 30)
   );
@@ -143,7 +148,17 @@ export function ContractEconomicsFields({
                 id="costCurrency"
                 name="costCurrency"
                 value={costCurrency}
-                onChange={(event) => setCostCurrency(event.target.value)}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setCostCurrency(next);
+                  setManualFx(
+                    next === "USD"
+                      ? ""
+                      : fxRates[next]
+                        ? String(fxRates[next])
+                        : ""
+                  );
+                }}
                 disabled={lockCost}
                 required
                 className="h-8 w-full appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
@@ -192,6 +207,7 @@ export function ContractEconomicsFields({
               id="fxUnitsPerUsd"
               name="fxUnitsPerUsd"
               inputMode="decimal"
+              autoComplete="off"
               placeholder={storedRate ? String(storedRate) : "Escríbelo"}
               value={manualFx}
               onChange={(event) => setManualFx(event.target.value)}

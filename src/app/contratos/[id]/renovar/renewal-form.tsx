@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FormErrorSummary } from "@/components/form-error-summary";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,12 +69,19 @@ export function RenewalForm({
       <input type="hidden" name="parentId" value={parentId} />
       <input type="hidden" name="mode" value={mode} />
 
-      {state?.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>No se ha podido crear</AlertTitle>
-          <AlertDescription>{state.error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <FormErrorSummary
+        error={state?.error}
+        fieldErrors={state?.fieldErrors}
+        labels={{
+          campaignId: "Campaña",
+          deliverableCount: "Contenidos",
+          salePricePerContent: "Precio de venta",
+          costCurrency: "Moneda",
+          costPerContent: "Coste",
+          fxUnitsPerUsd: "Tipo de cambio",
+          paymentTermDays: "Plazo de pago",
+        }}
+      />
 
       <Card>
         <CardHeader>

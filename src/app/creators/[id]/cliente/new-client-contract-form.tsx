@@ -34,6 +34,7 @@ const FIELD_LABELS: Record<string, string> = {
   salePricePerContent: "Precio de venta",
   costCurrency: "Moneda",
   costPerContent: "Coste",
+  fxUnitsPerUsd: "Tipo de cambio",
   paymentTermDays: "Plazo de pago",
 };
 

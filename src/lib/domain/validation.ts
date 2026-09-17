@@ -33,7 +33,9 @@ export function instagramUrlFor(handle: string): string {
 // desmarcada, bloque de Wise/IVA oculto, etc. Zod 4 lo convierte en
 // «Invalid input» y React 19, al fallar la acción, resetea el formulario.
 function fromFormString(value: unknown): string {
-  return typeof value === "string" ? value : "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
 }
 
 function fromFormFlag(value: unknown): boolean {
@@ -61,14 +63,16 @@ const optionalEmail = formString.pipe(
 
 const formFlag = z.unknown().transform(fromFormFlag);
 
-const amountString = z
-  .string()
-  .trim()
-  .min(1, "Obligatorio")
-  .refine(
-    (value) => /^\d+([.,]\d{1,3})?$/.test(value.replace(/\s/g, "")),
-    "Escribe un número, con punto o coma para los decimales"
-  );
+const amountString = formString.pipe(
+  z
+    .string()
+    .trim()
+    .min(1, "Obligatorio")
+    .refine(
+      (value) => /^\d+([.,]\d{1,3})?$/.test(value.replace(/\s/g, "")),
+      "Escribe un número, con punto o coma para los decimales"
+    )
+);
 
 const currencyCode = z
   .string()
@@ -76,75 +80,103 @@ const currencyCode = z
   .toUpperCase()
   .refine(isSupportedCurrency, "Moneda no soportada");
 
-// Vacío o ausente (USD oculta el input) = usar el cambio guardado.
-export const optionalFxRate = formString.pipe(
-  z
-    .string()
-    .trim()
-    .transform((value) =>
-      value === "" ? null : Number(value.replace(",", "."))
-    )
-    .refine(
-      (value) => value === null || (Number.isFinite(value) && value > 0),
-      "El tipo de cambio tiene que ser mayor que cero"
-    )
-);
+const formCurrency = formString.pipe(currencyCode);
 
-export const createCreatorContractSchema = z.object({
-  instagram: z
-    .string()
-    .trim()
-    .min(1, "Pon el enlace de Instagram o el handle")
-    .refine((value) => extractInstagramHandle(value) !== null, "Enlace no válido"),
-  displayName: z.string().trim().max(120).optional().or(z.literal("")),
-  contactEmail: z
-    .string()
-    .trim()
-    .email("Email no válido")
-    .optional()
-    .or(z.literal("")),
-  deliverableCount: z.coerce
+const formCount = formString.pipe(
+  z.coerce
     .number()
     .int("Tiene que ser un número entero")
     .min(1, "Al menos un contenido")
-    .max(365, "Demasiados contenidos para un solo contrato"),
+    .max(365, "Demasiados contenidos para un solo contrato")
+);
+
+const formPaymentTerm = formString.pipe(
+  z.coerce
+    .number()
+    .int("Tiene que ser un número entero")
+    .min(0, "No puede ser negativo")
+    .max(365, "Máximo 365 días")
+);
+
+const formClientId = formString.pipe(
+  z.string().trim().min(1, "Elige el cliente")
+);
+
+// Vacío, ausente (USD oculta el input) o un número ya parseado = usar
+// ese valor, o el cambio guardado si no hay ninguno.
+export const optionalFxRate = z.unknown().transform((raw, ctx) => {
+  const text =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? String(raw)
+      : typeof raw === "string"
+        ? raw.trim()
+        : "";
+
+  if (text === "") return null;
+
+  const parsed = Number(text.replace(",", "."));
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: "El tipo de cambio tiene que ser mayor que cero",
+    });
+    return z.NEVER;
+  }
+
+  return parsed;
+});
+
+export const createCreatorContractSchema = z.object({
+  instagram: formString.pipe(
+    z
+      .string()
+      .trim()
+      .min(1, "Pon el enlace de Instagram o el handle")
+      .refine(
+        (value) => extractInstagramHandle(value) !== null,
+        "Enlace no válido"
+      )
+  ),
+  displayName: optionalText(120),
+  contactEmail: optionalEmail,
+  deliverableCount: formCount,
   salePricePerContent: amountString,
-  costCurrency: currencyCode,
+  costCurrency: formCurrency,
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
-  paymentTermDays: z.coerce
-    .number()
-    .int()
-    .min(0, "No puede ser negativo")
-    .max(365, "Máximo 365 días"),
-  notes: z.string().trim().max(2000).optional().or(z.literal("")),
-  clientId: z.string().trim().min(1, "Elige el cliente"),
-  campaignId: z.string().trim().optional().or(z.literal("")),
+  paymentTermDays: formPaymentTerm,
+  notes: optionalText(2000),
+  clientId: formClientId,
+  campaignId: optionalText(80),
 });
 
 export const newClientContractSchema = z.object({
-  creatorId: z.string().min(1),
-  clientId: z.string().trim().min(1, "Elige el cliente"),
-  campaignId: z.string().trim().optional().or(z.literal("")),
-  deliverableCount: z.coerce.number().int().min(1).max(365),
+  creatorId: formString.pipe(z.string().min(1, "Falta el creator")),
+  clientId: formClientId,
+  campaignId: optionalText(80),
+  deliverableCount: formCount,
   salePricePerContent: amountString,
-  costCurrency: currencyCode,
+  costCurrency: formCurrency,
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
-  paymentTermDays: z.coerce.number().int().min(0).max(365),
-  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  paymentTermDays: formPaymentTerm,
+  notes: optionalText(2000),
 });
 
 export const renewalSchema = z.object({
-  mode: z.enum(["ANNEX", "RENEWAL"]),
-  deliverableCount: z.coerce.number().int().min(1).max(365),
+  mode: formString.pipe(
+    z.enum(["ANNEX", "RENEWAL"], {
+      error: "Elige anexo o renovación",
+    })
+  ),
+  deliverableCount: formCount,
   salePricePerContent: amountString,
-  costCurrency: currencyCode,
+  costCurrency: formCurrency,
   costPerContent: amountString,
   fxUnitsPerUsd: optionalFxRate,
-  paymentTermDays: z.coerce.number().int().min(0).max(365),
-  notes: z.string().trim().max(2000).optional().or(z.literal("")),
-  campaignId: z.string().trim().optional().or(z.literal("")),
+  paymentTermDays: formPaymentTerm,
+  notes: optionalText(2000),
+  campaignId: optionalText(80),
 });
 
 export const sendSignatureSchema = z.object({
