@@ -1,43 +1,35 @@
 # Neon
 
-Proyecto: `nameless-salad-98358301` (eu-west-2, Postgres 18). Política en `neon.ts`. Skills en `.agents/skills/neon*`. MCP: `.cursor/mcp.json` → `https://mcp.neon.tech/mcp`.
+Proyecto **Firebit Agentic** (`nameless-salad-98358301`), org `org-empty-math-44187506`, región `aws-eu-west-2`, Postgres 18. El directorio está enlazado: `.neon` apunta a la rama `production`. `neon.ts` es `defineConfig({})` y `neon deploy` no cambió nada (solo Postgres).
 
-Local sigue en SQLite (`file:./dev.db`). La URL de production vive en `.env.neon.production` (gitignorado, modo `600`). No la copies al `.env` del Cloud Agent ni al grupo Preview de Vercel.
+| Rama | Id | Uso | Fichero local (gitignorado) |
+| --- | --- | --- | --- |
+| `production` | `br-rough-star-za0l7kqw` | Vercel Production | `.env.neon.production` |
+| `pre` | `br-patient-credit-zaa91hu5` | Preview / ensayo | `.env.neon.pre` |
 
-Comprobado contra el pooler: usuario `neondb_owner`, base `neondb`, esquema `public` vacío (solo `plpgsql`). `neon inspect db table-sizes --db-url` y un `SELECT` de catálogo responden. No se ha corrido `prisma migrate` ni seed contra esta rama.
+Local sigue en SQLite (`file:./dev.db`). Esas URLs no van al `.env` del Cloud Agent.
 
-Esta región no tiene Object Storage / Functions / AI Gateway (solo `aws-us-east-2`, `aws-us-east-1`, `aws-eu-central-1`, `aws-ap-southeast-1`). `neon.ts` se queda en `defineConfig({})`.
+`public` está vacío: no se ha corrido `prisma migrate` ni seed. Esta región no tiene Object Storage / Functions / AI Gateway.
 
-## URLs
+## CLI
 
-En `.env.neon.production`:
-
-| Variable | Uso |
-| --- | --- |
-| `DATABASE_URL` | Pooler, tal cual la console (`sslmode=require&channel_binding=require`) |
-| `DATABASE_URL_POOLED` | Misma host pooler, `sslmode=require` (Prisma / node-pg) |
-| `DATABASE_URL_UNPOOLED` | Host sin `-pooler`, para `prisma migrate` |
-
-Vercel Production: `DATABASE_URL` = pooled. Preview: otra rama, otra URL.
-
-## CLI (link / deploy)
-
-Hace falta `neon login` en el portátil o `NEON_API_KEY`. La URL de Postgres no autentica el API:
+El perfil `local` del CLI guarda la API key en `~/.config/neon` (fuera del repo). En esta VM también está `NEON_API_KEY` en `.env.neon.production`.
 
 ```bash
-npm i -g neon@latest
-neon login
+export NEON_API_KEY=…   # o neon profile + NEON_PROFILE=local
 neon link --project-id nameless-salad-98358301 --branch production -y --no-env-pull
 neon deploy --no-env-pull
-neon checkout pre --create --no-env-pull
-neon env pull --file .env.neon.pre
+neon env pull --file .env.neon.production --service postgres
+neon env pull --branch pre --file .env.neon.pre --service postgres
 ```
 
-`--no-env-pull` no pisa el SQLite local.
+`--no-env-pull` en `link` / `deploy` / `checkout` no pisa el SQLite.
 
-## Comprobar la base (sin API)
+## Comprobar
 
 ```bash
-set -a && source .env.neon.production && set +a
-neon inspect db table-sizes --db-url "$DATABASE_URL_POOLED"
+neon me
+neon status
+neon branches list
+neon inspect db table-sizes --db-url "$DATABASE_URL"
 ```

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "Neon": {
-      "url": "https://mcp.neon.tech/mcp"
+      "url": "https://mcp.neon.tech/mcp?projectId=nameless-salad-98358301"
     }
   }
 }

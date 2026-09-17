@@ -48,15 +48,7 @@ No reutilices Client Secret. Un tenant `*-dev` y otro de prod es lo más limpio.
 
 Local: `file:./dev.db`. Pre/prod: Neon (proyecto `nameless-salad-98358301`) o `docker compose up -d db`.
 
-El CLI de Neon y `neon.ts` viven en este repo. La URL de production ya está en `.env.neon.production` (gitignorado; la base está vacía). El Cloud Agent **no** abre el navegador de Álvaro: `neon link` / `neon deploy` / crear la rama `pre` piden `neon login` en el portátil o `NEON_API_KEY`. Después:
-
-```bash
-neon link --project-id nameless-salad-98358301 --branch production -y --no-env-pull
-neon deploy --no-env-pull
-neon env pull --file .env.neon.production
-```
-
-`--no-env-pull` evita pisar el `DATABASE_URL` de SQLite en `.env`. La URL de Neon va a un fichero aparte (gitignorado) y a las variables de Vercel. Detalle en [neon.md](neon.md).
+El CLI está autenticado y el repo enlazado a `nameless-salad-98358301`. Hay dos ramas: `production` y `pre`. Las URLs están en `.env.neon.production` y `.env.neon.pre` (gitignoradas). El `.env` local sigue en SQLite. Detalle en [neon.md](neon.md).
 
 Neon con branch por preview es el hueco bueno para vibe coding: cada PR rompe su copia, no Higgsfield. El `provider` de Prisma en este repo sigue en `sqlite` para no tumbar el desarrollo. Antes de la primera campaña en pre, cambia a `postgresql` y regenera migraciones como indica [production.md](production.md).
 
