@@ -28,6 +28,7 @@ export default async function LoginPage({
     motivo?: string;
     error?: string;
     email?: string;
+    detalle?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -61,6 +62,20 @@ export default async function LoginPage({
           <AlertTitle>Ese correo no está invitado</AlertTitle>
           <AlertDescription>
             Pide a un administrador que te invite y abre el enlace que recibas.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {params.error === "auth0" ? (
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertTitle>Auth0 no pudo completar el acceso</AlertTitle>
+          <AlertDescription>
+            {params.detalle?.includes("state")
+              ? "La sesión de login no coincidió. Entra por http://localhost:43127 (no por 127.0.0.1) y vuelve a intentarlo."
+              : params.detalle
+                ? params.detalle
+                : "Vuelve a entrar. Si persiste, revisa en Auth0 las Allowed Callback URLs: http://localhost:43127/auth/callback."}
           </AlertDescription>
         </Alert>
       ) : null}

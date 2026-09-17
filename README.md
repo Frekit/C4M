@@ -77,6 +77,8 @@ En el dashboard de Auth0:
 - Allowed Logout URLs: `http://localhost:43127`
 - Allowed Web Origins: `http://localhost:43127`
 
+Entra por `http://localhost:43127`, no por `127.0.0.1`: Auth0 trata esos hosts como distintos y el callback falla.
+
 `AUTH_MODE=local` fuerza el modo local aunque existan credenciales, útil mientras el tenant no está configurado. En modo local basta el correo de una cuenta invitada, sin contraseña; **no es apto para producción**.
 
 Con Auth0 activo, la identidad la da Auth0 y el rol la base de datos: una cuenta válida en Auth0 sin invitación acaba en `/sin-acceso`.

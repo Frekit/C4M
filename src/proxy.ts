@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getAuth0Client } from "./lib/auth/auth0";
 import { isAuth0Active } from "./lib/auth/config";
+import { rewriteLoopbackUrl } from "./lib/auth/loopback";
 import {
   LOCAL_SESSION_COOKIE,
   parseLocalIdentity,
@@ -19,7 +20,33 @@ function isPublicPath(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  const loopback = rewriteLoopbackUrl(
+    request.nextUrl,
+    request.headers.get("host")
+  );
+  if (loopback) {
+    const href = loopback.href;
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${href}"><title>Redirigiendo a localhost</title></head><body><p>Auth0 solo acepta <a href="${href}">localhost</a>, no 127.0.0.1.</p><script>location.replace(${JSON.stringify(href)})</script></body></html>`;
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+
   const { pathname } = request.nextUrl;
+
+  if (pathname === "/auth/callback") {
+    const oauthError = request.nextUrl.searchParams.get("error");
+    if (oauthError) {
+      console.error("[auth0] callback query", {
+        error: oauthError,
+        description: request.nextUrl.searchParams.get("error_description"),
+      });
+    }
+  }
 
   if (isAuth0Active()) {
     const auth0 = getAuth0Client();
