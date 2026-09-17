@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Neon: puntero local de proyecto/rama (sin secretos). Las credenciales viven en ~/.config/neon
+.neon
+
 # base de datos local de desarrollo
 /prisma/*.db
 /prisma/*.db-journal

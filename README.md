@@ -101,7 +101,7 @@ El vibe coding no debe apuntar a la campaña real. Mismo código, secretos disti
 
 La parte **pública** es `/firmar/[token]` y `GET /api/salud`. El resto pide invitación.
 
-Plantillas: `.env.example`, `.env.pre.example`, `.env.prod.example`. Checklist en [docs/environments.md](docs/environments.md). `npm run check:env` valida el combo.
+Plantillas: `.env.example`, `.env.pre.example`, `.env.prod.example`. Checklist en [docs/environments.md](docs/environments.md). Postgres de pre/prod: proyecto Neon `nameless-salad-98358301` — [docs/neon.md](docs/neon.md). `npm run check:env` valida el combo.
 
 ## Migrar a PostgreSQL
 
