@@ -138,6 +138,8 @@ model Deliverable {
   scheduledFor DateTime?
   publishedAt  DateTime?
   postUrl      String?
+  // Clave normalizada (sin www, utm, /reel vs /p). Única en todo el sistema.
+  postUrlKey   String? @unique
   paymentDueAt DateTime?
   // Cuándo Finanzas lo marcó como subido a la plataforma del cliente.
   clientSubmittedAt DateTime?
@@ -146,6 +148,10 @@ model Deliverable {
   platformSubmitErrorAt DateTime?
   // Cuándo Finanzas lo marcó como pagado al perfil. Sale de la cola de pagos.
   paidAt DateTime?
+  paidByEmail String?
+  // Importe y moneda congelados al marcar el lote (no se recalcan si cambia el contrato).
+  paidMinor Int?
+  paidCurrency String?
   notes        String?
 
   createdAt DateTime @default(now())

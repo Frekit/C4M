@@ -303,6 +303,9 @@ export async function loadFinanceQueues(filters: FinanceFilters = {}) {
         id: true,
         position: true,
         paidAt: true,
+        paidByEmail: true,
+        paidMinor: true,
+        paidCurrency: true,
         contractId: true,
         contract: {
           select: {
@@ -490,8 +493,9 @@ export async function loadFinanceQueues(filters: FinanceFilters = {}) {
           id: item.id,
           position: item.position,
           paidAt: item.paidAt.toISOString(),
-          costMinor: item.contract.costMinorPerContent,
-          costCurrency: item.contract.costCurrency,
+          paidByEmail: item.paidByEmail,
+          costMinor: item.paidMinor ?? item.contract.costMinorPerContent,
+          costCurrency: item.paidCurrency ?? item.contract.costCurrency,
           creatorHandle: item.contract.creator.handle,
           contractCode: item.contract.code,
           contractId: item.contractId,

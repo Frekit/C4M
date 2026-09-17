@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import type { AppUser } from "@/lib/auth/types";
 import { requirePermission } from "@/lib/auth/session";
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { syncContractCompletion } from "@/lib/domain/contracts";
@@ -23,6 +25,10 @@ import {
   resolveDeliverableState,
 } from "@/lib/domain/rules";
 import { syncPackSettlement } from "@/lib/domain/pack-sync";
+import {
+  duplicatePostUrlError,
+  postUrlKey,
+} from "@/lib/domain/post-url";
 import { fieldErrorsFrom } from "@/lib/domain/validation";
 
 export type DeliverableActionResult = {
@@ -165,6 +171,21 @@ export async function updateDeliverable(
     return { ok: false, error: resolved.error };
   }
 
+  const nextPostUrl = data.postUrl || null;
+  const nextPostUrlKey = postUrlKey(nextPostUrl);
+  if (nextPostUrlKey) {
+    const taken = await prisma.deliverable.findFirst({
+      where: { postUrlKey: nextPostUrlKey, id: { not: deliverable.id } },
+      include: {
+        contract: { include: { creator: { select: { handle: true } } } },
+      },
+    });
+    if (taken) {
+      const message = duplicatePostUrlError(taken);
+      return { ok: false, error: message, fieldErrors: { postUrl: message } };
+    }
+  }
+
   const statusChanged = resolved.value.status !== deliverable.status;
   const campaignChanged = nextCampaignId !== previousCampaignId;
   const dateChanged =
@@ -176,14 +197,36 @@ export async function updateDeliverable(
     isLiveDeliverable(resolved.value.status) !==
     isLiveDeliverable(deliverable.status);
 
-  await prisma.deliverable.update({
-    where: { id: deliverable.id },
-    data: {
-      campaignId: nextCampaignId,
-      postUrl: data.postUrl || null,
-      ...resolved.value,
-    },
-  });
+  try {
+    await prisma.deliverable.update({
+      where: { id: deliverable.id },
+      data: {
+        campaignId: nextCampaignId,
+        postUrl: nextPostUrl,
+        postUrlKey: nextPostUrlKey,
+        ...resolved.value,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const taken = nextPostUrlKey
+        ? await prisma.deliverable.findFirst({
+            where: { postUrlKey: nextPostUrlKey, id: { not: deliverable.id } },
+            include: {
+              contract: { include: { creator: { select: { handle: true } } } },
+            },
+          })
+        : null;
+      const message = taken
+        ? duplicatePostUrlError(taken)
+        : "Ese enlace ya está en otro contenido.";
+      return { ok: false, error: message, fieldErrors: { postUrl: message } };
+    }
+    throw error;
+  }
 
   if (statusChanged) {
     await syncContractCompletion(deliverable.contractId);

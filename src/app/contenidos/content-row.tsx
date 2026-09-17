@@ -210,7 +210,8 @@ function ContentRowFields({
             defaultValue={item.postUrl ?? ""}
             disabled={!canEdit}
             placeholder="https://…"
-            className={inputClass}
+            className={`${inputClass}${state?.fieldErrors?.postUrl ? " border-destructive" : ""}`}
+            aria-invalid={Boolean(state?.fieldErrors?.postUrl)}
             aria-label="Enlace del post"
             onChange={onFieldChange}
             onBlur={onUrlBlur}

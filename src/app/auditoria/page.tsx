@@ -32,6 +32,10 @@ const ACTION_LABELS: Record<string, string> = {
   ENABLED: "Cuenta activada",
   DISABLED: "Cuenta desactivada",
   FX_UPDATED: "Tipo de cambio",
+  SUBMITTED: "Subido a plataforma",
+  PLATFORM_SUBMIT_ERROR: "Error al subir a plataforma",
+  PLATFORM_SUBMIT_RETRY: "Reintento de subida",
+  MARKED_PAID: "Lote marcado como pagado",
 };
 
 export default async function AuditPage() {

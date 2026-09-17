@@ -221,7 +221,8 @@ function DeliverableRowFields({
             defaultValue={item.postUrl ?? ""}
             disabled={!canEdit}
             placeholder="https://…"
-            className={controlClass}
+            className={`${controlClass}${state?.fieldErrors?.postUrl ? " border-destructive" : ""}`}
+            aria-invalid={Boolean(state?.fieldErrors?.postUrl)}
             onChange={onFieldChange}
             onBlur={onUrlBlur}
           />

@@ -40,11 +40,13 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 
 ### Reglas de negocio que el sistema impone
 
+- Un enlace de post no se puede repetir: `www`, `/reel` y los `utm` cuentan como el mismo. Si ya está, avisa de qué contrato y número lo tiene.
 - Un contrato con firma enviada o contenidos publicados **no se puede borrar**, solo cancelar. La cancelación conserva historial e importes.
 - Un anexo de contenidos solo es válido si el coste por contenido del creator no cambia.
 - El tipo de cambio se congela al crear el contrato, así el margen no se mueve después.
 - Los importes se guardan en unidades mínimas (enteros), nunca en coma flotante.
 - Los emails de cobro completos solo los ven Admin y Contabilidad. El pago sale por Zexel, no hace falta IBAN en esta app.
+- Al marcar un lote como pagado se congela importe, fecha y quién lo marcó. Queda en la ficha del creator y en auditoría.
 - El contrato es de **un cliente**. Ampliar/renovar sigue en Higgsfield; Many Chat se abre como contrato nuevo desde la ficha del creator.
 - La liquidación la marca el cliente: por contenido (con o sin plataforma) o al cerrar el pack de esa campaña con ese perfil. Se edita en `/clientes` y se lee en vivo (afecta a contratos ya abiertos). El PDF y la pantalla de firma usan esa cláusula: Many Chat no dice que se pague cada pieza publicada.
 - El contrato cubre **contenido orgánico**. Paid media, pauta o cesión para anuncios se negocian aparte.

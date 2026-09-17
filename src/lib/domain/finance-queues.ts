@@ -76,6 +76,7 @@ export type RecentPaidItem = {
   id: string;
   position: number;
   paidAt: string;
+  paidByEmail: string | null;
   costMinor: number;
   costCurrency: string;
   creatorHandle: string;

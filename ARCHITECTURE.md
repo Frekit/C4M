@@ -44,6 +44,7 @@ Eso basta para operar y para reconstruir el documento. Una firma electrónica cu
 | Roles | `src/lib/auth/permissions.ts` |
 | Auth0 vs local | `src/lib/auth/config.ts` y `src/proxy.ts` |
 | Copiar un lote a Zexel | `src/lib/domain/zexel-batch.ts` |
+| Historial de pagos del creator | `src/lib/domain/creator-payments.ts` + ficha `/creators/[id]` |
 
 Las páginas en `src/app/` pintan. Las mutations viven en `actions.ts` de cada ruta y delegan las reglas al dominio.
 

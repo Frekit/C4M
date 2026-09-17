@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { ExternalLinkIcon, PlusIcon } from "lucide-react";
 
 import { ContractChain } from "@/components/contract-chain";
+import { CreatorPaymentHistory } from "@/components/creator-payment-history";
 import { PayeeCard } from "@/components/payee-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,10 @@ import {
   type SettlementMode,
 } from "@/lib/domain/enums";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
+import {
+  creatorPaymentRows,
+  sumPaymentsByCurrency,
+} from "@/lib/domain/creator-payments";
 import {
   isAccruedDeliverable,
   packKey,
@@ -120,6 +125,30 @@ export default async function CreatorPage({
     }
   }
 
+  const payments = creatorPaymentRows(
+    allDeliverables.map((item) => {
+      const contract = creator.contracts.find(
+        (entry) => entry.id === item.contractId
+      );
+      return {
+        id: item.id,
+        position: item.position,
+        paidAt: item.paidAt,
+        paidByEmail: item.paidByEmail,
+        paidMinor: item.paidMinor,
+        paidCurrency: item.paidCurrency,
+        postUrl: item.postUrl,
+        costMinor: contract?.costMinorPerContent ?? 0,
+        costCurrency: contract?.costCurrency ?? creator.payoutCurrency,
+        contractId: item.contractId,
+        contractCode: contract?.code ?? "—",
+        campaignName: item.campaign?.name ?? null,
+        clientName: item.campaign?.client?.name ?? contract?.client?.name ?? null,
+      };
+    })
+  );
+  const paidByCurrency = sumPaymentsByCurrency(payments);
+
   const canRenew = can(user.role, "contracts:renew");
   const canAddClient = can(user.role, "contracts:write");
 
@@ -164,7 +193,7 @@ export default async function CreatorPage({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardDescription>Contenidos entregados</CardDescription>
@@ -183,6 +212,20 @@ export default async function CreatorPage({
               {Object.keys(accruedByCurrency).length === 0
                 ? formatMoney(0, creator.payoutCurrency)
                 : Object.entries(accruedByCurrency).map(([currency, amount]) => (
+                    <span key={currency} className="block">
+                      {formatMoney(amount, currency)}
+                    </span>
+                  ))}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Pagado (Zexel)</CardDescription>
+            <CardTitle className="text-2xl">
+              {Object.keys(paidByCurrency).length === 0
+                ? formatMoney(0, creator.payoutCurrency)
+                : Object.entries(paidByCurrency).map(([currency, amount]) => (
                     <span key={currency} className="block">
                       {formatMoney(amount, currency)}
                     </span>
@@ -255,6 +298,8 @@ export default async function CreatorPage({
           </Card>
         );
       })}
+
+      <CreatorPaymentHistory rows={payments} />
 
       <PayeeCard
         payee={creator.payees[0] ?? null}

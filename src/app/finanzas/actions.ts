@@ -20,6 +20,7 @@ import {
   parseSelectedIds,
   platformFlagOf,
 } from "@/lib/domain/finance-commands";
+import { paidAuditMetadata } from "@/lib/domain/creator-payments";
 import { summarizePacks } from "@/lib/domain/settlement";
 
 export type FinanceActionResult = {
@@ -28,11 +29,16 @@ export type FinanceActionResult = {
   count?: number;
 };
 
-function revalidateFinance() {
+function revalidateFinance(creatorIds: string[] = []) {
   revalidatePath("/finanzas");
   revalidatePath("/contenidos");
   revalidatePath("/contratos");
+  revalidatePath("/creators");
+  revalidatePath("/auditoria");
   revalidatePath("/");
+  for (const creatorId of [...new Set(creatorIds)]) {
+    revalidatePath(`/creators/${creatorId}`);
+  }
 }
 
 function parseBatchIds(formData: FormData) {
@@ -219,7 +225,7 @@ export async function markPaid(
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
     include: {
-      contract: { include: { client: true } },
+      contract: { include: { client: true, creator: true } },
       campaign: { include: { client: true } },
     },
   });
@@ -277,13 +283,44 @@ export async function markPaid(
   if (!allowed.ok) return allowed;
 
   const now = new Date();
+  const actorEmail = user.email;
 
-  await prisma.deliverable.updateMany({
-    where: { id: { in: ids } },
-    data: { paidAt: now },
+  await prisma.$transaction(
+    items.map((item) =>
+      prisma.deliverable.update({
+        where: { id: item.id },
+        data: {
+          paidAt: now,
+          paidByEmail: actorEmail,
+          paidMinor: item.contract.costMinorPerContent,
+          paidCurrency: item.contract.costCurrency,
+        },
+      })
+    )
+  );
+
+  await recordAudit({
+    entityType: "Deliverable",
+    entityId: ids.join(","),
+    action: "MARKED_PAID",
+    actor: user,
+    metadata: paidAuditMetadata({
+      paidAt: now,
+      items: items.map((item) => ({
+        id: item.id,
+        position: item.position,
+        creatorId: item.contract.creatorId,
+        creatorHandle: item.contract.creator.handle,
+        contractId: item.contractId,
+        contractCode: item.contract.code,
+        campaignId: item.campaignId,
+        amountMinor: item.contract.costMinorPerContent,
+        currency: item.contract.costCurrency,
+      })),
+    }),
   });
 
-  revalidateFinance();
+  revalidateFinance(items.map((item) => item.contract.creatorId));
 
   return { ok: true, count: ids.length };
 }

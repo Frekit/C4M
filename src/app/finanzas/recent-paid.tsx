@@ -35,6 +35,7 @@ export function RecentPaid({ items }: { items: RecentPaidItem[] }) {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Pagado {formatDateTime(item.paidAt)}
+                  {item.paidByEmail ? ` · ${item.paidByEmail}` : ""}
                 </p>
               </div>
               <span className="font-medium">
