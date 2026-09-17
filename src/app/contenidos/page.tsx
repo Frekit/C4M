@@ -381,8 +381,9 @@ export default async function ContentsPage({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Solo los contenidos publicados devengan coste y fijan fecha de pago. Los
-        agendados sirven para planificar.
+        Los cambios se guardan solos. Solo al marcar un contenido como publicado
+        pedimos confirmación: eso es lo que devenga el coste y fija la fecha de
+        pago.
       </p>
     </main>
   );

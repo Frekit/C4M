@@ -287,8 +287,8 @@ export default async function ContractPage({
           <CardDescription>
             {canEditDeliverables
               ? isSigned
-                ? "Agenda fechas, asigna campaña y marca cada contenido al publicarse: la fecha de pago se calcula sola."
-                : "Puedes agendar fechas y campañas desde ya. Para marcar un contenido como publicado hace falta el contrato firmado."
+                ? "Cambia fechas, campaña o estado y se guarda solo. Publicar pide confirmación porque devenga el pago."
+                : "Puedes agendar fechas y campañas desde ya: se guardan solas. Para marcar un contenido como publicado hace falta el contrato firmado."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>
         </CardHeader>
@@ -306,6 +306,9 @@ export default async function ContractPage({
               paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
               postUrl: item.postUrl,
               isLate: isDeliverableLate(item),
+              costMinor: contract.costMinorPerContent,
+              costCurrency: contract.costCurrency,
+              contractSigned: isSigned,
             }))}
           />
         </CardContent>

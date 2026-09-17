@@ -1,19 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
-import { ExternalLinkIcon, SaveIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
+  DELIVERABLE_STATUS,
   DELIVERABLE_STATUS_LABELS,
   DELIVERABLE_STATUS_ORDER,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
-import { updateDeliverable, type DeliverableActionResult } from "./actions";
+import { PublishConfirmDialog } from "./publish-confirm-dialog";
+import { useDeliverableAutosave } from "./use-deliverable-autosave";
 
 export type ContentRowData = {
   id: string;
@@ -57,9 +57,6 @@ export function ContentRow({
   campaigns: { id: string; name: string }[];
   canEdit: boolean;
 }) {
-  // Tras guardar, React 19 resetea el formulario a los defaultValue del
-  // primer render. Remontar la fila hace que el desplegable coincida con
-  // el estado que acaba de guardar el servidor (el distintivo «Agendado»).
   return (
     <ContentRowFields
       key={editorKey(item)}
@@ -79,10 +76,17 @@ function ContentRowFields({
   campaigns: { id: string; name: string }[];
   canEdit: boolean;
 }) {
-  const [state, formAction, pending] = useActionState<
-    DeliverableActionResult | null,
-    FormData
-  >(updateDeliverable, null);
+  const {
+    formRef,
+    formAction,
+    pending,
+    state,
+    publishOpen,
+    onFieldChange,
+    onUrlBlur,
+    confirmPublish,
+    cancelPublish,
+  } = useDeliverableAutosave(item, canEdit);
 
   const formId = `row-${item.id}`;
 
@@ -125,6 +129,7 @@ function ContentRowFields({
             disabled={!canEdit}
             className={inputClass}
             aria-label="Campaña"
+            onChange={onFieldChange}
           >
             <option value="">Sin campaña</option>
             {campaigns.map((campaign) => (
@@ -143,9 +148,18 @@ function ContentRowFields({
             disabled={!canEdit}
             className={inputClass}
             aria-label="Estado"
+            onChange={onFieldChange}
           >
             {DELIVERABLE_STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
+              <option
+                key={status}
+                value={status}
+                disabled={
+                  status === DELIVERABLE_STATUS.PUBLISHED &&
+                  !item.contractSigned &&
+                  item.status !== DELIVERABLE_STATUS.PUBLISHED
+                }
+              >
                 {DELIVERABLE_STATUS_LABELS[status]}
               </option>
             ))}
@@ -171,6 +185,7 @@ function ContentRowFields({
             disabled={!canEdit}
             className={inputClass}
             aria-label="Fecha prevista"
+            onChange={onFieldChange}
           />
         </TableCell>
 
@@ -183,6 +198,7 @@ function ContentRowFields({
             disabled={!canEdit}
             className={inputClass}
             aria-label="Fecha de publicación"
+            onChange={onFieldChange}
           />
         </TableCell>
 
@@ -196,6 +212,8 @@ function ContentRowFields({
             placeholder="https://…"
             className={inputClass}
             aria-label="Enlace del post"
+            onChange={onFieldChange}
+            onBlur={onUrlBlur}
           />
           {item.postUrl ? (
             <a
@@ -218,16 +236,11 @@ function ContentRowFields({
           {item.paymentDueAt ? formatDate(item.paymentDueAt) : "—"}
         </TableCell>
 
-        <TableCell>
-          {canEdit ? (
-            <form id={formId} action={formAction}>
-              <input type="hidden" name="deliverableId" value={item.id} />
-              <Button type="submit" size="xs" variant="outline" disabled={pending}>
-                <SaveIcon />
-                {pending ? "…" : "Guardar"}
-              </Button>
-            </form>
-          ) : null}
+        <TableCell className="text-xs text-muted-foreground">
+          <form id={formId} ref={formRef} action={formAction}>
+            <input type="hidden" name="deliverableId" value={item.id} />
+          </form>
+          {pending ? "Guardando…" : null}
         </TableCell>
       </TableRow>
 
@@ -241,6 +254,14 @@ function ContentRowFields({
           </TableCell>
         </TableRow>
       ) : null}
+
+      <PublishConfirmDialog
+        open={publishOpen}
+        costMinor={item.costMinor}
+        costCurrency={item.costCurrency}
+        onConfirm={confirmPublish}
+        onCancel={cancelPublish}
+      />
     </>
   );
 }

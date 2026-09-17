@@ -1,10 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { ExternalLinkIcon, SaveIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   DELIVERABLE_STATUS,
@@ -15,10 +13,8 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 
-import {
-  updateDeliverable,
-  type DeliverableActionResult,
-} from "@/app/contenidos/actions";
+import { PublishConfirmDialog } from "@/app/contenidos/publish-confirm-dialog";
+import { useDeliverableAutosave } from "@/app/contenidos/use-deliverable-autosave";
 
 export type DeliverableItem = {
   id: string;
@@ -30,6 +26,9 @@ export type DeliverableItem = {
   paymentDueAt: string | null;
   postUrl: string | null;
   isLate: boolean;
+  costMinor: number;
+  costCurrency: string;
+  contractSigned: boolean;
 };
 
 const controlClass =
@@ -74,10 +73,17 @@ function DeliverableRowFields({
   campaigns: { id: string; name: string }[];
   canEdit: boolean;
 }) {
-  const [state, formAction, pending] = useActionState<
-    DeliverableActionResult | null,
-    FormData
-  >(updateDeliverable, null);
+  const {
+    formRef,
+    formAction,
+    pending,
+    state,
+    publishOpen,
+    onFieldChange,
+    onUrlBlur,
+    confirmPublish,
+    cancelPublish,
+  } = useDeliverableAutosave(item, canEdit);
 
   const published = item.status === DELIVERABLE_STATUS.PUBLISHED;
 
@@ -110,9 +116,16 @@ function DeliverableRowFields({
             <ExternalLinkIcon className="size-3" />
           </a>
         ) : null}
+        {pending ? (
+          <span className="text-xs text-muted-foreground">Guardando…</span>
+        ) : null}
       </div>
 
-      <form action={formAction} className="mt-3 grid gap-3 sm:grid-cols-5">
+      <form
+        ref={formRef}
+        action={formAction}
+        className="mt-3 grid gap-3 sm:grid-cols-5"
+      >
         <input type="hidden" name="deliverableId" value={item.id} />
 
         <div className="grid gap-1.5">
@@ -125,9 +138,18 @@ function DeliverableRowFields({
             defaultValue={item.status}
             disabled={!canEdit}
             className={controlClass}
+            onChange={onFieldChange}
           >
             {DELIVERABLE_STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
+              <option
+                key={status}
+                value={status}
+                disabled={
+                  status === DELIVERABLE_STATUS.PUBLISHED &&
+                  !item.contractSigned &&
+                  item.status !== DELIVERABLE_STATUS.PUBLISHED
+                }
+              >
                 {DELIVERABLE_STATUS_LABELS[status]}
               </option>
             ))}
@@ -145,6 +167,7 @@ function DeliverableRowFields({
             defaultValue={item.scheduledFor ?? ""}
             disabled={!canEdit}
             className={controlClass}
+            onChange={onFieldChange}
           />
         </div>
 
@@ -159,6 +182,7 @@ function DeliverableRowFields({
             defaultValue={item.publishedAt ?? ""}
             disabled={!canEdit}
             className={controlClass}
+            onChange={onFieldChange}
           />
         </div>
 
@@ -172,6 +196,7 @@ function DeliverableRowFields({
             defaultValue={item.campaignId ?? ""}
             disabled={!canEdit}
             className={controlClass}
+            onChange={onFieldChange}
           >
             <option value="">Sin campaña</option>
             {campaigns.map((campaign) => (
@@ -194,17 +219,10 @@ function DeliverableRowFields({
             disabled={!canEdit}
             placeholder="https://…"
             className={controlClass}
+            onChange={onFieldChange}
+            onBlur={onUrlBlur}
           />
         </div>
-
-        {canEdit ? (
-          <div className="sm:col-span-5">
-            <Button type="submit" size="sm" variant="outline" disabled={pending}>
-              <SaveIcon />
-              {pending ? "Guardando…" : "Guardar contenido"}
-            </Button>
-          </div>
-        ) : null}
 
         {state?.error ? (
           <p className="text-xs text-destructive sm:col-span-5">{state.error}</p>
@@ -215,6 +233,14 @@ function DeliverableRowFields({
           </p>
         ) : null}
       </form>
+
+      <PublishConfirmDialog
+        open={publishOpen}
+        costMinor={item.costMinor}
+        costCurrency={item.costCurrency}
+        onConfirm={confirmPublish}
+        onCancel={cancelPublish}
+      />
     </li>
   );
 }
@@ -241,8 +267,9 @@ export function DeliverableList({
         ))}
       </ol>
       <p className="text-xs text-muted-foreground">
+        Los cambios se guardan solos. Publicar pide confirmación:{" "}
         {DELIVERABLE_STATUS_HINTS.PUBLISHED} La fecha prevista puede estar en el
-        futuro: sirve para planificar sin devengar nada.
+        futuro y no devenga nada.
       </p>
     </div>
   );
