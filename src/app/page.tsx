@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { KeyRound, Layers3, ShieldCheck } from "lucide-react";
+import { CalendarClockIcon, PenLineIcon, PlusIcon } from "lucide-react";
 
+import { ContractStatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,118 +11,254 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthMode } from "@/lib/auth/config";
-import { getCurrentUser } from "@/lib/auth/session";
-import { getLoginHref, getLogoutHref } from "@/lib/auth/urls";
+import { can } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { contractTotals, deliverableProgress } from "@/lib/domain/contract-math";
+import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { formatDate, relativeDueLabel } from "@/lib/format";
+import { formatMoney } from "@/lib/money";
 
-export default async function HomePage() {
-  const user = await getCurrentUser();
-  const authMode = getAuthMode();
+export default async function DashboardPage() {
+  const user = await requireUser("/");
+
+  const [creatorCount, contracts, upcomingPayments] = await Promise.all([
+    prisma.creator.count(),
+    prisma.contract.findMany({
+      include: { creator: true, deliverables: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.deliverable.findMany({
+      where: { status: DELIVERABLE_STATUS.PUBLISHED, paymentDueAt: { not: null } },
+      orderBy: { paymentDueAt: "asc" },
+      take: 8,
+      include: { contract: { include: { creator: true } } },
+    }),
+  ]);
+
+  const live = contracts.filter(
+    (contract) => contract.status !== CONTRACT_STATUS.CANCELLED
+  );
+
+  const allDeliverables = live.flatMap((contract) => contract.deliverables);
+  const progress = deliverableProgress(allDeliverables);
+
+  const marginUsdCents = live.reduce(
+    (total, contract) => total + contractTotals(contract).marginTotalUsdCents,
+    0
+  );
+
+  const accruedByCurrency = live.reduce<Record<string, number>>(
+    (accumulator, contract) => {
+      const published = contract.deliverables.filter(
+        (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
+      ).length;
+
+      if (published > 0) {
+        accumulator[contract.costCurrency] =
+          (accumulator[contract.costCurrency] ?? 0) +
+          published * contract.costMinorPerContent;
+      }
+
+      return accumulator;
+    },
+    {}
+  );
+
+  const awaitingSignature = live.filter(
+    (contract) =>
+      contract.status === CONTRACT_STATUS.DRAFT ||
+      contract.status === CONTRACT_STATUS.SENT
+  );
+
+  if (creatorCount === 0) {
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-12 sm:px-6">
+        <div className="space-y-2">
+          <h1 className="font-heading text-2xl font-medium tracking-tight">
+            Empecemos por el primer influencer
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Registra a quien vayas a contratar con su enlace de Instagram, los
+            contenidos pactados y los precios. La app crea el contrato, te da un
+            enlace de firma para el talento o su agencia y, con sus datos ya
+            dentro, va calculando qué se le debe y cuándo toca pagarle.
+          </p>
+        </div>
+        {can(user.role, "creators:write") ? (
+          <Button
+            className="w-fit"
+            size="lg"
+            nativeButton={false}
+            render={<Link href="/creators/nuevo" />}
+          >
+            <PlusIcon />
+            Registrar influencer
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Tu rol no permite registrar creators. Pide a Gestión de creators que
+            dé de alta el primero.
+          </p>
+        )}
+      </main>
+    );
+  }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-16">
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-        <div className="space-y-4">
-          <Badge variant="secondary">Capa base</Badge>
-          <h1 className="font-heading max-w-xl text-3xl font-medium tracking-tight sm:text-4xl">
-            Next.js y Auth0 listos para construir encima.
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="font-heading text-2xl font-medium tracking-tight">
+            Panel
           </h1>
-          <p className="max-w-xl text-muted-foreground text-pretty">
-            Esta base deja el App Router, TypeScript, Tailwind, shadcn/ui y una
-            capa de sesión unificada. Si Auth0 aún no está configurado, puedes
-            entrar con una sesión local y seguir trabajando.
+          <p className="text-sm text-muted-foreground">
+            Estado de lo contratado con creators.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {user ? (
-              <>
-                <Button nativeButton={false} render={<Link href="/cuenta" />} size="lg">
-                  Abrir cuenta
-                </Button>
-                <Button
-                  variant="outline"
-                  nativeButton={false}
-                  render={<a href={getLogoutHref()} />}
-                  size="lg"
-                >
-                  Cerrar sesión
-                </Button>
-              </>
-            ) : (
-              <Button nativeButton={false} render={<Link href={getLoginHref()} />} size="lg">
-                {authMode === "auth0" ? "Entrar con Auth0" : "Probar sesión local"}
-              </Button>
-            )}
-            <Button variant="ghost" nativeButton={false} render={<Link href="/estado" />} size="lg">
-              Ver estado
-            </Button>
-          </div>
         </div>
+        {can(user.role, "creators:write") ? (
+          <Button nativeButton={false} render={<Link href="/creators/nuevo" />}>
+            <PlusIcon />
+            Registrar influencer
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle>Sesión actual</CardTitle>
+            <CardDescription>Creators</CardDescription>
+            <CardTitle className="text-2xl">{creatorCount}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Contenidos entregados</CardDescription>
+            <CardTitle className="text-2xl">
+              {progress.published}
+              <span className="text-base text-muted-foreground">
+                /{progress.total}
+              </span>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Devengado a creators</CardDescription>
+            <CardTitle className="text-2xl">
+              {Object.keys(accruedByCurrency).length === 0
+                ? formatMoney(0, "USD")
+                : Object.entries(accruedByCurrency).map(([currency, amount]) => (
+                    <span key={currency} className="block">
+                      {formatMoney(amount, currency)}
+                    </span>
+                  ))}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Margen previsto</CardDescription>
+            <CardTitle
+              className={marginUsdCents < 0 ? "text-2xl text-destructive" : "text-2xl"}
+            >
+              {formatMoney(marginUsdCents, "USD")}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <PenLineIcon className="size-4 text-muted-foreground" />
+            <CardTitle>Pendiente de firma ({awaitingSignature.length})</CardTitle>
             <CardDescription>
-              {authMode === "auth0"
-                ? "Auth0 está activo. Las rutas /auth/login, /auth/callback y /auth/logout las monta el SDK."
-                : "Auth0 no tiene credenciales. El modo local mantiene una cookie httpOnly para desarrollar."}
+              Sin contrato firmado no se pueden marcar contenidos publicados.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="text-muted-foreground">Modo</span>
-              <Badge variant={authMode === "auth0" ? "default" : "outline"}>
-                {authMode === "auth0" ? "Auth0" : "Local"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="text-muted-foreground">Usuario</span>
-              <span className="truncate font-medium">
-                {user ? user.email || user.name : "Sin sesión"}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              nativeButton={false}
-              render={<Link href="/api/me" />}
-            >
-              GET /api/me
-            </Button>
+          <CardContent className="grid gap-2">
+            {awaitingSignature.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nada pendiente. Todos los contratos vivos están firmados.
+              </p>
+            ) : (
+              awaitingSignature.slice(0, 6).map((contract) => (
+                <Link
+                  key={contract.id}
+                  href={`/contratos/${contract.id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      @{contract.creator.handle}
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {contract.code}
+                    </p>
+                  </div>
+                  <ContractStatusBadge status={contract.status} />
+                </Link>
+              ))
+            )}
           </CardContent>
         </Card>
-      </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <Layers3 className="size-4 text-muted-foreground" />
-            <CardTitle>App Router</CardTitle>
+            <CalendarClockIcon className="size-4 text-muted-foreground" />
+            <CardTitle>Próximos pagos</CardTitle>
             <CardDescription>
-              Next.js 16, TypeScript estricto y layouts de servidor como punto
-              de partida.
+              Calculados desde la fecha de publicación de cada contenido.
             </CardDescription>
           </CardHeader>
+          <CardContent className="grid gap-2">
+            {upcomingPayments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Todavía no hay contenidos publicados, así que no hay pagos
+                previstos.
+              </p>
+            ) : (
+              upcomingPayments.map((item) => {
+                const overdue =
+                  item.paymentDueAt !== null && item.paymentDueAt < new Date();
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/contratos/${item.contractId}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        @{item.contract.creator.handle}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          contenido {item.position}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(item.paymentDueAt)} ·{" "}
+                        {relativeDueLabel(item.paymentDueAt)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {formatMoney(
+                          item.contract.costMinorPerContent,
+                          item.contract.costCurrency
+                        )}
+                      </span>
+                      {overdue ? (
+                        <Badge variant="destructive">Vencido</Badge>
+                      ) : null}
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <KeyRound className="size-4 text-muted-foreground" />
-            <CardTitle>Auth0 SDK v4</CardTitle>
-            <CardDescription>
-              Cliente en <code>src/lib/auth</code> y <code>src/proxy.ts</code>{" "}
-              para login, callback y logout.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <ShieldCheck className="size-4 text-muted-foreground" />
-            <CardTitle>Rutas protegidas</CardTitle>
-            <CardDescription>
-              <code>requireUser()</code> redirige a iniciar sesión. La cuenta y
-              <code> /api/me</code> ya lo usan.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </section>
+      </div>
     </main>
   );
 }

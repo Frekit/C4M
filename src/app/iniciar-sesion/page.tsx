@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { AlertCircle } from "lucide-react";
+import { AlertCircleIcon, InfoIcon } from "lucide-react";
 
 import { LocalLoginForm } from "@/components/local-login-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,80 +12,95 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthMode, isAuth0Configured, safeReturnTo } from "@/lib/auth/config";
-import { getCurrentUser } from "@/lib/auth/session";
-import { getLoginHref, getSignupHref } from "@/lib/auth/urls";
+import { getAuthMode, isAuth0Active, safeReturnTo } from "@/lib/auth/config";
+import { getAccessState } from "@/lib/auth/session";
+import { getLoginHref } from "@/lib/auth/urls";
 
 export const metadata: Metadata = {
-  title: "Iniciar sesión",
+  title: "Entrar",
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string; motivo?: string }>;
+  searchParams: Promise<{
+    returnTo?: string;
+    motivo?: string;
+    error?: string;
+    email?: string;
+  }>;
 }) {
-  const user = await getCurrentUser();
   const params = await searchParams;
   const returnTo = safeReturnTo(params.returnTo);
-  const authMode = getAuthMode();
-  const missingAuth0 = params.motivo === "auth0" || !isAuth0Configured();
+  const state = await getAccessState();
 
-  if (user) {
+  if (state.kind === "active") {
     redirect(returnTo);
   }
 
+  if (state.kind === "not_invited" || state.kind === "disabled") {
+    redirect(`/sin-acceso?motivo=${state.kind}`);
+  }
+
+  const authMode = getAuthMode();
+
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-6 px-4 py-10 sm:px-6">
-      {missingAuth0 && authMode === "local" ? (
-        <Alert>
-          <AlertCircle />
-          <AlertTitle>Auth0 todavía no está conectado</AlertTitle>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-12 sm:px-6">
+      <div className="space-y-1 text-center">
+        <h1 className="font-heading text-xl font-medium tracking-tight">
+          Contratos con creators
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Registro de talento, contratos y firma en un sitio.
+        </p>
+      </div>
+
+      {params.error === "sin-invitacion" ? (
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertTitle>Ese correo no está invitado</AlertTitle>
           <AlertDescription>
-            Copia <code>.env.example</code> a <code>.env.local</code> con el
-            dominio, client id, secret y <code>AUTH0_SECRET</code>. Mientras
-            tanto, esta sesión local cubre el mismo contrato de usuario.
+            Pide a un administrador que te invite y abre el enlace que recibas.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {params.motivo === "auth0" && !isAuth0Active() ? (
+        <Alert>
+          <InfoIcon />
+          <AlertTitle>Auth0 está desactivado ahora mismo</AlertTitle>
+          <AlertDescription>
+            La variable <code>AUTH_MODE</code> está en <code>local</code>. Cámbiala
+            a <code>auto</code> cuando el tenant tenga dadas de alta las URLs de
+            callback.
           </AlertDescription>
         </Alert>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>Entrar</CardTitle>
+          <CardTitle>Acceso del equipo</CardTitle>
           <CardDescription>
             {authMode === "auth0"
-              ? "Usa Auth0 para login, registro y cierre de sesión."
-              : "Usa una sesión local para seguir con el desarrollo."}
+              ? "Entra con tu cuenta de Auth0. Solo se permite el paso a cuentas invitadas."
+              : "Modo local de desarrollo: basta el correo de una cuenta invitada."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent>
           {authMode === "auth0" ? (
-            <div className="grid gap-2">
-              <Button nativeButton={false} render={<a href={getLoginHref(returnTo)} />} size="lg">
-                Continuar con Auth0
-              </Button>
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={<a href={getSignupHref(returnTo)} />}
-                size="lg"
-              >
-                Crear cuenta
-              </Button>
-            </div>
+            <Button
+              className="w-full"
+              size="lg"
+              nativeButton={false}
+              render={<a href={getLoginHref(returnTo)} />}
+            >
+              Continuar con Auth0
+            </Button>
           ) : (
-            <LocalLoginForm returnTo={returnTo} />
+            <LocalLoginForm returnTo={returnTo} defaultEmail={params.email} />
           )}
         </CardContent>
       </Card>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Guía de configuración en el README y en{" "}
-        <Link href="/estado" className="underline underline-offset-4">
-          Estado
-        </Link>
-        .
-      </p>
     </main>
   );
 }
