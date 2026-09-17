@@ -152,6 +152,8 @@ model Deliverable {
   @@index([status])
   @@index([campaignId])
   @@index([scheduledFor])
+  @@index([publishedAt])
+  @@index([paymentDueAt])
 }
 
 // Marca o plataforma a la que se venden los contenidos. Define cómo se liquida.

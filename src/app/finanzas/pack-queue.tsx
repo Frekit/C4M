@@ -9,30 +9,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+import type {
+  PackQueueGroup,
+  PackQueueItem,
+} from "@/lib/domain/finance-queues";
 
-export type PackQueueItem = {
-  id: string;
-  position: number;
-  status: string;
-  postUrl: string | null;
-  publishedAt: string | null;
-  costMinor: number;
-  costCurrency: string;
-};
-
-export type PackQueueGroup = {
-  key: string;
-  campaignId: string;
-  campaignName: string;
-  clientName: string;
-  creatorId: string;
-  creatorHandle: string;
-  published: number;
-  total: number;
-  isComplete: boolean;
-  paymentDueAt: string | null;
-  items: PackQueueItem[];
-};
+export type { PackQueueGroup, PackQueueItem };
 
 function totalsByCurrency(items: PackQueueItem[]) {
   return items.reduce<Record<string, number>>((accumulator, item) => {

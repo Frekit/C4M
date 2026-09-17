@@ -14,29 +14,9 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+import type { PayoutGroup, PayoutItem } from "@/lib/domain/finance-queues";
 
-export type PayoutItem = {
-  id: string;
-  position: number;
-  postUrl: string | null;
-  paymentDueAt: string | null;
-  clientSubmittedAt: string | null;
-  costMinor: number;
-  costCurrency: string;
-  creatorHandle: string;
-  contractCode: string;
-  contractId: string;
-};
-
-export type PayoutGroup = {
-  creatorId: string;
-  creatorHandle: string;
-  payeeName: string | null;
-  payoutMethod: string | null;
-  account: string | null;
-  payoutCurrency: string | null;
-  items: PayoutItem[];
-};
+export type { PayoutGroup, PayoutItem };
 
 function totalsByCurrency(items: PayoutItem[]) {
   return items.reduce<Record<string, number>>((accumulator, item) => {

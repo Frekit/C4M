@@ -2,7 +2,11 @@ import { cache } from "react";
 
 import { prisma } from "@/lib/db";
 import { CONTRACT_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
-import { packPaymentDueAt, summarizePacks } from "@/lib/domain/settlement";
+import {
+  packPaymentDueAt,
+  summarizePacks,
+  type PackProgress,
+} from "@/lib/domain/settlement";
 
 export async function syncPackSettlement(input: {
   campaignId: string | null;
@@ -69,13 +73,26 @@ export const loadPackCampaignIds = cache(async () => {
   return campaigns.map((campaign) => campaign.id);
 });
 
-export const loadPackSummaries = cache(async () => {
-  const campaignIds = await loadPackCampaignIds();
-  if (campaignIds.length === 0) return new Map();
+export async function loadPackSummariesFor(
+  campaignIds: readonly (string | null | undefined)[]
+): Promise<Map<string, PackProgress>> {
+  const unique = [
+    ...new Set(
+      campaignIds.filter((id): id is string => Boolean(id && id.length > 0))
+    ),
+  ];
+  if (unique.length === 0) return new Map();
+
+  const packCampaignIds = await loadPackCampaignIds();
+  if (packCampaignIds.length === 0) return new Map();
+
+  const packSet = new Set(packCampaignIds);
+  const relevant = unique.filter((id) => packSet.has(id));
+  if (relevant.length === 0) return new Map();
 
   const items = await prisma.deliverable.findMany({
     where: {
-      campaignId: { in: campaignIds },
+      campaignId: { in: relevant },
       contract: { status: { not: CONTRACT_STATUS.CANCELLED } },
     },
     select: {
@@ -92,4 +109,9 @@ export const loadPackSummaries = cache(async () => {
       status: item.status,
     }))
   );
+}
+
+export const loadPackSummaries = cache(async () => {
+  const campaignIds = await loadPackCampaignIds();
+  return loadPackSummariesFor(campaignIds);
 });

@@ -15,28 +15,14 @@ import {
 } from "@/components/ui/card";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+import type {
+  CampaignQueueGroup,
+  FinancePublishRow,
+} from "@/lib/domain/finance-queues";
 
 import { markClientSubmitted, type FinanceActionResult } from "./actions";
 
-export type FinancePublishRow = {
-  id: string;
-  position: number;
-  postUrl: string;
-  publishedAt: string | null;
-  creatorHandle: string;
-  contractCode: string;
-  contractId: string;
-  costMinor: number;
-  costCurrency: string;
-};
-
-export type CampaignQueueGroup = {
-  key: string;
-  campaignId: string | null;
-  campaignName: string;
-  clientName: string | null;
-  items: FinancePublishRow[];
-};
+export type { CampaignQueueGroup, FinancePublishRow };
 
 function totalsByCurrency(items: FinancePublishRow[]) {
   return items.reduce<Record<string, number>>((accumulator, item) => {
