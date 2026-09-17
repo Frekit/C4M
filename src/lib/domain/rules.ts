@@ -52,3 +52,80 @@ export function countPublished(
     (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
   ).length;
 }
+
+export type DeliverableStateInput = {
+  status: string;
+  scheduledFor: Date | null;
+  publishedAt: Date | null;
+  paymentTermDays: number;
+};
+
+export type DeliverableState = {
+  status: string;
+  scheduledFor: Date | null;
+  publishedAt: Date | null;
+  paymentDueAt: Date | null;
+};
+
+// Mantiene coherentes estado y fechas, para que no se pueda quedar un contenido
+// publicado sin fecha ni un agendado con fecha de publicación.
+export function resolveDeliverableState(
+  input: DeliverableStateInput
+): { ok: true; value: DeliverableState } | { ok: false; error: string } {
+  const { status, scheduledFor, paymentTermDays } = input;
+
+  if (status === DELIVERABLE_STATUS.PUBLISHED) {
+    // Si no se indica fecha de publicación, se toma la prevista.
+    const publishedAt = input.publishedAt ?? scheduledFor;
+
+    if (!publishedAt) {
+      return {
+        ok: false,
+        error: "Para marcarlo como publicado hace falta la fecha de publicación.",
+      };
+    }
+
+    const paymentDueAt = new Date(publishedAt);
+    paymentDueAt.setUTCDate(paymentDueAt.getUTCDate() + paymentTermDays);
+
+    return {
+      ok: true,
+      value: { status, scheduledFor, publishedAt, paymentDueAt },
+    };
+  }
+
+  if (status === DELIVERABLE_STATUS.SCHEDULED && !scheduledFor) {
+    return {
+      ok: false,
+      error: "Para agendarlo hace falta una fecha prevista.",
+    };
+  }
+
+  if (status === DELIVERABLE_STATUS.PENDING) {
+    return {
+      ok: true,
+      value: {
+        status,
+        scheduledFor: null,
+        publishedAt: null,
+        paymentDueAt: null,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    value: { status, scheduledFor, publishedAt: null, paymentDueAt: null },
+  };
+}
+
+// Un contenido agendado cuya fecha ya pasó y sigue sin publicarse.
+export function isDeliverableLate(
+  deliverable: { status: string; scheduledFor: Date | null },
+  now = new Date()
+): boolean {
+  if (deliverable.status === DELIVERABLE_STATUS.PUBLISHED) return false;
+  if (!deliverable.scheduledFor) return false;
+
+  return deliverable.scheduledFor < now;
+}

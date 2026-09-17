@@ -60,11 +60,47 @@ export const CONTRACT_KIND_LABELS: Record<ContractKind, string> = {
 
 export const DELIVERABLE_STATUS = {
   PENDING: "PENDING",
+  SCHEDULED: "SCHEDULED",
+  SUBMITTED: "SUBMITTED",
   PUBLISHED: "PUBLISHED",
 } as const;
 
 export type DeliverableStatus =
   (typeof DELIVERABLE_STATUS)[keyof typeof DELIVERABLE_STATUS];
+
+export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
+  PENDING: "Sin agendar",
+  SCHEDULED: "Agendado",
+  SUBMITTED: "Entregado",
+  PUBLISHED: "Publicado",
+};
+
+export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
+  PENDING: "Todavía sin fecha.",
+  SCHEDULED: "Con fecha prevista de publicación.",
+  SUBMITTED: "El contenido ya está entregado, pero aún no está publicado.",
+  PUBLISHED: "Publicado: devenga su coste y fija la fecha de pago.",
+};
+
+export const DELIVERABLE_STATUS_ORDER: DeliverableStatus[] = [
+  "PENDING",
+  "SCHEDULED",
+  "SUBMITTED",
+  "PUBLISHED",
+];
+
+export const CAMPAIGN_STATUS = {
+  ACTIVE: "ACTIVE",
+  CLOSED: "CLOSED",
+} as const;
+
+export type CampaignStatus =
+  (typeof CAMPAIGN_STATUS)[keyof typeof CAMPAIGN_STATUS];
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  ACTIVE: "Activa",
+  CLOSED: "Cerrada",
+};
 
 export const SIGNATURE_STATUS = {
   PENDING: "PENDING",

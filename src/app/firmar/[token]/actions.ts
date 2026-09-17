@@ -175,7 +175,13 @@ export async function signContract(
     },
   });
 
+  // Al firmar cambia el estado que se ve en el panel, en el listado y en la
+  // ficha del creator, así que hay que invalidar todas esas rutas.
+  revalidatePath("/");
+  revalidatePath("/contratos");
+  revalidatePath("/contenidos");
   revalidatePath(`/contratos/${request.contractId}`);
   revalidatePath(`/creators/${request.contract.creatorId}`);
+  revalidatePath(`/creators`);
   redirect(`/firmar/${token}`);
 }

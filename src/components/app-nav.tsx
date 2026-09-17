@@ -57,6 +57,22 @@ export function AppNav({ user }: { user: AppUser | null }) {
             >
               Contratos
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/contenidos" />}
+            >
+              Contenidos
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/campanas" />}
+            >
+              Campañas
+            </Button>
             {can(user.role, "team:manage") ? (
               <Button
                 variant="ghost"

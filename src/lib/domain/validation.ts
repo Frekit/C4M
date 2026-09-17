@@ -160,20 +160,6 @@ export const acceptInvitationSchema = z.object({
   name: z.string().trim().min(2, "Escribe tu nombre").max(120),
 });
 
-export const publishDeliverableSchema = z.object({
-  deliverableId: z.string().min(1),
-  publishedAt: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha no válida"),
-  postUrl: z
-    .string()
-    .trim()
-    .url("Enlace no válido")
-    .optional()
-    .or(z.literal("")),
-});
-
 export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   const result: Record<string, string> = {};
 

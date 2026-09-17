@@ -25,19 +25,22 @@ import { Separator } from "@/components/ui/separator";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getBaseUrl } from "@/lib/base-url";
+import { prisma } from "@/lib/db";
+import { isDeliverableLate } from "@/lib/domain/rules";
 import {
   buildContractView,
   getContractChain,
   getContractDetail,
 } from "@/lib/domain/contracts";
 import {
+  CAMPAIGN_STATUS,
   CONTRACT_KIND,
   CONTRACT_KIND_LABELS,
   CONTRACT_STATUS,
   paymentTermLabel,
   type ContractKind,
 } from "@/lib/domain/enums";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
 import { formatMoney, formatPercent } from "@/lib/money";
 
 import { revokeSignature } from "../actions";
@@ -71,8 +74,16 @@ export default async function ContractPage({
   const isCancelled = contract.status === CONTRACT_STATUS.CANCELLED;
   const isSigned = Boolean(view.signedSignature);
 
-  const canPublish =
-    can(user.role, "deliverables:publish") && isSigned && !isCancelled;
+  // Planificar fechas y campañas se puede siempre; lo que exige contrato
+  // firmado es marcar un contenido como publicado, que es lo que devenga.
+  const canEditDeliverables =
+    can(user.role, "deliverables:publish") && !isCancelled;
+
+  const campaigns = await prisma.campaign.findMany({
+    where: { status: CAMPAIGN_STATUS.ACTIVE },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -274,23 +285,27 @@ export default async function ContractPage({
         <CardHeader>
           <CardTitle>Contenidos</CardTitle>
           <CardDescription>
-            {canPublish
-              ? "Marca cada contenido al publicarse: la fecha de pago se calcula sola."
-              : isSigned
-                ? "Solo Gestión de creators y Admin pueden marcar publicaciones."
-                : "Hasta que el contrato no esté firmado no se pueden marcar contenidos como publicados."}
+            {canEditDeliverables
+              ? isSigned
+                ? "Agenda fechas, asigna campaña y marca cada contenido al publicarse: la fecha de pago se calcula sola."
+                : "Puedes agendar fechas y campañas desde ya. Para marcar un contenido como publicado hace falta el contrato firmado."
+              : "Tu rol no permite editar contenidos."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <DeliverableList
-            canPublish={canPublish}
+            canEdit={canEditDeliverables}
+            campaigns={campaigns}
             deliverables={contract.deliverables.map((item) => ({
               id: item.id,
               position: item.position,
               status: item.status,
-              publishedAt: item.publishedAt?.toISOString() ?? null,
+              campaignId: item.campaignId,
+              scheduledFor: toInputDate(item.scheduledFor),
+              publishedAt: toInputDate(item.publishedAt),
               paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
               postUrl: item.postUrl,
+              isLate: isDeliverableLate(item),
             }))}
           />
         </CardContent>

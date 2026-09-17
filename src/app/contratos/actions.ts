@@ -7,32 +7,22 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import {
-  costPerContentUsdCents,
-  paymentDueDate,
-} from "@/lib/domain/contract-math";
-import {
-  createContract,
-  markParentRenewed,
-  syncContractCompletion,
-} from "@/lib/domain/contracts";
+import { costPerContentUsdCents } from "@/lib/domain/contract-math";
+import { createContract, markParentRenewed } from "@/lib/domain/contracts";
 import {
   CONTRACT_KIND,
   CONTRACT_STATUS,
-  DELIVERABLE_STATUS,
   SIGNATURE_STATUS,
   type ContractKind,
 } from "@/lib/domain/enums";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
 import {
   canDeleteContract,
-  canPublishDeliverables,
   countPublished,
   isAnnexAllowed,
 } from "@/lib/domain/rules";
 import {
   fieldErrorsFrom,
-  publishDeliverableSchema,
   renewalSchema,
   sendSignatureSchema,
 } from "@/lib/domain/validation";
@@ -122,6 +112,8 @@ export async function sendToSignature(
     metadata: { recipientEmail, recipientKind, requestId: request.id },
   });
 
+  revalidatePath("/");
+  revalidatePath("/contratos");
   revalidatePath(`/contratos/${contractId}`);
 
   return { ok: true, signatureUrl: `/firmar/${token}` };
@@ -163,108 +155,9 @@ export async function revokeSignature(formData: FormData) {
     actor: user,
   });
 
-  revalidatePath(`/contratos/${request.contractId}`);
-}
-
-export async function markDeliverablePublished(
-  _prev: ContractActionResult | null,
-  formData: FormData
-): Promise<ContractActionResult> {
-  const user = await requirePermission("deliverables:publish", "/contratos");
-
-  const parsed = publishDeliverableSchema.safeParse({
-    deliverableId: formData.get("deliverableId"),
-    publishedAt: formData.get("publishedAt"),
-    postUrl: formData.get("postUrl"),
-  });
-
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
-  }
-
-  const deliverable = await prisma.deliverable.findUnique({
-    where: { id: parsed.data.deliverableId },
-    include: { contract: true },
-  });
-
-  if (!deliverable) {
-    return { ok: false, error: "Ese contenido no existe." };
-  }
-
-  if (!canPublishDeliverables(deliverable.contract.status)) {
-    return {
-      ok: false,
-      error:
-        "Firma el contrato antes de marcar contenidos publicados: si no, se devengaría dinero sin acuerdo firmado.",
-    };
-  }
-
-  const publishedAt = new Date(`${parsed.data.publishedAt}T00:00:00.000Z`);
-
-  await prisma.deliverable.update({
-    where: { id: deliverable.id },
-    data: {
-      status: DELIVERABLE_STATUS.PUBLISHED,
-      publishedAt,
-      postUrl: parsed.data.postUrl || null,
-      paymentDueAt: paymentDueDate(
-        publishedAt,
-        deliverable.contract.paymentTermDays
-      ),
-    },
-  });
-
-  await syncContractCompletion(deliverable.contractId);
-
-  await recordAudit({
-    entityType: "Deliverable",
-    entityId: deliverable.id,
-    action: "PUBLISHED",
-    actor: user,
-    metadata: {
-      contractCode: deliverable.contract.code,
-      position: deliverable.position,
-      publishedAt: parsed.data.publishedAt,
-    },
-  });
-
-  revalidatePath(`/contratos/${deliverable.contractId}`);
-  revalidatePath("/creators");
   revalidatePath("/");
-
-  return { ok: true };
-}
-
-export async function unmarkDeliverable(formData: FormData) {
-  const user = await requirePermission("deliverables:publish", "/contratos");
-  const deliverableId = String(formData.get("deliverableId") ?? "");
-
-  const deliverable = await prisma.deliverable.findUnique({
-    where: { id: deliverableId },
-  });
-
-  if (!deliverable) return;
-
-  await prisma.deliverable.update({
-    where: { id: deliverableId },
-    data: {
-      status: DELIVERABLE_STATUS.PENDING,
-      publishedAt: null,
-      paymentDueAt: null,
-      postUrl: null,
-    },
-  });
-
-  await syncContractCompletion(deliverable.contractId);
-
-  await recordAudit({
-    entityType: "Deliverable",
-    entityId: deliverableId,
-    action: "UNPUBLISHED",
-    actor: user,
-  });
-
-  revalidatePath(`/contratos/${deliverable.contractId}`);
+  revalidatePath("/contratos");
+  revalidatePath(`/contratos/${request.contractId}`);
 }
 
 export async function cancelContract(formData: FormData) {
@@ -303,6 +196,8 @@ export async function cancelContract(formData: FormData) {
     metadata: { reason },
   });
 
+  revalidatePath("/");
+  revalidatePath("/contenidos");
   revalidatePath(`/contratos/${contractId}`);
   revalidatePath("/contratos");
 }

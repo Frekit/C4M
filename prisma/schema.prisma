@@ -119,19 +119,48 @@ model Contract {
 model Deliverable {
   id         String @id @default(cuid())
   contractId String
+  campaignId String?
   position   Int
-  status     String @default("PENDING") // PENDING | PUBLISHED
+  title      String?
 
+  // PENDING (sin agendar) | SCHEDULED (agendado) | SUBMITTED (entregado, sin
+  // publicar) | PUBLISHED. Solo PUBLISHED devenga dinero.
+  status String @default("PENDING")
+
+  // Fecha prevista de publicación: puede estar en el futuro.
+  scheduledFor DateTime?
   publishedAt  DateTime?
   postUrl      String?
   paymentDueAt DateTime?
+  notes        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@unique([contractId, position])
+  @@index([status])
+  @@index([campaignId])
+  @@index([scheduledFor])
+}
+
+// Agrupa contenidos de distintos creators y contratos bajo una misma campaña.
+model Campaign {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  clientName  String?
+  description String?
+  status      String    @default("ACTIVE") // ACTIVE | CLOSED
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  deliverables Deliverable[]
+
   @@index([status])
 }
 
