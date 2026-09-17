@@ -37,7 +37,7 @@ export default async function ContractsPage() {
 
   const contracts = await prisma.contract.findMany({
     orderBy: { createdAt: "desc" },
-    include: { creator: true, deliverables: true },
+    include: { creator: true, client: true, deliverables: true },
   });
 
   return (
@@ -82,6 +82,7 @@ export default async function ContractsPage() {
                 <TableRow>
                   <TableHead>Referencia</TableHead>
                   <TableHead>Creator</TableHead>
+                  <TableHead>Cliente</TableHead>
                   <TableHead>Entregados</TableHead>
                   <TableHead className="hidden md:table-cell">Coste</TableHead>
                   <TableHead className="hidden lg:table-cell">Venta</TableHead>
@@ -115,6 +116,9 @@ export default async function ContractsPage() {
                         >
                           @{contract.creator.handle}
                         </Link>
+                      </TableCell>
+                      <TableCell>
+                        {contract.client?.name ?? "—"}
                       </TableCell>
                       <TableCell>
                         {progress.published}/{progress.total}

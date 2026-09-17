@@ -7,6 +7,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
+import { campaignForClient } from "@/lib/domain/client-campaign";
 import { createContract } from "@/lib/domain/contracts";
 import { CONTRACT_KIND } from "@/lib/domain/enums";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
@@ -42,6 +43,8 @@ export async function createCreatorWithContract(
     fxUnitsPerUsd: formData.get("fxUnitsPerUsd"),
     paymentTermDays: formData.get("paymentTermDays"),
     notes: formData.get("notes"),
+    clientId: formData.get("clientId"),
+    campaignId: formData.get("campaignId"),
   });
 
   if (!parsed.success) {
@@ -60,7 +63,7 @@ export async function createCreatorWithContract(
   if (existing) {
     return {
       ok: false,
-      error: `@${handle} ya está registrado. Para pactar más contenidos, usa "Renovar" en su ficha y así queda en la misma cadena de contratos.`,
+      error: `@${handle} ya está registrado. Amplía su contrato de ese cliente, o ábrele uno nuevo con otro cliente desde su ficha.`,
       existingCreatorId: existing.id,
     };
   }
@@ -93,6 +96,16 @@ export async function createCreatorWithContract(
     return { ok: false, error: "Revisa los importes." };
   }
 
+  const client = await prisma.client.findUnique({ where: { id: data.clientId } });
+  if (!client) {
+    return { ok: false, fieldErrors: { clientId: "Ese cliente no existe." } };
+  }
+
+  const matched = await campaignForClient(data.campaignId, client.id);
+  if (!matched.ok) {
+    return { ok: false, fieldErrors: { campaignId: matched.error } };
+  }
+
   const creator = await prisma.creator.create({
     data: {
       handle,
@@ -107,6 +120,8 @@ export async function createCreatorWithContract(
   const contract = await createContract({
     creatorId: creator.id,
     kind: CONTRACT_KIND.ORIGINAL,
+    clientId: client.id,
+    campaignId: matched.campaignId,
     economics: {
       deliverableCount: data.deliverableCount,
       salePriceCentsPerContent,
@@ -135,10 +150,14 @@ export async function createCreatorWithContract(
       code: contract.code,
       handle,
       deliverables: data.deliverableCount,
+      clientId: client.id,
+      campaignId: matched.campaignId,
     },
   });
 
   revalidatePath("/creators");
   revalidatePath("/contratos");
+  revalidatePath("/contenidos");
+  revalidatePath("/campanas");
   redirect(`/contratos/${contract.id}`);
 }

@@ -7,10 +7,12 @@ export type SettlementPolicy = {
   requiresPlatformSubmit: boolean;
 };
 
-export const DEFAULT_SETTLEMENT: SettlementPolicy = {
-  settlementMode: SETTLEMENT_MODE.PER_CONTENT,
-  requiresPlatformSubmit: true,
-};
+export function settlementPolicyOf(input: {
+  client?: SettlementPolicy | null;
+  campaign?: { client?: SettlementPolicy | null } | null;
+}): SettlementPolicy | null {
+  return input.campaign?.client ?? input.client ?? null;
+}
 
 export function isPackSettlement(policy: SettlementPolicy | null | undefined) {
   return policy?.settlementMode === SETTLEMENT_MODE.PACK;

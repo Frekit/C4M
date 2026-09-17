@@ -9,6 +9,8 @@ import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
 import { createContract, markParentRenewed } from "@/lib/domain/contracts";
+import { campaignForClient } from "@/lib/domain/client-campaign";
+import { syncPackSettlement } from "@/lib/domain/pack-sync";
 import {
   CONTRACT_KIND,
   CONTRACT_STATUS,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/domain/rules";
 import {
   fieldErrorsFrom,
+  newClientContractSchema,
   renewalSchema,
   sendSignatureSchema,
 } from "@/lib/domain/validation";
@@ -265,6 +268,7 @@ export async function createRenewal(
     fxUnitsPerUsd: formData.get("fxUnitsPerUsd"),
     paymentTermDays: formData.get("paymentTermDays"),
     notes: formData.get("notes"),
+    campaignId: formData.get("campaignId"),
   });
 
   if (!parsed.success) {
@@ -313,11 +317,17 @@ export async function createRenewal(
   }
 
   const kind = data.mode as ContractKind;
+  const matched = await campaignForClient(data.campaignId, parent.clientId);
+  if (!matched.ok) {
+    return { ok: false, fieldErrors: { campaignId: matched.error } };
+  }
 
   const contract = await createContract({
     creatorId: parent.creatorId,
     kind,
     parent,
+    clientId: parent.clientId,
+    campaignId: matched.campaignId,
     economics: {
       deliverableCount: data.deliverableCount,
       salePriceCentsPerContent,
@@ -338,16 +348,162 @@ export async function createRenewal(
   });
 
   await markParentRenewed(parent.id, kind);
+  await syncPackSettlement({
+    campaignId: matched.campaignId,
+    creatorId: parent.creatorId,
+  });
 
   await recordAudit({
     entityType: "Contract",
     entityId: contract.id,
     action: kind === CONTRACT_KIND.ANNEX ? "ANNEX_CREATED" : "RENEWAL_CREATED",
     actor: user,
-    metadata: { code: contract.code, parentCode: parent.code },
+    metadata: {
+      code: contract.code,
+      parentCode: parent.code,
+      campaignId: matched.campaignId,
+    },
   });
 
   revalidatePath(`/creators/${parent.creatorId}`);
   revalidatePath("/contratos");
+  revalidatePath("/contenidos");
+  revalidatePath("/campanas");
+  revalidatePath("/finanzas");
+  redirect(`/contratos/${contract.id}`);
+}
+
+export async function createClientContract(
+  _prev: ContractActionResult | null,
+  formData: FormData
+): Promise<ContractActionResult> {
+  const user = await requirePermission("contracts:write", "/creators");
+
+  const parsed = newClientContractSchema.safeParse({
+    creatorId: formData.get("creatorId"),
+    clientId: formData.get("clientId"),
+    campaignId: formData.get("campaignId"),
+    deliverableCount: formData.get("deliverableCount"),
+    salePricePerContent: formData.get("salePricePerContent"),
+    costCurrency: formData.get("costCurrency"),
+    costPerContent: formData.get("costPerContent"),
+    fxUnitsPerUsd: formData.get("fxUnitsPerUsd"),
+    paymentTermDays: formData.get("paymentTermDays"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const data = parsed.data;
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: data.creatorId },
+    include: { contracts: { select: { id: true, clientId: true, status: true } } },
+  });
+
+  if (!creator) {
+    return { ok: false, error: "Ese creator no existe." };
+  }
+
+  const client = await prisma.client.findUnique({ where: { id: data.clientId } });
+  if (!client) {
+    return { ok: false, fieldErrors: { clientId: "Ese cliente no existe." } };
+  }
+
+  const already = creator.contracts.find(
+    (contract) =>
+      contract.clientId === client.id &&
+      contract.status !== CONTRACT_STATUS.CANCELLED
+  );
+
+  if (already) {
+    return {
+      ok: false,
+      error:
+        "Ya tiene un contrato con ese cliente. Para más contenidos, amplía o renueva esa cadena.",
+    };
+  }
+
+  const matched = await campaignForClient(data.campaignId, client.id);
+  if (!matched.ok) {
+    return { ok: false, fieldErrors: { campaignId: matched.error } };
+  }
+
+  const costMinorPerContent = parseAmountToMinorUnits(
+    data.costPerContent,
+    data.costCurrency
+  );
+  const salePriceCentsPerContent = parseAmountToMinorUnits(
+    data.salePricePerContent,
+    "USD"
+  );
+
+  if (costMinorPerContent === null || salePriceCentsPerContent === null) {
+    return { ok: false, error: "Revisa los importes." };
+  }
+
+  const fx = await resolveFxRate(data.costCurrency, data.fxUnitsPerUsd);
+
+  if (fx.unitsPerUsd <= 0) {
+    return {
+      ok: false,
+      fieldErrors: {
+        fxUnitsPerUsd: `No hay tipo de cambio guardado para ${data.costCurrency}. Escríbelo a mano.`,
+      },
+    };
+  }
+
+  if (data.fxUnitsPerUsd) {
+    await upsertFxRate(data.costCurrency, data.fxUnitsPerUsd);
+  }
+
+  const contract = await createContract({
+    creatorId: creator.id,
+    kind: CONTRACT_KIND.ORIGINAL,
+    clientId: client.id,
+    campaignId: matched.campaignId,
+    economics: {
+      deliverableCount: data.deliverableCount,
+      salePriceCentsPerContent,
+      costCurrency: data.costCurrency,
+      costMinorPerContent,
+      costUsdCentsPerContent: costPerContentUsdCents(
+        costMinorPerContent,
+        data.costCurrency,
+        fx.unitsPerUsd
+      ),
+      fxUnitsPerUsd: fx.unitsPerUsd,
+      fxRateAt: fx.rateAt,
+      fxSource: fx.source,
+      paymentTermDays: data.paymentTermDays,
+      notes: data.notes,
+    },
+    createdBy: user.email,
+  });
+
+  await syncPackSettlement({
+    campaignId: matched.campaignId,
+    creatorId: creator.id,
+  });
+
+  await recordAudit({
+    entityType: "Contract",
+    entityId: contract.id,
+    action: "CREATED",
+    actor: user,
+    metadata: {
+      code: contract.code,
+      clientId: client.id,
+      campaignId: matched.campaignId,
+    },
+  });
+
+  revalidatePath(`/creators/${creator.id}`);
+  revalidatePath("/contratos");
+  revalidatePath("/contenidos");
+  revalidatePath("/campanas");
+  revalidatePath("/finanzas");
   redirect(`/contratos/${contract.id}`);
 }

@@ -123,6 +123,8 @@ export async function createContract(input: {
   parent?: Contract | null;
   economics: ContractEconomicsInput;
   createdBy: string;
+  clientId?: string | null;
+  campaignId?: string | null;
 }) {
   const code = await nextContractCode({
     kind: input.kind,
@@ -152,10 +154,14 @@ export async function createContract(input: {
       paymentTermDays: input.economics.paymentTermDays,
       notes: input.economics.notes || null,
       createdBy: input.createdBy,
+      clientId: input.clientId ?? input.parent?.clientId ?? null,
       deliverables: {
         create: Array.from(
           { length: input.economics.deliverableCount },
-          (_, index) => ({ position: index + 1 })
+          (_, index) => ({
+            position: index + 1,
+            campaignId: input.campaignId || null,
+          })
         ),
       },
     },
@@ -168,6 +174,7 @@ export async function getContractDetail(id: string) {
     where: { id },
     include: {
       creator: true,
+      client: true,
       deliverables: {
         orderBy: { position: "asc" as const },
         include: { campaign: { include: { client: true } } },

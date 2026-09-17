@@ -113,6 +113,30 @@ export const createCreatorContractSchema = z.object({
     .min(0, "No puede ser negativo")
     .max(365, "Máximo 365 días"),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  clientId: z.string().trim().min(1, "Elige el cliente"),
+  campaignId: z.string().trim().optional().or(z.literal("")),
+});
+
+export const newClientContractSchema = z.object({
+  creatorId: z.string().min(1),
+  clientId: z.string().trim().min(1, "Elige el cliente"),
+  campaignId: z.string().trim().optional().or(z.literal("")),
+  deliverableCount: z.coerce.number().int().min(1).max(365),
+  salePricePerContent: amountString,
+  costCurrency: currencyCode,
+  costPerContent: amountString,
+  fxUnitsPerUsd: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? Number(value.replace(",", ".")) : null))
+    .refine(
+      (value) => value === null || (Number.isFinite(value) && value > 0),
+      "El tipo de cambio tiene que ser mayor que cero"
+    ),
+  paymentTermDays: z.coerce.number().int().min(0).max(365),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
 export const renewalSchema = z.object({
@@ -133,6 +157,7 @@ export const renewalSchema = z.object({
     ),
   paymentTermDays: z.coerce.number().int().min(0).max(365),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  campaignId: z.string().trim().optional().or(z.literal("")),
 });
 
 export const sendSignatureSchema = z.object({

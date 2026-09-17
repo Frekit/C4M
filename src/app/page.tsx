@@ -17,7 +17,7 @@ import { prisma } from "@/lib/db";
 import { contractTotals, deliverableProgress } from "@/lib/domain/contract-math";
 import { CONTRACT_STATUS, DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import { loadPackCampaignIds, loadPackSummaries } from "@/lib/domain/pack-sync";
-import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
+import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -30,6 +30,7 @@ export default async function DashboardPage() {
     prisma.contract.findMany({
       include: {
         creator: true,
+        client: true,
         deliverables: { include: { campaign: { include: { client: true } } } },
       },
       orderBy: { createdAt: "desc" },
@@ -67,18 +68,15 @@ export default async function DashboardPage() {
   const accruedByCurrency = live.reduce<Record<string, number>>(
     (accumulator, contract) => {
       for (const item of contract.deliverables) {
+        const policy = settlementPolicyOf({
+          client: contract.client,
+          campaign: item.campaign,
+        });
         const pack =
-          item.campaignId &&
-          item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+          item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
             ? packs.get(packKey(item.campaignId, contract.creatorId))
             : null;
-        if (
-          isAccruedDeliverable(
-            item.status,
-            item.campaign?.client ?? null,
-            pack?.isComplete ?? false
-          )
-        ) {
+        if (isAccruedDeliverable(item.status, policy, pack?.isComplete ?? false)) {
           accumulator[contract.costCurrency] =
             (accumulator[contract.costCurrency] ?? 0) +
             contract.costMinorPerContent;

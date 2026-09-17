@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import { ClientCampaignFields, type CampaignChoice, type ClientOption } from "@/components/client-campaign-fields";
+
 import { createCreatorWithContract, type CreateResult } from "../actions";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -32,9 +34,19 @@ const FIELD_LABELS: Record<string, string> = {
   fxUnitsPerUsd: "Tipo de cambio",
   paymentTermDays: "Plazo de pago",
   notes: "Notas",
+  clientId: "Cliente",
+  campaignId: "Campaña",
 };
 
-export function CreatorForm({ fxRates }: { fxRates: Record<string, number> }) {
+export function CreatorForm({
+  fxRates,
+  clients,
+  campaigns,
+}: {
+  fxRates: Record<string, number>;
+  clients: ClientOption[];
+  campaigns: CampaignChoice[];
+}) {
   const [state, formAction, pending] = useActionState<
     CreateResult | null,
     FormData
@@ -109,11 +121,18 @@ export function CreatorForm({ fxRates }: { fxRates: Record<string, number> }) {
         <CardHeader>
           <CardTitle>Lo pactado</CardTitle>
           <CardDescription>
-            Con esto se genera el contrato automáticamente, con un contenido por
-            cada pieza acordada.
+            El contrato es de un cliente. Si luego entra Many Chat, se le abre
+            otra cadena desde su ficha, no se mezcla con Higgsfield.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5">
+          <ClientCampaignFields
+            clients={clients}
+            campaigns={campaigns}
+            clientError={state?.fieldErrors?.clientId}
+            campaignError={state?.fieldErrors?.campaignId}
+          />
+
           <ContractEconomicsFields
             fxRates={fxRates}
             fieldErrors={state?.fieldErrors}

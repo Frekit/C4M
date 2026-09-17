@@ -27,12 +27,13 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 
 ## Cómo funciona el flujo
 
-1. **Registrar influencer** (`/creators/nuevo`): enlace de Instagram, contenidos pactados, precio de venta por contenido en USD, coste por contenido en la moneda del creator y plazo de pago desde la publicación. Al guardar se crea el contrato en borrador con un contenido por cada pieza acordada.
+1. **Registrar influencer** (`/creators/nuevo`): Instagram, cliente (Higgsfield, Many Chat, …), contenidos y precios. Al guardar se crea el contrato de ese cliente, en borrador.
+6. **Ampliar o renovar** es de **ese cliente**. Si el coste no cambia, anexo; si cambia, renovación. Para meterle en Many Chat (u otro) mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha, que abre una cadena nueva.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
 4. **Marcar contenidos publicados**: hace falta el enlace del post y una sola fecha. Sin contrato firmado no se puede marcar.
 5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces, se marcan como **submitted** y entonces se puede pagar. **Many Chat** y similares (pack): no se cobra al cliente ni se paga al perfil hasta que ese creator termine todos los contenidos de esa campaña.
-6. **Ampliar o renovar**: si el coste del creator no cambia, se crea un **anexo** que referencia al contrato original. Si cambia el coste, la moneda o el plazo, se crea una **renovación**, que es un contrato completo nuevo. Ambos quedan enlazados en la misma cadena del creator.
+6. **Ampliar o renovar** sigue en el mismo cliente. Anexo si el coste no cambia; renovación si cambia. Para Many Chat u otro cliente mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha (contrato original nuevo).
 
 ### Reglas de negocio que el sistema impone
 
@@ -41,6 +42,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 - El tipo de cambio se congela al crear el contrato, así el margen no se mueve después.
 - Los importes se guardan en unidades mínimas (enteros), nunca en coma flotante.
 - Los datos bancarios completos solo los ven Admin y Contabilidad.
+- El contrato es de **un cliente**. Ampliar/renovar sigue en Higgsfield; Many Chat se abre como contrato nuevo desde la ficha del creator.
 - La liquidación la marca el cliente: por contenido (con o sin plataforma) o al cerrar el pack de esa campaña con ese perfil.
 
 ## Acceso y roles

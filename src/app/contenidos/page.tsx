@@ -31,7 +31,7 @@ import {
   type DeliverableStatus,
 } from "@/lib/domain/enums";
 import { isDeliverableLate } from "@/lib/domain/rules";
-import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
+import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
 import { toInputDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -113,7 +113,7 @@ export default async function ContentsPage({
         { createdAt: "asc" },
       ],
       include: {
-        contract: { include: { creator: true } },
+        contract: { include: { creator: true, client: true } },
         campaign: { include: { client: true } },
       },
       take: 500,
@@ -130,12 +130,16 @@ export default async function ContentsPage({
     id: campaign.id,
     name: campaign.name,
     clientName: campaign.client?.name ?? null,
+    clientId: campaign.clientId,
   }));
 
   const rows: ContentRowData[] = deliverables.map((item) => {
+    const policy = settlementPolicyOf({
+      client: item.contract.client,
+      campaign: item.campaign,
+    });
     const pack =
-      item.campaignId &&
-      item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+      item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
         ? (packs.get(packKey(item.campaignId, item.contract.creatorId)) ?? null)
         : null;
 
@@ -144,6 +148,7 @@ export default async function ContentsPage({
       position: item.position,
       status: item.status,
       campaignId: item.campaignId,
+      clientId: item.contract.clientId,
       contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
       paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
       postUrl: item.postUrl,
@@ -173,15 +178,18 @@ export default async function ContentsPage({
 
   const accruedByCurrency = deliverables.reduce<Record<string, number>>(
     (accumulator, item) => {
+      const policy = settlementPolicyOf({
+        client: item.contract.client,
+        campaign: item.campaign,
+      });
       const pack =
-        item.campaignId &&
-        item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+        item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
           ? packs.get(packKey(item.campaignId, item.contract.creatorId))
           : null;
       if (
         isAccruedDeliverable(
           item.status,
-          item.campaign?.client ?? null,
+          policy,
           pack?.isComplete ?? false
         )
       ) {

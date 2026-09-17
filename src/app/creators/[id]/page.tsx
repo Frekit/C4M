@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ExternalLinkIcon } from "lucide-react";
+import { ExternalLinkIcon, PlusIcon } from "lucide-react";
 
 import { ContractChain } from "@/components/contract-chain";
 import { PayeeCard } from "@/components/payee-card";
@@ -14,13 +14,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
+import {
+  CONTRACT_STATUS,
+  SETTLEMENT_MODE,
+  SETTLEMENT_MODE_LABELS,
+  type SettlementMode,
+} from "@/lib/domain/enums";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
-import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
+import {
+  isAccruedDeliverable,
+  packKey,
+  settlementPolicyOf,
+} from "@/lib/domain/settlement";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -41,6 +51,7 @@ export default async function CreatorPage({
     include: {
       contracts: {
         include: {
+          client: true,
           deliverables: { include: { campaign: { include: { client: true } } } },
           signatureRequests: true,
         },
@@ -63,18 +74,15 @@ export default async function CreatorPage({
   const accruedByCurrency = creator.contracts.reduce<Record<string, number>>(
     (accumulator, contract) => {
       for (const item of contract.deliverables) {
+        const policy = settlementPolicyOf({
+          client: contract.client,
+          campaign: item.campaign,
+        });
         const pack =
-          item.campaignId &&
-          item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+          item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
             ? packs.get(packKey(item.campaignId, contract.creatorId))
             : null;
-        if (
-          isAccruedDeliverable(
-            item.status,
-            item.campaign?.client ?? null,
-            pack?.isComplete ?? false
-          )
-        ) {
+        if (isAccruedDeliverable(item.status, policy, pack?.isComplete ?? false)) {
           accumulator[contract.costCurrency] =
             (accumulator[contract.costCurrency] ?? 0) +
             contract.costMinorPerContent;
@@ -85,14 +93,35 @@ export default async function CreatorPage({
     {}
   );
 
-  const openContract = creator.contracts.find(
-    (contract) =>
-      contract.status === CONTRACT_STATUS.DRAFT ||
-      contract.status === CONTRACT_STATUS.SENT ||
-      contract.status === CONTRACT_STATUS.SIGNED
-  );
+  const groups = new Map<
+    string,
+    {
+      clientId: string | null;
+      name: string;
+      settlementMode: string | null;
+      requiresPlatformSubmit: boolean;
+      contracts: typeof creator.contracts;
+    }
+  >();
 
-  const lastContract = creator.contracts[creator.contracts.length - 1];
+  for (const contract of creator.contracts) {
+    const key = contract.clientId ?? "sin";
+    const existing = groups.get(key);
+    if (existing) {
+      existing.contracts.push(contract);
+    } else {
+      groups.set(key, {
+        clientId: contract.clientId,
+        name: contract.client?.name ?? "Sin cliente",
+        settlementMode: contract.client?.settlementMode ?? null,
+        requiresPlatformSubmit: contract.client?.requiresPlatformSubmit ?? false,
+        contracts: [contract],
+      });
+    }
+  }
+
+  const canRenew = can(user.role, "contracts:renew");
+  const canAddClient = can(user.role, "contracts:write");
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -122,13 +151,14 @@ export default async function CreatorPage({
             <ExternalLinkIcon />
             Instagram
           </Button>
-          {can(user.role, "contracts:renew") && lastContract ? (
+          {canAddClient ? (
             <Button
               size="sm"
               nativeButton={false}
-              render={<Link href={`/contratos/${lastContract.id}/renovar`} />}
+              render={<Link href={`/creators/${creator.id}/cliente`} />}
             >
-              Ampliar o renovar
+              <PlusIcon />
+              Meter con otro cliente
             </Button>
           ) : null}
         </div>
@@ -162,33 +192,69 @@ export default async function CreatorPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Contratos</CardDescription>
-            <CardTitle className="text-2xl">{creator.contracts.length}</CardTitle>
+            <CardDescription>Clientes</CardDescription>
+            <CardTitle className="text-2xl">{groups.size}</CardTitle>
           </CardHeader>
-          <CardContent>
-            {openContract ? (
-              <Badge variant="secondary">
-                {openContract.code} en curso
-              </Badge>
-            ) : (
-              <Badge variant="outline">Ninguno en curso</Badge>
-            )}
-          </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cadena de contratos</CardTitle>
-          <CardDescription>
-            Del primero al último, con lo entregado en cada uno. Alta el{" "}
-            {formatDate(creator.createdAt)}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ContractChain chain={creator.contracts} />
-        </CardContent>
-      </Card>
+      {[...groups.values()].map((group) => {
+        const deliverables = group.contracts.flatMap(
+          (contract) => contract.deliverables
+        );
+        const groupProgress = deliverableProgress(deliverables);
+        const live = [...group.contracts]
+          .reverse()
+          .find((contract) => contract.status !== CONTRACT_STATUS.CANCELLED);
+
+        return (
+          <Card key={group.clientId ?? "sin"}>
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>{group.name}</CardTitle>
+                    {group.settlementMode ? (
+                      <Badge variant="outline">
+                        {
+                          SETTLEMENT_MODE_LABELS[
+                            group.settlementMode as SettlementMode
+                          ]
+                        }
+                      </Badge>
+                    ) : null}
+                    {group.requiresPlatformSubmit ? (
+                      <Badge variant="secondary">Plataforma</Badge>
+                    ) : null}
+                  </div>
+                  <CardDescription>
+                    {groupProgress.published}/{groupProgress.total} publicados
+                    {live ? ` · ${live.code}` : ""}
+                    {" · alta "}
+                    {formatDate(group.contracts[0]?.createdAt)}
+                  </CardDescription>
+                </div>
+                {canRenew && live ? (
+                  <Button
+                    size="sm"
+                    nativeButton={false}
+                    render={<Link href={`/contratos/${live.id}/renovar`} />}
+                  >
+                    Ampliar o renovar
+                  </Button>
+                ) : null}
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <Progress
+                value={groupProgress.ratio * 100}
+                className="h-1.5"
+              />
+              <ContractChain chain={group.contracts} />
+            </CardContent>
+          </Card>
+        );
+      })}
 
       <PayeeCard
         payee={creator.payees[0] ?? null}

@@ -42,7 +42,7 @@ import {
   type ContractKind,
 } from "@/lib/domain/enums";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
-import { isAccruedDeliverable, packKey } from "@/lib/domain/settlement";
+import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
 import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
 import { formatMoney, formatPercent } from "@/lib/money";
 
@@ -77,18 +77,15 @@ export default async function ContractPage({
   const baseUrl = await getBaseUrl();
 
   const accruedCostMinor = contract.deliverables.reduce((total, item) => {
+    const policy = settlementPolicyOf({
+      client: contract.client,
+      campaign: item.campaign,
+    });
     const pack =
-      item.campaignId &&
-      item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+      item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
         ? packs.get(packKey(item.campaignId, contract.creatorId))
         : null;
-    if (
-      isAccruedDeliverable(
-        item.status,
-        item.campaign?.client ?? null,
-        pack?.isComplete ?? false
-      )
-    ) {
+    if (isAccruedDeliverable(item.status, policy, pack?.isComplete ?? false)) {
       return total + contract.costMinorPerContent;
     }
     return total;
@@ -103,7 +100,10 @@ export default async function ContractPage({
     can(user.role, "deliverables:publish") && !isCancelled;
 
   const campaigns = await prisma.campaign.findMany({
-    where: { status: CAMPAIGN_STATUS.ACTIVE },
+    where: {
+      status: CAMPAIGN_STATUS.ACTIVE,
+      ...(contract.clientId ? { clientId: contract.clientId } : {}),
+    },
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -124,6 +124,9 @@ export default async function ContractPage({
             <Badge variant="outline">
               {CONTRACT_KIND_LABELS[contract.kind as ContractKind]}
             </Badge>
+            {contract.client ? (
+              <Badge variant="secondary">{contract.client.name}</Badge>
+            ) : null}
           </div>
           <p className="text-sm text-muted-foreground">
             <Link
@@ -341,7 +344,10 @@ export default async function ContractPage({
               contractSigned: isSigned,
               pack:
                 item.campaignId &&
-                item.campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK
+                settlementPolicyOf({
+                  client: contract.client,
+                  campaign: item.campaign,
+                })?.settlementMode === SETTLEMENT_MODE.PACK
                   ? (packs.get(packKey(item.campaignId, contract.creatorId)) ??
                     null)
                   : null,

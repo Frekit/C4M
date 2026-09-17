@@ -21,6 +21,7 @@ export type ContentRowData = {
   position: number;
   status: string;
   campaignId: string | null;
+  clientId: string | null;
   contentDate: string | null;
   paymentDueAt: string | null;
   postUrl: string | null;
@@ -54,7 +55,7 @@ export function ContentRow({
   canEdit,
 }: {
   item: ContentRowData;
-  campaigns: { id: string; name: string; clientName?: string | null }[];
+  campaigns: { id: string; name: string; clientName?: string | null; clientId?: string | null }[];
   canEdit: boolean;
 }) {
   return (
@@ -73,7 +74,7 @@ function ContentRowFields({
   canEdit,
 }: {
   item: ContentRowData;
-  campaigns: { id: string; name: string; clientName?: string | null }[];
+  campaigns: { id: string; name: string; clientName?: string | null; clientId?: string | null }[];
   canEdit: boolean;
 }) {
   const {
@@ -139,7 +140,14 @@ function ContentRowFields({
             onChange={onFieldChange}
           >
             <option value="">Sin campaña</option>
-            {campaigns.map((campaign) => (
+            {campaigns
+              .filter(
+                (campaign) =>
+                  !item.clientId ||
+                  !campaign.clientId ||
+                  campaign.clientId === item.clientId
+              )
+              .map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.clientName
                   ? `${campaign.name} · ${campaign.clientName}`

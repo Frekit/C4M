@@ -20,7 +20,15 @@ async function latestFxRates(): Promise<Record<string, number>> {
 
 export default async function NewCreatorPage() {
   await requirePermission("creators:write", "/creators/nuevo");
-  const fxRates = await latestFxRates();
+  const [fxRates, clients, campaigns] = await Promise.all([
+    latestFxRates(),
+    prisma.client.findMany({ orderBy: { name: "asc" } }),
+    prisma.campaign.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, clientId: true },
+    }),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -29,11 +37,12 @@ export default async function NewCreatorPage() {
           Registrar influencer
         </h1>
         <p className="text-sm text-muted-foreground">
-          Al guardar se crea su contrato en borrador, listo para enviar a firma.
+          Al guardar se crea su contrato con un cliente, listo para enviar a
+          firma.
         </p>
       </div>
 
-      <CreatorForm fxRates={fxRates} />
+      <CreatorForm fxRates={fxRates} clients={clients} campaigns={campaigns} />
     </main>
   );
 }

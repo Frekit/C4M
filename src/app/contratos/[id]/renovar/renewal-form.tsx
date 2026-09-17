@@ -15,11 +15,19 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { NativeSelectField } from "@/components/native-select-field";
 import { CONTRACT_KIND } from "@/lib/domain/enums";
 
 import { createRenewal, type ContractActionResult } from "../../actions";
 
 type Mode = typeof CONTRACT_KIND.ANNEX | typeof CONTRACT_KIND.RENEWAL;
+
+export type CampaignOption = {
+  id: string;
+  name: string;
+  clientName: string | null;
+  settlementLabel: string;
+};
 
 export function RenewalForm({
   parentId,
@@ -27,6 +35,11 @@ export function RenewalForm({
   parentCostLabel,
   fxRates,
   defaults,
+  campaigns,
+  defaultCampaignId,
+  campaignRequired = false,
+  submitAnnexLabel = "Crear anexo",
+  submitRenewalLabel = "Crear contrato de renovación",
 }: {
   parentId: string;
   parentCode: string;
@@ -39,6 +52,11 @@ export function RenewalForm({
     costPerContent: string;
     paymentTermDays: number;
   };
+  campaigns: CampaignOption[];
+  defaultCampaignId?: string;
+  campaignRequired?: boolean;
+  submitAnnexLabel?: string;
+  submitRenewalLabel?: string;
 }) {
   const [mode, setMode] = useState<Mode>(CONTRACT_KIND.ANNEX);
   const [state, formAction, pending] = useActionState<
@@ -116,6 +134,30 @@ export function RenewalForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5">
+          <NativeSelectField
+            name="campaignId"
+            label="Campaña"
+            required={campaignRequired}
+            defaultValue={defaultCampaignId ?? ""}
+            error={state?.fieldErrors?.campaignId}
+            description={
+              campaignRequired
+                ? "Los contenidos nuevos nacen ya dentro de esta campaña."
+                : "Opcional. Solo campañas de este cliente."
+            }
+            options={[
+              ...(campaignRequired
+                ? []
+                : [{ value: "", label: "Sin campaña todavía" }]),
+              ...campaigns.map((campaign) => ({
+                value: campaign.id,
+                label: campaign.clientName
+                  ? `${campaign.name} · ${campaign.clientName} · ${campaign.settlementLabel}`
+                  : `${campaign.name} · ${campaign.settlementLabel}`,
+              })),
+            ]}
+          />
+
           <ContractEconomicsFields
             key={mode}
             fxRates={fxRates}
@@ -145,8 +187,8 @@ export function RenewalForm({
           {pending
             ? "Creando…"
             : mode === CONTRACT_KIND.ANNEX
-              ? "Crear anexo"
-              : "Crear contrato de renovación"}
+              ? submitAnnexLabel
+              : submitRenewalLabel}
         </Button>
       </div>
     </form>

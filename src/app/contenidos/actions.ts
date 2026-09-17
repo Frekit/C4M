@@ -72,7 +72,10 @@ export async function updateDeliverable(
 
   const deliverable = await prisma.deliverable.findUnique({
     where: { id: data.deliverableId },
-    include: { contract: true, campaign: { include: { client: true } } },
+    include: {
+      contract: { include: { client: true } },
+      campaign: { include: { client: true } },
+    },
   });
 
   if (!deliverable) {
@@ -121,14 +124,31 @@ export async function updateDeliverable(
       })
     : null;
 
+  if (
+    campaign &&
+    deliverable.contract.clientId &&
+    campaign.clientId &&
+    campaign.clientId !== deliverable.contract.clientId
+  ) {
+    return {
+      ok: false,
+      error:
+        "Esa campaña es de otro cliente. Este contrato es solo de " +
+        (deliverable.contract.client?.name ?? "su cliente") +
+        ".",
+    };
+  }
+
+  const policy =
+    campaign?.client ?? deliverable.contract.client ?? null;
+
   const resolved = resolveDeliverableState({
     status: data.status,
     previousStatus: deliverable.status,
     contentDate: data.contentDate,
     postUrl: data.postUrl,
     paymentTermDays: deliverable.contract.paymentTermDays,
-    deferPayment:
-      campaign?.client?.settlementMode === SETTLEMENT_MODE.PACK,
+    deferPayment: policy?.settlementMode === SETTLEMENT_MODE.PACK,
   });
 
   if (!resolved.ok) {
@@ -195,7 +215,7 @@ export async function assignCampaign(
 
   const existing = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
-    include: { contract: true },
+    include: { contract: { include: { client: true, creator: true } } },
   });
 
   if (campaignId) {
@@ -205,6 +225,20 @@ export async function assignCampaign(
 
     if (!campaign) {
       return { ok: false, error: "Esa campaña no existe." };
+    }
+
+    const mismatch = existing.find(
+      (item) =>
+        item.contract.clientId &&
+        campaign.clientId &&
+        item.contract.clientId !== campaign.clientId
+    );
+
+    if (mismatch) {
+      return {
+        ok: false,
+        error: `El contrato de @${mismatch.contract.creator.handle} no es de ese cliente. Higgsfield y Many Chat van en contratos distintos.`,
+      };
     }
   }
 

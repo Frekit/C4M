@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS } from "@/lib/domain/enums";
+import { CAMPAIGN_STATUS, CONTRACT_STATUS, SETTLEMENT_MODE_LABELS, type SettlementMode } from "@/lib/domain/enums";
 import { formatMoney } from "@/lib/money";
 import { fromMinorUnits } from "@/lib/money";
 
@@ -27,14 +27,24 @@ export default async function RenewContractPage({
 
   const contract = await prisma.contract.findUnique({
     where: { id },
-    include: { creator: true, deliverables: true },
+    include: { creator: true, client: true, deliverables: true },
   });
 
   if (!contract) {
     notFound();
   }
 
-  const rates = await prisma.fxRate.findMany({ orderBy: { date: "asc" } });
+  const [rates, campaigns] = await Promise.all([
+    prisma.fxRate.findMany({ orderBy: { date: "asc" } }),
+    prisma.campaign.findMany({
+      where: {
+        status: CAMPAIGN_STATUS.ACTIVE,
+        ...(contract.clientId ? { clientId: contract.clientId } : {}),
+      },
+      orderBy: { name: "asc" },
+      include: { client: true },
+    }),
+  ]);
   const fxRates = rates.reduce<Record<string, number>>((accumulator, rate) => {
     accumulator[rate.currency] = rate.unitsPerUsd;
     return accumulator;
@@ -47,9 +57,12 @@ export default async function RenewContractPage({
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="space-y-1">
         <h1 className="font-heading text-2xl font-medium tracking-tight">
-          Ampliar o renovar con @{contract.creator.handle}
+          Ampliar {contract.client?.name ?? "el contrato"} con @
+          {contract.creator.handle}
         </h1>
         <p className="text-sm text-muted-foreground">
+          Sigue siendo {contract.client?.name ?? "el mismo cliente"}. Para
+          Many Chat u otro cliente, ábrele un contrato nuevo desde su ficha.
           Partimos de {contract.code}, con {progress.published} de{" "}
           {progress.total} contenidos entregados.
         </p>
@@ -93,6 +106,15 @@ export default async function RenewContractPage({
               contract.costCurrency
             )}
             fxRates={fxRates}
+            campaigns={campaigns.map((campaign) => ({
+              id: campaign.id,
+              name: campaign.name,
+              clientName: campaign.client?.name ?? null,
+              settlementLabel:
+                SETTLEMENT_MODE_LABELS[
+                  campaign.client?.settlementMode as SettlementMode
+                ] ?? "Por contenido",
+            }))}
             defaults={{
               deliverableCount: contract.deliverableCount,
               salePricePerContent: String(
