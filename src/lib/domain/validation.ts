@@ -29,6 +29,38 @@ export function instagramUrlFor(handle: string): string {
   return `https://www.instagram.com/${handle}/`;
 }
 
+// FormData.get() devuelve null si el control no está en el DOM: casilla
+// desmarcada, bloque de Wise/IVA oculto, etc. Zod 4 lo convierte en
+// «Invalid input» y React 19, al fallar la acción, resetea el formulario.
+function fromFormString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function fromFormFlag(value: unknown): boolean {
+  return value === true || value === "on" || value === "true";
+}
+
+const formString = z.unknown().transform(fromFormString);
+
+const requiredText = (min: number, max: number, message = "Obligatorio") =>
+  formString.pipe(z.string().trim().min(min, message).max(max));
+
+const optionalText = (max: number) =>
+  formString.pipe(z.string().trim().max(max));
+
+const requiredEmail = formString.pipe(
+  z.string().trim().email("Email no válido")
+);
+
+const optionalEmail = formString.pipe(
+  z
+    .string()
+    .trim()
+    .pipe(z.union([z.literal(""), z.string().email("Email no válido")]))
+);
+
+const formFlag = z.unknown().transform(fromFormFlag);
+
 const amountString = z
   .string()
   .trim()
@@ -111,43 +143,47 @@ export const sendSignatureSchema = z.object({
 });
 
 export const signContractSchema = z.object({
-  kind: z.enum([PAYEE_KIND.INDIVIDUAL, PAYEE_KIND.COMPANY, PAYEE_KIND.AGENCY]),
-
-  legalName: z.string().trim().min(2, "Obligatorio").max(200),
-  taxId: z.string().trim().min(4, "Obligatorio").max(40),
-  country: z.string().trim().min(2, "Obligatorio").max(60),
-  addressLine: z.string().trim().min(4, "Obligatorio").max(200),
-  city: z.string().trim().min(2, "Obligatorio").max(80),
-  postalCode: z.string().trim().min(3, "Obligatorio").max(20),
-  region: z.string().trim().max(80).optional().or(z.literal("")),
-
-  accountHolder: z.string().trim().min(2, "Obligatorio").max(200),
-  payoutMethod: z.enum([PAYOUT_METHOD.BANK_TRANSFER, PAYOUT_METHOD.WISE]),
-  iban: z.string().trim().max(60).optional().or(z.literal("")),
-  swiftBic: z.string().trim().max(20).optional().or(z.literal("")),
-  bankName: z.string().trim().max(120).optional().or(z.literal("")),
-  wiseEmail: z
-    .string()
-    .trim()
-    .email("Email no válido")
-    .optional()
-    .or(z.literal("")),
-  payoutCurrency: currencyCode,
-
-  vatApplies: z.coerce.boolean().default(false),
-  vatRate: z.string().trim().optional().or(z.literal("")),
-  withholdingApplies: z.coerce.boolean().default(false),
-  withholdingRate: z.string().trim().optional().or(z.literal("")),
-  taxRegime: z.string().trim().max(120).optional().or(z.literal("")),
-
-  billingEmail: z.string().trim().email("Email no válido"),
-  phone: z.string().trim().max(40).optional().or(z.literal("")),
-  contactPerson: z.string().trim().max(120).optional().or(z.literal("")),
-
-  signerFullName: z.string().trim().min(3, "Escribe tu nombre completo").max(200),
-  acceptTerms: z.literal("on", {
-    message: "Tienes que aceptar el contrato para firmar",
+  kind: z.enum([PAYEE_KIND.INDIVIDUAL, PAYEE_KIND.COMPANY, PAYEE_KIND.AGENCY], {
+    error: "Elige si firmas como persona, empresa o agencia",
   }),
+
+  legalName: requiredText(2, 200),
+  taxId: requiredText(4, 40),
+  country: requiredText(2, 60),
+  addressLine: requiredText(4, 200),
+  city: requiredText(2, 80),
+  postalCode: requiredText(3, 20),
+  region: optionalText(80),
+
+  accountHolder: requiredText(2, 200),
+  payoutMethod: z.enum([PAYOUT_METHOD.BANK_TRANSFER, PAYOUT_METHOD.WISE], {
+    error: "Elige cómo quieres cobrar",
+  }),
+  iban: optionalText(60),
+  swiftBic: optionalText(20),
+  bankName: optionalText(120),
+  wiseEmail: optionalEmail,
+  payoutCurrency: formString.pipe(currencyCode),
+
+  vatApplies: formFlag,
+  vatRate: optionalText(10),
+  withholdingApplies: formFlag,
+  withholdingRate: optionalText(10),
+  taxRegime: optionalText(120),
+
+  billingEmail: requiredEmail,
+  phone: optionalText(40),
+  contactPerson: optionalText(120),
+
+  signerFullName: requiredText(3, 200, "Escribe tu nombre completo"),
+  acceptTerms: z
+    .unknown()
+    .transform((value) => (fromFormFlag(value) ? "on" : ""))
+    .pipe(
+      z.literal("on", {
+        error: "Tienes que aceptar el contrato para firmar",
+      })
+    ),
 });
 
 export const inviteSchema = z.object({
@@ -166,7 +202,11 @@ export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   for (const issue of error.issues) {
     const key = issue.path.join(".");
     if (!result[key]) {
-      result[key] = issue.message;
+      result[key] =
+        issue.message === "Invalid input" ||
+        issue.message.startsWith("Invalid input:")
+          ? "Revisa este dato"
+          : issue.message;
     }
   }
 

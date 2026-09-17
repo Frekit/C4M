@@ -10,11 +10,89 @@ import { fieldErrorsFrom, signContractSchema } from "@/lib/domain/validation";
 import { buildContractPdf } from "@/lib/pdf/contract-pdf";
 import { loadContractPdfInput } from "@/lib/pdf/contract-pdf-input";
 
+export type SignFormValues = {
+  kind: string;
+  legalName: string;
+  taxId: string;
+  country: string;
+  addressLine: string;
+  city: string;
+  postalCode: string;
+  region: string;
+  accountHolder: string;
+  payoutMethod: string;
+  iban: string;
+  swiftBic: string;
+  bankName: string;
+  wiseEmail: string;
+  payoutCurrency: string;
+  vatApplies: boolean;
+  vatRate: string;
+  withholdingApplies: boolean;
+  withholdingRate: string;
+  taxRegime: string;
+  billingEmail: string;
+  phone: string;
+  contactPerson: string;
+  signerFullName: string;
+  acceptTerms: boolean;
+};
+
 export type SignResult = {
   ok: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
+  values?: SignFormValues;
+  attempt?: number;
 };
+
+function readString(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
+}
+
+function snapshotSignForm(formData: FormData): SignFormValues {
+  return {
+    kind: readString(formData, "kind"),
+    legalName: readString(formData, "legalName"),
+    taxId: readString(formData, "taxId"),
+    country: readString(formData, "country"),
+    addressLine: readString(formData, "addressLine"),
+    city: readString(formData, "city"),
+    postalCode: readString(formData, "postalCode"),
+    region: readString(formData, "region"),
+    accountHolder: readString(formData, "accountHolder"),
+    payoutMethod: readString(formData, "payoutMethod"),
+    iban: readString(formData, "iban"),
+    swiftBic: readString(formData, "swiftBic"),
+    bankName: readString(formData, "bankName"),
+    wiseEmail: readString(formData, "wiseEmail"),
+    payoutCurrency: readString(formData, "payoutCurrency"),
+    vatApplies: formData.get("vatApplies") === "on",
+    vatRate: readString(formData, "vatRate"),
+    withholdingApplies: formData.get("withholdingApplies") === "on",
+    withholdingRate: readString(formData, "withholdingRate"),
+    taxRegime: readString(formData, "taxRegime"),
+    billingEmail: readString(formData, "billingEmail"),
+    phone: readString(formData, "phone"),
+    contactPerson: readString(formData, "contactPerson"),
+    signerFullName: readString(formData, "signerFullName"),
+    acceptTerms: formData.get("acceptTerms") === "on",
+  };
+}
+
+function fail(
+  prev: SignResult | null,
+  formData: FormData,
+  extras: Pick<SignResult, "error" | "fieldErrors">
+): SignResult {
+  return {
+    ok: false,
+    ...extras,
+    values: snapshotSignForm(formData),
+    attempt: (prev?.attempt ?? 0) + 1,
+  };
+}
 
 function parseRate(value: string | undefined | null): number | null {
   if (!value) return null;
@@ -34,11 +112,15 @@ export async function signContract(
   });
 
   if (!request) {
-    return { ok: false, error: "Este enlace de firma no existe." };
+    return fail(_prev, formData, {
+      error: "Este enlace de firma no existe.",
+    });
   }
 
   if (request.status === SIGNATURE_STATUS.SIGNED) {
-    return { ok: false, error: "Este contrato ya estaba firmado." };
+    return fail(_prev, formData, {
+      error: "Este contrato ya estaba firmado.",
+    });
   }
 
   if (
@@ -46,39 +128,21 @@ export async function signContract(
     request.expiresAt < new Date() ||
     request.contract.status === CONTRACT_STATUS.CANCELLED
   ) {
-    return { ok: false, error: "Este enlace ya no es válido. Pide uno nuevo." };
+    return fail(_prev, formData, {
+      error: "Este enlace ya no es válido. Pide uno nuevo.",
+    });
   }
 
+  const values = snapshotSignForm(formData);
   const parsed = signContractSchema.safeParse({
-    kind: formData.get("kind"),
-    legalName: formData.get("legalName"),
-    taxId: formData.get("taxId"),
-    country: formData.get("country"),
-    addressLine: formData.get("addressLine"),
-    city: formData.get("city"),
-    postalCode: formData.get("postalCode"),
-    region: formData.get("region"),
-    accountHolder: formData.get("accountHolder"),
-    payoutMethod: formData.get("payoutMethod"),
-    iban: formData.get("iban"),
-    swiftBic: formData.get("swiftBic"),
-    bankName: formData.get("bankName"),
-    wiseEmail: formData.get("wiseEmail"),
-    payoutCurrency: formData.get("payoutCurrency"),
-    vatApplies: formData.get("vatApplies") ?? false,
-    vatRate: formData.get("vatRate"),
-    withholdingApplies: formData.get("withholdingApplies") ?? false,
-    withholdingRate: formData.get("withholdingRate"),
-    taxRegime: formData.get("taxRegime"),
-    billingEmail: formData.get("billingEmail"),
-    phone: formData.get("phone"),
-    contactPerson: formData.get("contactPerson"),
-    signerFullName: formData.get("signerFullName"),
-    acceptTerms: formData.get("acceptTerms"),
+    ...values,
+    acceptTerms: values.acceptTerms ? "on" : "",
   });
 
   if (!parsed.success) {
-    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
+    return fail(_prev, formData, {
+      fieldErrors: fieldErrorsFrom(parsed.error),
+    });
   }
 
   const data = parsed.data;
@@ -86,14 +150,15 @@ export async function signContract(
   // Sin datos de cobro completos no se puede pagar después, así que aquí se
   // exige lo que corresponda al método elegido.
   if (data.payoutMethod === "BANK_TRANSFER" && !data.iban) {
-    return { ok: false, fieldErrors: { iban: "Necesitamos el IBAN o número de cuenta" } };
+    return fail(_prev, formData, {
+      fieldErrors: { iban: "Necesitamos el IBAN o número de cuenta" },
+    });
   }
 
   if (data.payoutMethod === "WISE" && !data.wiseEmail) {
-    return {
-      ok: false,
+    return fail(_prev, formData, {
       fieldErrors: { wiseEmail: "Necesitamos el email de la cuenta de Wise" },
-    };
+    });
   }
 
   const context = await requestContext();

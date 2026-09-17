@@ -91,3 +91,40 @@ test("los desplegables sin valor dan error localizable", () => {
     assert.ok(paths.includes("payoutCurrency"));
   }
 });
+
+test("campos ocultos que el navegador omite no invalidan el formulario", () => {
+  const payload = {
+    ...completePayload(),
+    wiseEmail: null,
+    vatApplies: false,
+    vatRate: null,
+    withholdingApplies: false,
+    withholdingRate: null,
+    region: null,
+    swiftBic: null,
+    bankName: null,
+    taxRegime: null,
+    phone: null,
+    contactPerson: null,
+  };
+
+  const result = signContractSchema.safeParse(payload);
+  assert.equal(
+    result.success,
+    true,
+    result.success ? "" : JSON.stringify(result.error.issues, null, 2)
+  );
+});
+
+test("Wise con un email mal formado falla con un mensaje entendible", () => {
+  const payload = { ...completePayload(), wiseEmail: "no-es-un-email" };
+  const result = signContractSchema.safeParse(payload);
+
+  assert.equal(result.success, false);
+  if (!result.success) {
+    const issue = result.error.issues.find(
+      (entry) => entry.path[0] === "wiseEmail"
+    );
+    assert.equal(issue?.message, "Email no válido");
+  }
+});

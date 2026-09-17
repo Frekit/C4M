@@ -8,10 +8,12 @@ export function FormErrorSummary({
   error,
   fieldErrors,
   labels,
+  id,
 }: {
   error?: string;
   fieldErrors?: Record<string, string>;
   labels?: Record<string, string>;
+  id?: string;
 }) {
   const entries = Object.entries(fieldErrors ?? {});
 
@@ -20,7 +22,7 @@ export function FormErrorSummary({
   }
 
   return (
-    <Alert variant="destructive">
+    <Alert id={id} variant="destructive" className="scroll-mt-24">
       <TriangleAlertIcon />
       <AlertTitle>
         {error ?? "Revisa estos campos antes de continuar"}

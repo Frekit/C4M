@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   BanknoteIcon,
   BuildingIcon,
@@ -30,7 +30,11 @@ import {
   PAYOUT_METHOD_LABELS,
 } from "@/lib/domain/enums";
 
-import { signContract, type SignResult } from "./actions";
+import {
+  signContract,
+  type SignFormValues,
+  type SignResult,
+} from "./actions";
 
 const KIND_OPTIONS = Object.values(PAYEE_KIND).map((kind) => ({
   value: kind,
@@ -102,16 +106,59 @@ export function SignForm({
   defaultCurrency: string;
   defaultEmail: string;
 }) {
-  const [state, formAction, pending] = useActionState<SignResult | null, FormData>(
-    signContract,
-    null
-  );
+  const [state, formAction, pending] = useActionState<
+    SignResult | null,
+    FormData
+  >(signContract, null);
 
-  const [payoutMethod, setPayoutMethod] = useState<string>(
-    PAYOUT_METHOD.BANK_TRANSFER
+  useEffect(() => {
+    if (!state?.error && !state?.fieldErrors) return;
+    document
+      .getElementById("sign-form-errors")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [state?.attempt, state?.error, state?.fieldErrors]);
+
+  // Tras un error, React 19 resetea el <form> a los defaultValue del primer
+  // render (vacíos). Remontar con lo que devolvió el servidor conserva lo
+  // que el firmante ya había escrito.
+  return (
+    <SignFormFields
+      key={state?.attempt ?? 0}
+      token={token}
+      defaultCurrency={defaultCurrency}
+      defaultEmail={defaultEmail}
+      values={state?.values}
+      state={state}
+      formAction={formAction}
+      pending={pending}
+    />
   );
-  const [vatApplies, setVatApplies] = useState(false);
-  const [withholdingApplies, setWithholdingApplies] = useState(false);
+}
+
+function SignFormFields({
+  token,
+  defaultCurrency,
+  defaultEmail,
+  values,
+  state,
+  formAction,
+  pending,
+}: {
+  token: string;
+  defaultCurrency: string;
+  defaultEmail: string;
+  values?: SignFormValues;
+  state: SignResult | null;
+  formAction: (payload: FormData) => void;
+  pending: boolean;
+}) {
+  const [payoutMethod, setPayoutMethod] = useState(
+    values?.payoutMethod || PAYOUT_METHOD.BANK_TRANSFER
+  );
+  const [vatApplies, setVatApplies] = useState(Boolean(values?.vatApplies));
+  const [withholdingApplies, setWithholdingApplies] = useState(
+    Boolean(values?.withholdingApplies)
+  );
 
   const errors = state?.fieldErrors ?? {};
 
@@ -120,6 +167,7 @@ export function SignForm({
       <input type="hidden" name="token" value={token} />
 
       <FormErrorSummary
+        id="sign-form-errors"
         error={state?.error}
         fieldErrors={state?.fieldErrors}
         labels={FIELD_LABELS}
@@ -138,43 +186,101 @@ export function SignForm({
             name="kind"
             label="Firmas como"
             options={KIND_OPTIONS}
-            defaultValue={PAYEE_KIND.INDIVIDUAL}
+            defaultValue={values?.kind || PAYEE_KIND.INDIVIDUAL}
             error={errors.kind}
             className="sm:col-span-2"
             required
           />
 
-          <Field name="legalName" label="Nombre o razón social" error={errors.legalName}>
-            <Input id="legalName" name="legalName" autoComplete="organization" required />
+          <Field
+            name="legalName"
+            label="Nombre o razón social"
+            error={errors.legalName}
+          >
+            <Input
+              id="legalName"
+              name="legalName"
+              autoComplete="organization"
+              defaultValue={values?.legalName ?? ""}
+              aria-invalid={Boolean(errors.legalName)}
+              required
+            />
           </Field>
 
           <Field name="taxId" label="NIF / CIF / Tax ID" error={errors.taxId}>
-            <Input id="taxId" name="taxId" autoComplete="off" required />
+            <Input
+              id="taxId"
+              name="taxId"
+              autoComplete="off"
+              defaultValue={values?.taxId ?? ""}
+              aria-invalid={Boolean(errors.taxId)}
+              required
+            />
           </Field>
 
-          <Field name="addressLine" label="Dirección" error={errors.addressLine}>
+          <Field
+            name="addressLine"
+            label="Dirección"
+            error={errors.addressLine}
+          >
             <Input
               id="addressLine"
               name="addressLine"
               autoComplete="street-address"
+              defaultValue={values?.addressLine ?? ""}
+              aria-invalid={Boolean(errors.addressLine)}
               required
             />
           </Field>
 
           <Field name="city" label="Ciudad" error={errors.city}>
-            <Input id="city" name="city" autoComplete="address-level2" required />
+            <Input
+              id="city"
+              name="city"
+              autoComplete="address-level2"
+              defaultValue={values?.city ?? ""}
+              aria-invalid={Boolean(errors.city)}
+              required
+            />
           </Field>
 
-          <Field name="postalCode" label="Código postal" error={errors.postalCode}>
-            <Input id="postalCode" name="postalCode" autoComplete="postal-code" required />
+          <Field
+            name="postalCode"
+            label="Código postal"
+            error={errors.postalCode}
+          >
+            <Input
+              id="postalCode"
+              name="postalCode"
+              autoComplete="postal-code"
+              defaultValue={values?.postalCode ?? ""}
+              aria-invalid={Boolean(errors.postalCode)}
+              required
+            />
           </Field>
 
-          <Field name="region" label="Provincia o estado (opcional)" error={errors.region}>
-            <Input id="region" name="region" autoComplete="address-level1" />
+          <Field
+            name="region"
+            label="Provincia o estado (opcional)"
+            error={errors.region}
+          >
+            <Input
+              id="region"
+              name="region"
+              autoComplete="address-level1"
+              defaultValue={values?.region ?? ""}
+            />
           </Field>
 
           <Field name="country" label="País" error={errors.country}>
-            <Input id="country" name="country" autoComplete="country-name" required />
+            <Input
+              id="country"
+              name="country"
+              autoComplete="country-name"
+              defaultValue={values?.country ?? ""}
+              aria-invalid={Boolean(errors.country)}
+              required
+            />
           </Field>
         </CardContent>
       </Card>
@@ -193,7 +299,13 @@ export function SignForm({
             label="Titular de la cuenta"
             error={errors.accountHolder}
           >
-            <Input id="accountHolder" name="accountHolder" required />
+            <Input
+              id="accountHolder"
+              name="accountHolder"
+              defaultValue={values?.accountHolder ?? ""}
+              aria-invalid={Boolean(errors.accountHolder)}
+              required
+            />
           </Field>
 
           <div className="grid gap-2">
@@ -226,18 +338,52 @@ export function SignForm({
               label="Email de la cuenta de Wise"
               error={errors.wiseEmail}
             >
-              <Input id="wiseEmail" name="wiseEmail" type="email" />
+              <Input
+                id="wiseEmail"
+                name="wiseEmail"
+                type="email"
+                defaultValue={values?.wiseEmail ?? ""}
+                aria-invalid={Boolean(errors.wiseEmail)}
+              />
             </Field>
           ) : (
             <>
-              <Field name="iban" label="IBAN o número de cuenta" error={errors.iban}>
-                <Input id="iban" name="iban" autoComplete="off" />
+              <Field
+                name="iban"
+                label="IBAN o número de cuenta"
+                error={errors.iban}
+              >
+                <Input
+                  id="iban"
+                  name="iban"
+                  autoComplete="off"
+                  defaultValue={values?.iban ?? ""}
+                  aria-invalid={Boolean(errors.iban)}
+                />
               </Field>
-              <Field name="swiftBic" label="SWIFT / BIC (opcional)" error={errors.swiftBic}>
-                <Input id="swiftBic" name="swiftBic" autoComplete="off" />
+              <Field
+                name="swiftBic"
+                label="SWIFT / BIC (opcional)"
+                error={errors.swiftBic}
+              >
+                <Input
+                  id="swiftBic"
+                  name="swiftBic"
+                  autoComplete="off"
+                  defaultValue={values?.swiftBic ?? ""}
+                />
               </Field>
-              <Field name="bankName" label="Banco (opcional)" error={errors.bankName}>
-                <Input id="bankName" name="bankName" autoComplete="off" />
+              <Field
+                name="bankName"
+                label="Banco (opcional)"
+                error={errors.bankName}
+              >
+                <Input
+                  id="bankName"
+                  name="bankName"
+                  autoComplete="off"
+                  defaultValue={values?.bankName ?? ""}
+                />
               </Field>
             </>
           )}
@@ -246,7 +392,9 @@ export function SignForm({
             name="payoutCurrency"
             label="Moneda en la que quieres cobrar"
             options={CURRENCY_OPTIONS}
-            defaultValue={defaultCurrency}
+            defaultValue={
+              values?.payoutCurrency || defaultCurrency
+            }
             error={errors.payoutCurrency}
             className="sm:col-span-2"
             required
@@ -278,6 +426,8 @@ export function SignForm({
                 name="vatRate"
                 inputMode="decimal"
                 placeholder="21"
+                defaultValue={values?.vatRate ?? ""}
+                aria-invalid={Boolean(errors.vatRate)}
                 className="max-w-32"
               />
             </Field>
@@ -302,6 +452,8 @@ export function SignForm({
                 name="withholdingRate"
                 inputMode="decimal"
                 placeholder="15"
+                defaultValue={values?.withholdingRate ?? ""}
+                aria-invalid={Boolean(errors.withholdingRate)}
                 className="max-w-32"
               />
             </Field>
@@ -312,7 +464,12 @@ export function SignForm({
             label="Régimen o notas fiscales (opcional)"
             error={errors.taxRegime}
           >
-            <Input id="taxRegime" name="taxRegime" placeholder="Autónomo, exento…" />
+            <Input
+              id="taxRegime"
+              name="taxRegime"
+              placeholder="Autónomo, exento…"
+              defaultValue={values?.taxRegime ?? ""}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -332,13 +489,22 @@ export function SignForm({
               id="billingEmail"
               name="billingEmail"
               type="email"
-              defaultValue={defaultEmail}
+              defaultValue={
+                values ? values.billingEmail : defaultEmail
+              }
+              aria-invalid={Boolean(errors.billingEmail)}
               required
             />
           </Field>
 
           <Field name="phone" label="Teléfono (opcional)" error={errors.phone}>
-            <Input id="phone" name="phone" type="tel" autoComplete="tel" />
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              defaultValue={values?.phone ?? ""}
+            />
           </Field>
 
           <Field
@@ -347,7 +513,11 @@ export function SignForm({
             error={errors.contactPerson}
             hint="Rellénalo si firmas en nombre de una agencia."
           >
-            <Input id="contactPerson" name="contactPerson" />
+            <Input
+              id="contactPerson"
+              name="contactPerson"
+              defaultValue={values?.contactPerson ?? ""}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -366,13 +536,20 @@ export function SignForm({
             error={errors.signerFullName}
             hint="Esto queda registrado como tu firma, junto con la fecha y tu IP."
           >
-            <Input id="signerFullName" name="signerFullName" required />
+            <Input
+              id="signerFullName"
+              name="signerFullName"
+              defaultValue={values?.signerFullName ?? ""}
+              aria-invalid={Boolean(errors.signerFullName)}
+              required
+            />
           </Field>
 
           <NativeCheckboxField
             name="acceptTerms"
             title="He leído y acepto el contrato"
             description="Declaro que los datos facilitados son correctos."
+            defaultChecked={Boolean(values?.acceptTerms)}
             error={errors.acceptTerms}
           />
 
