@@ -44,15 +44,20 @@ export function SendSignatureCard({
         <SendIcon className="size-4 text-muted-foreground" />
         <CardTitle>Enviar a firma</CardTitle>
         <CardDescription>
-          Se genera un enlace privado donde el talento o su agencia rellenan sus
-          datos y firman.
+          Se genera un enlace privado y, si hay RESEND_API_KEY, se manda al
+          correo. Si no, lo copias y lo envías tú.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         {signatureUrl ? (
           <Alert>
-            <AlertTitle>Enlace de firma listo</AlertTitle>
+            <AlertTitle>
+              {state?.mailStatus === "sent"
+                ? "Enlace enviado"
+                : "Enlace de firma listo"}
+            </AlertTitle>
             <AlertDescription className="grid gap-2">
+              {state?.message ? <span>{state.message}</span> : null}
               <code className="rounded bg-muted px-2 py-1 text-xs break-all">
                 {signatureUrl}
               </code>
@@ -117,7 +122,7 @@ export function SendSignatureCard({
           </div>
 
           <Button type="submit" className="w-fit" disabled={pending}>
-            {pending ? "Generando…" : "Generar enlace de firma"}
+            {pending ? "Enviando…" : "Enviar a firma"}
           </Button>
         </form>
       </CardContent>

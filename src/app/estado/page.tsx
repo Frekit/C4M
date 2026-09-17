@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +16,15 @@ import {
   getAuthModeSetting,
   isAuth0Configured,
 } from "@/lib/auth/config";
+import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getCompany } from "@/lib/company";
 import { prisma } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
+import { isMailConfigured } from "@/lib/mail/send";
+
+import { FxRateForm } from "./fx-rate-form";
 
 export const metadata: Metadata = {
   title: "Estado",
@@ -27,6 +32,7 @@ export const metadata: Metadata = {
 
 export default async function StatusPage() {
   const user = await requireUser("/estado");
+  const canEditFx = can(user.role, "contracts:write");
 
   const authMode = getAuthMode();
   const modeSetting = getAuthModeSetting();
@@ -47,7 +53,12 @@ export default async function StatusPage() {
           Estado del sistema
         </h1>
         <p className="text-sm text-muted-foreground">
-          Cómo está configurada la autenticación y qué hay cargado.
+          Cómo está configurada la autenticación y qué hay cargado. El rastro
+          de quién hizo qué está en{" "}
+          <Link href="/auditoria" className="underline">
+            Auditoría
+          </Link>
+          .
         </p>
       </div>
 
@@ -73,6 +84,10 @@ export default async function StatusPage() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Tu rol</span>
               <span>{ROLE_LABELS[user.role]}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Correo de firma</span>
+              <span>{isMailConfigured() ? "Resend listo" : "Sin API key"}</span>
             </div>
           </CardContent>
         </Card>
@@ -136,11 +151,12 @@ export default async function StatusPage() {
         <CardHeader>
           <CardTitle>Tipos de cambio guardados</CardTitle>
           <CardDescription>
-            Se aplican al crear un contrato y quedan congelados en él. De momento
-            se cargan a mano o desde la semilla.
+            Se aplican al crear un contrato y quedan congelados en él.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2">
+        <CardContent className="grid gap-4">
+          {canEditFx ? <FxRateForm /> : null}
+          <div className="grid gap-2 sm:grid-cols-2">
           {rates.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No hay ninguno: al crear un contrato en otra moneda tendrás que
@@ -159,6 +175,7 @@ export default async function StatusPage() {
               </div>
             ))
           )}
+          </div>
         </CardContent>
       </Card>
 

@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: contratos
+      POSTGRES_USER: contratos
+      POSTGRES_PASSWORD: contratos
+    ports:
+      - "5432:5432"
+    volumes:
+      - contratos_pg:/var/lib/postgresql/data
+
+volumes:
+  contratos_pg:

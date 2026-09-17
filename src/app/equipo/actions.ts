@@ -3,17 +3,22 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
+import { getBaseUrl } from "@/lib/base-url";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { ROLES, type Role } from "@/lib/domain/enums";
+import { ROLE_LABELS, ROLES, type Role } from "@/lib/domain/enums";
 import { fieldErrorsFrom, inviteSchema } from "@/lib/domain/validation";
+import { mailStatusCopy, sendMail } from "@/lib/mail/send";
+import { invitationMailCopy } from "@/lib/mail/templates";
 
 export type ActionResult = {
   ok: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
   invitationUrl?: string;
+  mailStatus?: "sent" | "skipped" | "failed";
+  message?: string;
 };
 
 export async function inviteMember(
@@ -54,17 +59,33 @@ export async function inviteMember(
     },
   });
 
+  const baseUrl = await getBaseUrl();
+  const invitationUrl = `/invitacion/${token}`;
+  const mail = await sendMail({
+    to: email,
+    ...invitationMailCopy({
+      roleLabel: ROLE_LABELS[role],
+      url: `${baseUrl}${invitationUrl}`,
+      expiresAt,
+    }),
+  });
+
   await recordAudit({
     entityType: "Invitation",
     entityId: email,
     action: "INVITED",
     actor: admin,
-    metadata: { role },
+    metadata: { role, mailStatus: mail.status },
   });
 
   revalidatePath("/equipo");
 
-  return { ok: true, invitationUrl: `/invitacion/${token}` };
+  return {
+    ok: true,
+    invitationUrl,
+    mailStatus: mail.status,
+    message: mailStatusCopy(mail),
+  };
 }
 
 export async function revokeInvitation(formData: FormData) {

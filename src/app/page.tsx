@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarClockIcon, PenLineIcon, PlusIcon } from "lucide-react";
 
 import { ContractStatusBadge } from "@/components/status-badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
     accruedByCurrency,
     awaitingSignature,
     upcomingPayments,
+    opsAlerts,
   } = await loadDashboard();
 
   if (creatorCount === 0) {
@@ -80,6 +82,31 @@ export default async function DashboardPage() {
           </Button>
         ) : null}
       </div>
+
+      {opsAlerts.length > 0 ? (
+        <div className="grid gap-3">
+          {opsAlerts.map((alert) => (
+            <Alert key={`${alert.kind}-${alert.contractId}`}>
+              <AlertTitle>
+                {alert.kind === "expired_signature"
+                  ? "Enlace de firma caducado"
+                  : "Publicado sin contrato firmado"}
+              </AlertTitle>
+              <AlertDescription>
+                <Link
+                  href={`/contratos/${alert.contractId}`}
+                  className="hover:underline"
+                >
+                  @{alert.handle} · {alert.code}
+                </Link>
+                {alert.kind === "expired_signature"
+                  ? " — genera un enlace nuevo."
+                  : ` — ${alert.publishedCount} contenido(s) en redes y la firma sigue pendiente.`}
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

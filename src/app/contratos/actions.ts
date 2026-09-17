@@ -4,12 +4,13 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getBaseUrl } from "@/lib/base-url";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
+import { campaignForClient } from "@/lib/domain/client-campaign";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
 import { createContract, markParentRenewed } from "@/lib/domain/contracts";
-import { campaignForClient } from "@/lib/domain/client-campaign";
 import { syncPackSettlement } from "@/lib/domain/pack-sync";
 import {
   CONTRACT_KIND,
@@ -34,6 +35,8 @@ import {
   sendSignatureSchema,
 } from "@/lib/domain/validation";
 import { parseAmountToMinorUnits } from "@/lib/money";
+import { mailStatusCopy, sendMail } from "@/lib/mail/send";
+import { signatureMailCopy } from "@/lib/mail/templates";
 
 export type ContractActionResult = {
   ok: boolean;
@@ -41,6 +44,7 @@ export type ContractActionResult = {
   fieldErrors?: Record<string, string>;
   signatureUrl?: string;
   message?: string;
+  mailStatus?: "sent" | "skipped" | "failed";
 };
 
 async function revokeLiveSignatures(contractId: string) {
@@ -75,7 +79,10 @@ export async function sendToSignature(
 
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    include: { signatureRequests: true },
+    include: {
+      signatureRequests: true,
+      creator: { select: { handle: true } },
+    },
   });
 
   if (!contract) {
@@ -97,6 +104,7 @@ export async function sendToSignature(
   // Solo puede haber un enlace vivo a la vez.
   await revokeLiveSignatures(contractId);
 
+  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
   const token = randomBytes(32).toString("base64url");
 
   const request = await prisma.signatureRequest.create({
@@ -105,7 +113,7 @@ export async function sendToSignature(
       token,
       recipientEmail,
       recipientKind,
-      expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
+      expiresAt,
       sentAt: new Date(),
       createdBy: user.email,
     },
@@ -116,19 +124,41 @@ export async function sendToSignature(
     data: { status: CONTRACT_STATUS.SENT },
   });
 
+  const baseUrl = await getBaseUrl();
+  const signatureUrl = `/firmar/${token}`;
+  const mail = await sendMail({
+    to: recipientEmail,
+    ...signatureMailCopy({
+      handle: contract.creator.handle,
+      code: contract.code,
+      url: `${baseUrl}${signatureUrl}`,
+      expiresAt,
+    }),
+  });
+
   await recordAudit({
     entityType: "Contract",
     entityId: contractId,
     action: "SIGNATURE_SENT",
     actor: user,
-    metadata: { recipientEmail, recipientKind, requestId: request.id },
+    metadata: {
+      recipientEmail,
+      recipientKind,
+      requestId: request.id,
+      mailStatus: mail.status,
+    },
   });
 
   revalidatePath("/");
   revalidatePath("/contratos");
   revalidatePath(`/contratos/${contractId}`);
 
-  return { ok: true, signatureUrl: `/firmar/${token}` };
+  return {
+    ok: true,
+    signatureUrl,
+    mailStatus: mail.status,
+    message: mailStatusCopy(mail),
+  };
 }
 
 export async function revokeSignature(formData: FormData) {

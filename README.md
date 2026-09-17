@@ -30,7 +30,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 ## Cómo funciona el flujo
 
 1. **Registrar influencer** (`/creators/nuevo`): Instagram, cliente (Higgsfield, Many Chat, …), contenidos y precios. Al guardar se crea el contrato de ese cliente, en borrador.
-2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
+2. **Enviar a firma**: se genera un enlace privado. Si hay `RESEND_API_KEY`, se manda al correo del talento o su agencia; si no, se copia para pegarlo a mano. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, **email de cobro (Zexel)**, moneda, situación fiscal y contacto, y aceptan. El IBAN y Wise los gestiona Zexel. Queda rastro de auditoría: nombre, fecha, IP, huella SHA-256 y **el PDF firmado tal cual se aceptó** (no se regenera si cambia la plantilla).
 4. **Marcar contenidos publicados** (`/contenidos`): hacen falta el enlace del post y una sola fecha. Si el contrato aún no está firmado, se puede forzar (confirma en el diálogo); el acuerdo sigue pendiente de firma. La tabla pagina de 60 en 60; los contadores (estado, retrasados, devengo) miran todo el conjunto filtrado, no solo la página.
 5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces y se marcan como **en plataforma**. Si la plataforma rechaza, **Error al subir** con una nota saca el ítem de esa cola (sigue Publicado en redes) hasta que se reintente o se marque en plataforma. **Many Chat** y similares (pack): no se cobra ni se paga hasta que ese creator termine todos los contenidos de esa campaña. El cobro a perfiles se ejecuta **en un lote de Zexel**: CSV `email;importe_destino;moneda_destino`, se sube a Zexel Pay y **Lote ya pagado** vacía la cola.
@@ -92,11 +92,16 @@ Con Auth0 activo, la identidad la da Auth0 y el rol la base de datos: una cuenta
 
 ## Migrar a PostgreSQL
 
-El esquema se escribió para que el salto sea barato: sin enums de base de datos, sin campos `Json`, sin tipos nativos y con importes en enteros. Para migrar:
+El esquema se escribió para que el salto sea barato: sin enums de base de datos, sin campos `Json`, sin tipos nativos y con importes en enteros. La checklist de Auth0, Postgres y Resend está en [docs/production.md](docs/production.md).
 
-1. Cambia `provider = "sqlite"` por `"postgresql"` en `prisma/schema.prisma`.
-2. Pon la URL del servidor en `DATABASE_URL`.
-3. Borra `prisma/migrations` y genera la migración inicial contra Postgres, o crea una migración de conversión si ya hay datos que conservar.
+En resumen:
+
+1. `docker compose up -d db` (o tu Postgres).
+2. Cambia `provider = "sqlite"` por `"postgresql"` en `prisma/schema.prisma`.
+3. Pon la URL en `DATABASE_URL`.
+4. Primera vez sin datos: borra `prisma/migrations` y `npx prisma migrate dev --name init_postgres`.
+
+`AUTH_MODE=local` **no es apto para producción**.
 
 ## Scripts
 

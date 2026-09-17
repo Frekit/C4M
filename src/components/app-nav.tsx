@@ -122,6 +122,9 @@ export function AppNav({ user }: { user: AppUser | null }) {
               <DropdownMenuItem render={<Link href="/estado" />}>
                 Estado del sistema
               </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/auditoria" />}>
+                Auditoría
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem render={<a href={getLogoutHref()} />}>
                 <LogOutIcon />

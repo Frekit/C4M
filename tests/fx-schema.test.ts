@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   createCreatorContractSchema,
   fieldErrorsFrom,
+  fxRateFormSchema,
   newClientContractSchema,
   optionalFxRate,
   renewalSchema,
@@ -32,6 +33,24 @@ test("un tipo de cambio inválido no sale como Invalid input", () => {
       false
     );
   }
+});
+
+test("guardar un FX en /estado exige moneda y un número mayor que cero", () => {
+  const ok = fxRateFormSchema.safeParse({
+    currency: "EUR",
+    unitsPerUsd: "0,92",
+  });
+  assert.equal(ok.success, true);
+  if (ok.success) {
+    assert.equal(ok.data.currency, "EUR");
+    assert.equal(ok.data.unitsPerUsd, 0.92);
+  }
+
+  const empty = fxRateFormSchema.safeParse({
+    currency: "EUR",
+    unitsPerUsd: "",
+  });
+  assert.equal(empty.success, false);
 });
 
 const creatorPayload = {

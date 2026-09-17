@@ -155,6 +155,37 @@ export const optionalFxRate = z.unknown().transform((raw, ctx) => {
   return parsed;
 });
 
+export const fxRateFormSchema = z.object({
+  currency: formCurrency,
+  unitsPerUsd: z.unknown().transform((raw, ctx) => {
+    const text =
+      typeof raw === "number" && Number.isFinite(raw)
+        ? String(raw)
+        : typeof raw === "string"
+          ? raw.trim()
+          : "";
+
+    if (text === "") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Escribe el tipo de cambio",
+      });
+      return z.NEVER;
+    }
+
+    const parsed = Number(text.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "El tipo de cambio tiene que ser mayor que cero",
+      });
+      return z.NEVER;
+    }
+
+    return parsed;
+  }),
+});
+
 export const createCreatorContractSchema = z.object({
   instagram: formString.pipe(
     z

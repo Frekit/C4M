@@ -3,6 +3,7 @@ import {
   CONTRACT_STATUS,
   DELIVERABLE_STATUS,
 } from "@/lib/domain/enums";
+import { loadOpsAlerts } from "@/lib/domain/ops-alerts";
 import { loadPackCampaignIds, loadPackSummaries } from "@/lib/domain/pack-sync";
 import {
   settlementPolicyOf,
@@ -30,6 +31,7 @@ export async function loadDashboard() {
     packs,
     liveDeliverables,
     upcomingPayments,
+    opsAlerts,
   ] = await Promise.all([
     prisma.creator.count(),
     prisma.deliverable.count({ where: { contract: liveContract } }),
@@ -122,6 +124,7 @@ export async function loadDashboard() {
         },
       })
     ),
+    loadOpsAlerts(),
   ]);
 
   const marginUsdCents = liveContracts.reduce((total, contract) => {
@@ -157,5 +160,6 @@ export async function loadDashboard() {
     accruedByCurrency,
     awaitingSignature,
     upcomingPayments,
+    opsAlerts,
   };
 }

@@ -27,7 +27,8 @@ export function InviteForm({ baseUrl }: { baseUrl: string }) {
       const url = `${baseUrl}${state.invitationUrl}`;
       navigator.clipboard.writeText(url).catch(() => undefined);
       toast.success("Invitación creada", {
-        description: "El enlace está copiado en tu portapapeles.",
+        description:
+          state.message ?? "El enlace está copiado en tu portapapeles.",
       });
     }
 
@@ -64,7 +65,7 @@ export function InviteForm({ baseUrl }: { baseUrl: string }) {
       />
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Creando…" : "Invitar"}
+        {pending ? "Enviando…" : "Invitar"}
       </Button>
     </form>
   );

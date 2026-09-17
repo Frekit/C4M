@@ -38,6 +38,8 @@ Eso basta para operar y para reconstruir el documento. Una firma electrónica cu
 | ¿Se puede marcar submitted / error / pagado? | `src/lib/domain/finance-commands.ts` |
 | Contenidos (filtros y página) | `src/lib/domain/contents-query.ts` + `contents.ts` |
 | Texto y hash del PDF | `src/lib/pdf/` y `src/lib/domain/contract-copy.ts` (+ `payment-copy.ts` para el plazo) |
+| Correo de firma / invitación | `src/lib/mail/` |
+| Alertas de operación | `src/lib/domain/ops-alerts.ts` |
 | Roles | `src/lib/auth/permissions.ts` |
 | Auth0 vs local | `src/lib/auth/config.ts` y `src/proxy.ts` |
 | Copiar un lote a Zexel | `src/lib/domain/zexel-batch.ts` |
@@ -54,4 +56,4 @@ npm run verify    # lint + types + tests
 npm run dev       # http://localhost:43127
 ```
 
-Flujo de producto: [README.md](README.md).
+Flujo de producto: [README.md](README.md). Producción (Auth0, Postgres, Resend): [docs/production.md](docs/production.md).
