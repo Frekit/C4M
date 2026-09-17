@@ -7,11 +7,13 @@ function Progress({
   className,
   children,
   value,
+  locale = "es",
   ...props
 }: ProgressPrimitive.Root.Props) {
   return (
     <ProgressPrimitive.Root
       value={value}
+      locale={locale}
       data-slot="progress"
       className={cn("flex flex-wrap gap-3", className)}
       {...props}
