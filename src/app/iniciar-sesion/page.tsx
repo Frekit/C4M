@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getAuthMode, isAuth0Active, safeReturnTo } from "@/lib/auth/config";
+import { auth0LoginAlert } from "@/lib/auth/loopback";
 import { getAccessState } from "@/lib/auth/session";
 import { getLoginHref } from "@/lib/auth/urls";
 
@@ -44,6 +45,8 @@ export default async function LoginPage({
   }
 
   const authMode = getAuthMode();
+  const auth0Alert =
+    params.error === "auth0" ? auth0LoginAlert(params.detalle) : null;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-12 sm:px-6">
@@ -66,17 +69,11 @@ export default async function LoginPage({
         </Alert>
       ) : null}
 
-      {params.error === "auth0" ? (
+      {auth0Alert ? (
         <Alert variant="destructive">
           <AlertCircleIcon />
-          <AlertTitle>Auth0 no pudo completar el acceso</AlertTitle>
-          <AlertDescription>
-            {params.detalle?.includes("state")
-              ? "La sesión de login no coincidió. Entra por http://localhost:43127 (no por 127.0.0.1) y vuelve a intentarlo."
-              : params.detalle
-                ? params.detalle
-                : "Vuelve a entrar. Si persiste, revisa en Auth0 las Allowed Callback URLs: http://localhost:43127/auth/callback."}
-          </AlertDescription>
+          <AlertTitle>{auth0Alert.title}</AlertTitle>
+          <AlertDescription>{auth0Alert.description}</AlertDescription>
         </Alert>
       ) : null}
 

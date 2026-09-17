@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   auth0CallbackDetail,
+  auth0LoginAlert,
   rewriteLoopbackUrl,
 } from "@/lib/auth/loopback";
 
@@ -32,6 +33,14 @@ test("si nextUrl ya es localhost pero el Host es 127.0.0.1, también reescribe",
     rewriteLoopbackUrl(new URL("http://localhost:43127/"), "localhost:43127"),
     null
   );
+});
+
+test("el error de Organization explica el cambio en el dashboard", () => {
+  const alert = auth0LoginAlert(
+    "client requires organization membership, but user does not belong to any organization"
+  );
+  assert.equal(alert.title, "Auth0 exige una Organization");
+  assert.match(alert.description, /Individuals/);
 });
 
 test("el detalle del callback prioriza la causa de Auth0", () => {

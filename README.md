@@ -76,6 +76,7 @@ En el dashboard de Auth0:
 - Allowed Callback URLs: `http://localhost:43127/auth/callback`
 - Allowed Logout URLs: `http://localhost:43127`
 - Allowed Web Origins: `http://localhost:43127`
+- **Login Experience → Type of Users: Individuals.** Esta app ya es solo por invitación; si el cliente está en Business Users, Auth0 rechaza a quien no pertenezca a una Organization.
 
 Entra por `http://localhost:43127`, no por `127.0.0.1`: Auth0 trata esos hosts como distintos y el callback falla.
 

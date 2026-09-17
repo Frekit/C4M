@@ -50,3 +50,33 @@ export function auth0CallbackDetail(error: {
 
   return "Auth0 no completó el login.";
 }
+
+export function auth0LoginAlert(detalle?: string): {
+  title: string;
+  description: string;
+} {
+  const text = (detalle ?? "").toLowerCase();
+
+  if (text.includes("organization")) {
+    return {
+      title: "Auth0 exige una Organization",
+      description:
+        "En Auth0 Dashboard → Applications → esta app → Login Experience, pon Type of Users en Individuals y guarda. El acceso del equipo ya lo controla la invitación de esta app; no hace falta Organizations. Si las quieres de verdad, añade tu usuario a una Organization y habilita ahí la connection con la que entras.",
+    };
+  }
+
+  if (text.includes("state")) {
+    return {
+      title: "La sesión de login no coincidió",
+      description:
+        "Entra por http://localhost:43127 (no por 127.0.0.1) y vuelve a intentarlo.",
+    };
+  }
+
+  return {
+    title: "Auth0 no pudo completar el acceso",
+    description:
+      detalle?.trim() ||
+      "Vuelve a entrar. Si persiste, revisa en Auth0 las Allowed Callback URLs: http://localhost:43127/auth/callback.",
+  };
+}
