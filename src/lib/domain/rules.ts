@@ -85,10 +85,8 @@ export function isLiveDeliverable(status: string): boolean {
   );
 }
 
-// Solo cuando Finanzas lo ha subido a la plataforma del cliente.
-export function isPayableDeliverable(status: string): boolean {
-  return status === DELIVERABLE_STATUS.SUBMITTED;
-}
+// ¿Se puede pagar al perfil? No uses el estado a secas: Higgsfield pide
+// SUBMITTED; Many Chat paga al cerrar el pack. Ver isPayableWithPolicy.
 
 export type DeliverableStateInput = {
   status: string;

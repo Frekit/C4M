@@ -72,7 +72,7 @@ export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
   PENDING: "Sin agendar",
   SCHEDULED: "Agendado",
   PUBLISHED: "Publicado",
-  SUBMITTED: "Submitted",
+  SUBMITTED: "En plataforma",
 };
 
 export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
@@ -90,7 +90,7 @@ export const DELIVERABLE_STATUS_ORDER: DeliverableStatus[] = [
   "SUBMITTED",
 ];
 
-// Contents opera hasta Publicado. Submitted lo marca Finanzas.
+// Contents opera hasta Publicado. En plataforma lo marca Finanzas.
 export const OPS_DELIVERABLE_STATUSES: DeliverableStatus[] = [
   "PENDING",
   "SCHEDULED",

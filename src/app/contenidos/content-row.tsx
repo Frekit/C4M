@@ -11,31 +11,12 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import type { PackProgress } from "@/lib/domain/settlement";
+import type { ContentRowData } from "@/lib/domain/contents";
 
 import { PublishConfirmDialog } from "./publish-confirm-dialog";
 import { useDeliverableAutosave } from "./use-deliverable-autosave";
 
-export type ContentRowData = {
-  id: string;
-  position: number;
-  status: string;
-  campaignId: string | null;
-  clientId: string | null;
-  contentDate: string | null;
-  paymentDueAt: string | null;
-  postUrl: string | null;
-  isLate: boolean;
-  costMinor: number;
-  costCurrency: string;
-  creatorHandle: string;
-  creatorId: string;
-  contractId: string;
-  contractCode: string;
-  contractSigned: boolean;
-  pack: PackProgress | null;
-  platformSubmitError: string | null;
-};
+export type { ContentRowData };
 
 const inputClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";

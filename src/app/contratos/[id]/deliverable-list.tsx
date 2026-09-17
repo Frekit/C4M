@@ -267,7 +267,7 @@ export function DeliverableList({
         ))}
       </ol>
       <p className="text-xs text-muted-foreground">
-        Publicado es que ya está en redes, con enlace y fecha. Submitted lo
+        Publicado es que ya está en redes, con enlace y fecha. En plataforma lo
         marca Finanzas solo en clientes con plataforma. En clientes pack no se
         cobra ni se paga hasta completar los contenidos de ese perfil en la
         campaña.

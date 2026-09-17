@@ -20,34 +20,16 @@ import {
 } from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import {
-  CONTENTS_PAGE_SIZE,
-  buildDeliverableWhere,
-  buildLateDeliverableWhere,
-  contentsHref,
-  parsePage,
-  statusCountsFromGroup,
-  withLiveStatus,
-  type ContentFilters,
-} from "@/lib/domain/contents-query";
+import { CONTENTS_PAGE_SIZE, contentsHref } from "@/lib/domain/contents-query";
+import { loadContentsPage } from "@/lib/domain/contents";
 import {
   DELIVERABLE_STATUS_LABELS,
   DELIVERABLE_STATUS_ORDER,
 } from "@/lib/domain/enums";
-import { loadPackSummariesFor } from "@/lib/domain/pack-sync";
-import { isDeliverableLate, isSignedContract } from "@/lib/domain/rules";
-import {
-  isPackSettlement,
-  packKey,
-  settlementPolicyOf,
-  sumAccruedByCurrency,
-} from "@/lib/domain/settlement";
-import { toInputDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 import { BulkCampaignBar } from "./bulk-campaign-bar";
-import { ContentRow, type ContentRowData } from "./content-row";
+import { ContentRow } from "./content-row";
 import { ContentsPager } from "./pager";
 
 export const metadata: Metadata = {
@@ -57,205 +39,24 @@ export const metadata: Metadata = {
 const inputClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
-const deliverableOrderBy = [
-  { scheduledFor: "asc" as const },
-  { publishedAt: "asc" as const },
-  { createdAt: "asc" as const },
-];
-
 export default async function ContentsPage({
   searchParams,
 }: {
-  searchParams: Promise<ContentFilters>;
+  searchParams: Promise<{
+    creador?: string;
+    campana?: string;
+    estado?: string;
+    desde?: string;
+    hasta?: string;
+    retrasados?: string;
+    pagina?: string;
+  }>;
 }) {
   const user = await requireUser("/contenidos");
   const filters = await searchParams;
-
   const canEdit = can(user.role, "deliverables:publish");
   const canGroup = can(user.role, "campaigns:manage");
-
-  const where = buildDeliverableWhere(filters);
-  const page = parsePage(filters.pagina);
-  const skip = (page - 1) * CONTENTS_PAGE_SIZE;
-  const liveWhere = withLiveStatus(where);
-  const lateWhere = buildLateDeliverableWhere(filters);
-
-  const [
-    deliverables,
-    total,
-    statusGroups,
-    lateCount,
-    creators,
-    campaigns,
-    liveItems,
-  ] = await Promise.all([
-    prisma.deliverable.findMany({
-      where,
-      orderBy: deliverableOrderBy,
-      skip,
-      take: CONTENTS_PAGE_SIZE,
-      select: {
-        id: true,
-        position: true,
-        status: true,
-        campaignId: true,
-        scheduledFor: true,
-        publishedAt: true,
-        paymentDueAt: true,
-        postUrl: true,
-        platformSubmitError: true,
-        contractId: true,
-        contract: {
-          select: {
-            code: true,
-            status: true,
-            creatorId: true,
-            clientId: true,
-            costMinorPerContent: true,
-            costCurrency: true,
-            creator: { select: { handle: true } },
-            client: {
-              select: {
-                settlementMode: true,
-                requiresPlatformSubmit: true,
-              },
-            },
-          },
-        },
-        campaign: {
-          select: {
-            client: {
-              select: {
-                settlementMode: true,
-                requiresPlatformSubmit: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.deliverable.count({ where }),
-    prisma.deliverable.groupBy({
-      by: ["status"],
-      where,
-      _count: { _all: true },
-    }),
-    prisma.deliverable.count({ where: lateWhere }),
-    prisma.creator.findMany({
-      orderBy: { handle: "asc" },
-      select: { id: true, handle: true },
-    }),
-    prisma.campaign.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        clientId: true,
-        client: { select: { name: true } },
-      },
-    }),
-    liveWhere
-      ? prisma.deliverable.findMany({
-          where: liveWhere,
-          select: {
-            status: true,
-            campaignId: true,
-            contract: {
-              select: {
-                creatorId: true,
-                costCurrency: true,
-                costMinorPerContent: true,
-                client: {
-                  select: {
-                    settlementMode: true,
-                    requiresPlatformSubmit: true,
-                  },
-                },
-              },
-            },
-            campaign: {
-              select: {
-                client: {
-                  select: {
-                    settlementMode: true,
-                    requiresPlatformSubmit: true,
-                  },
-                },
-              },
-            },
-          },
-        })
-      : Promise.resolve([]),
-  ]);
-
-  const packs = await loadPackSummariesFor([
-    ...deliverables.map((item) => item.campaignId),
-    ...liveItems.map((item) => item.campaignId),
-  ]);
-
-  const campaignOptions = campaigns.map((campaign) => ({
-    id: campaign.id,
-    name: campaign.name,
-    clientName: campaign.client?.name ?? null,
-    clientId: campaign.clientId,
-  }));
-
-  const rows: ContentRowData[] = deliverables.map((item) => {
-    const policy = settlementPolicyOf({
-      client: item.contract.client,
-      campaign: item.campaign,
-    });
-    const pack =
-      item.campaignId && isPackSettlement(policy)
-        ? (packs.get(packKey(item.campaignId, item.contract.creatorId)) ?? null)
-        : null;
-
-    return {
-      id: item.id,
-      position: item.position,
-      status: item.status,
-      campaignId: item.campaignId,
-      clientId: item.contract.clientId,
-      contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
-      paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
-      postUrl: item.postUrl,
-      isLate: isDeliverableLate(item),
-      costMinor: item.contract.costMinorPerContent,
-      costCurrency: item.contract.costCurrency,
-      creatorHandle: item.contract.creator.handle,
-      creatorId: item.contract.creatorId,
-      contractId: item.contractId,
-      contractCode: item.contract.code,
-      contractSigned: isSignedContract(item.contract.status),
-      pack,
-      platformSubmitError: item.platformSubmitError,
-    };
-  });
-
-  const counts = statusCountsFromGroup(statusGroups);
-  const accruedByCurrency = sumAccruedByCurrency(
-    liveItems.map((item) => ({
-      status: item.status,
-      campaignId: item.campaignId,
-      creatorId: item.contract.creatorId,
-      costCurrency: item.contract.costCurrency,
-      costMinorPerContent: item.contract.costMinorPerContent,
-      policy: settlementPolicyOf({
-        client: item.contract.client,
-        campaign: item.campaign,
-      }),
-    })),
-    packs
-  );
-
-  const hasFilters = Boolean(
-    filters.creador ||
-      filters.campana ||
-      filters.estado ||
-      filters.desde ||
-      filters.hasta ||
-      filters.retrasados
-  );
+  const data = await loadContentsPage(filters);
 
   return (
     <main className="mx-auto flex w-full max-w-full flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
@@ -280,13 +81,13 @@ export default async function ContentsPage({
       <div className="flex flex-wrap gap-2">
         {DELIVERABLE_STATUS_ORDER.map((status) => (
           <Badge key={status} variant="outline">
-            {DELIVERABLE_STATUS_LABELS[status]}: {counts[status] ?? 0}
+            {DELIVERABLE_STATUS_LABELS[status]}: {data.counts[status] ?? 0}
           </Badge>
         ))}
-        {lateCount > 0 ? (
-          <Badge variant="destructive">Con fecha pasada: {lateCount}</Badge>
+        {data.lateCount > 0 ? (
+          <Badge variant="destructive">Con fecha pasada: {data.lateCount}</Badge>
         ) : null}
-        {Object.entries(accruedByCurrency).map(([currency, amount]) => (
+        {Object.entries(data.accruedByCurrency).map(([currency, amount]) => (
           <Badge key={currency} variant="secondary">
             Devengado: {formatMoney(amount, currency)}
           </Badge>
@@ -314,7 +115,7 @@ export default async function ContentsPage({
                 className={inputClass}
               >
                 <option value="">Todos</option>
-                {creators.map((creator) => (
+                {data.creators.map((creator) => (
                   <option key={creator.id} value={creator.id}>
                     @{creator.handle}
                   </option>
@@ -331,7 +132,7 @@ export default async function ContentsPage({
               >
                 <option value="">Todas</option>
                 <option value="sin">Sin campaña</option>
-                {campaigns.map((campaign) => (
+                {data.campaigns.map((campaign) => (
                   <option key={campaign.id} value={campaign.id}>
                     {campaign.name}
                   </option>
@@ -389,7 +190,7 @@ export default async function ContentsPage({
               <Button type="submit" size="sm">
                 Filtrar
               </Button>
-              {hasFilters ? (
+              {data.hasFilters ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -404,26 +205,26 @@ export default async function ContentsPage({
         </CardContent>
       </Card>
 
-      {canGroup && rows.length > 0 ? (
-        <BulkCampaignBar campaigns={campaignOptions} />
+      {canGroup && data.rows.length > 0 ? (
+        <BulkCampaignBar campaigns={data.campaignOptions} />
       ) : null}
 
-      {total === 0 ? (
+      {data.total === 0 ? (
         <Card>
           <CardHeader>
             <LayoutListIcon className="size-5 text-muted-foreground" />
             <CardTitle>
-              {hasFilters
+              {data.hasFilters
                 ? "Ningún contenido con esos filtros"
                 : "Todavía no hay contenidos"}
             </CardTitle>
             <CardDescription>
-              {hasFilters
+              {data.hasFilters
                 ? "Prueba a quitar algún filtro."
                 : "Los contenidos se crean solos al registrar un influencer con sus contenidos pactados."}
             </CardDescription>
           </CardHeader>
-          {hasFilters ? (
+          {data.hasFilters ? (
             <CardContent>
               <Button
                 variant="outline"
@@ -435,14 +236,14 @@ export default async function ContentsPage({
             </CardContent>
           ) : null}
         </Card>
-      ) : rows.length === 0 ? (
+      ) : data.rows.length === 0 ? (
         <Card>
           <CardHeader>
             <LayoutListIcon className="size-5 text-muted-foreground" />
             <CardTitle>Esta página está vacía</CardTitle>
             <CardDescription>
-              Hay {total} contenidos con esos filtros, pero no en la página{" "}
-              {page}.
+              Hay {data.total} contenidos con esos filtros, pero no en la página{" "}
+              {data.page}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -473,20 +274,20 @@ export default async function ContentsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {data.rows.map((row) => (
                   <ContentRow
                     key={row.id}
                     item={row}
-                    campaigns={campaignOptions}
+                    campaigns={data.campaignOptions}
                     canEdit={canEdit}
                   />
                 ))}
               </TableBody>
             </Table>
             <ContentsPager
-              page={page}
+              page={data.page}
               pageSize={CONTENTS_PAGE_SIZE}
-              total={total}
+              total={data.total}
               filters={filters}
             />
           </CardContent>
@@ -497,7 +298,7 @@ export default async function ContentsPage({
         Los cambios se guardan solos. Para marcar como publicado hacen falta
         el enlace y la fecha. Si el contrato aún no está firmado, se puede
         forzar: confirma en el diálogo y la firma sigue pendiente. Con
-        clientes de plataforma, Submitted lo marca Finanzas. Con clientes
+        clientes de plataforma, En plataforma lo marca Finanzas. Con clientes
         pack, no se cobra ni se paga hasta completar todos los contenidos de
         ese perfil en la campaña.
       </p>

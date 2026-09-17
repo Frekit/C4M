@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { SETTLEMENT_MODE } from "@/lib/domain/enums";
-import { campaignSchema, fieldErrorsFrom } from "@/lib/domain/validation";
+import { campaignSchema } from "@/lib/domain/validation";
 
 const manyChatId = "client_manychat_001";
 
@@ -40,13 +40,6 @@ test("el nombre de cliente nuevo ausente no sale como Invalid input", () => {
   });
 
   assert.equal(result.success, true);
-  if (!result.success) {
-    const errors = fieldErrorsFrom(result.error);
-    assert.equal(
-      Object.values(errors).some((message) => message === "Revisa este dato"),
-      false
-    );
-  }
 });
 
 test("nuevo cliente con liquidación pack es válido", () => {

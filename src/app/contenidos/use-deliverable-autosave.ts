@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useRef, useState } from "react";
 
 import { DELIVERABLE_STATUS } from "@/lib/domain/enums";
 
@@ -71,13 +71,15 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     FormData
   >(updateDeliverable, null);
 
-  pendingRef.current = pending;
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
 
   function clearTimer() {
     window.clearTimeout(timerRef.current);
   }
 
-  function submitNow() {
+  const submitNow = useCallback(() => {
     const form = formRef.current;
     if (!form || !canEdit) return;
     if (!isDirty(form, item)) return;
@@ -85,7 +87,7 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     startTransition(() => {
       formAction(data);
     });
-  }
+  }, [canEdit, formAction, item]);
 
   function scheduleSave() {
     if (!canEdit) return;
@@ -109,6 +111,13 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     submitNow();
   }
 
+  const restoreStatus = useCallback(() => {
+    const select = formRef.current?.elements.namedItem("status");
+    if (select instanceof HTMLSelectElement) {
+      select.value = item.status;
+    }
+  }, [item.status]);
+
   useEffect(() => {
     return () => clearTimer();
   }, []);
@@ -117,20 +126,13 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     if (pending || !queuedRef.current) return;
     queuedRef.current = false;
     submitNow();
-  }, [pending]);
+  }, [pending, submitNow]);
 
   useEffect(() => {
     if (!state || state.ok || !confirmingPublish.current) return;
     confirmingPublish.current = false;
     restoreStatus();
-  }, [state]);
-
-  function restoreStatus() {
-    const select = formRef.current?.elements.namedItem("status");
-    if (select instanceof HTMLSelectElement) {
-      select.value = item.status;
-    }
-  }
+  }, [state, restoreStatus]);
 
   function onFieldChange(
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>

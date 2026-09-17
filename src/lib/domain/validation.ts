@@ -83,21 +83,49 @@ const currencyCode = z
 
 const formCurrency = formString.pipe(currencyCode);
 
-const formCount = formString.pipe(
-  z.coerce
-    .number()
-    .int("Tiene que ser un número entero")
-    .min(1, "Al menos un contenido")
-    .max(365, "Demasiados contenidos para un solo contrato")
-);
+function formIntInRange(
+  min: number,
+  max: number,
+  messages: { empty: string; int: string; min: string; max: string }
+) {
+  return formString.pipe(
+    z.string().transform((raw, ctx) => {
+      const text = raw.trim();
+      if (text === "") {
+        ctx.addIssue({ code: "custom", message: messages.empty });
+        return z.NEVER;
+      }
+      if (!/^-?\d+$/.test(text)) {
+        ctx.addIssue({ code: "custom", message: messages.int });
+        return z.NEVER;
+      }
+      const value = Number(text);
+      if (value < min) {
+        ctx.addIssue({ code: "custom", message: messages.min });
+        return z.NEVER;
+      }
+      if (value > max) {
+        ctx.addIssue({ code: "custom", message: messages.max });
+        return z.NEVER;
+      }
+      return value;
+    })
+  );
+}
 
-const formPaymentTerm = formString.pipe(
-  z.coerce
-    .number()
-    .int("Tiene que ser un número entero")
-    .min(0, "No puede ser negativo")
-    .max(365, "Máximo 365 días")
-);
+const formCount = formIntInRange(1, 365, {
+  empty: "Al menos un contenido",
+  int: "Tiene que ser un número entero",
+  min: "Al menos un contenido",
+  max: "Demasiados contenidos para un solo contrato",
+});
+
+const formPaymentTerm = formIntInRange(0, 365, {
+  empty: "Tiene que ser un número entero",
+  int: "Tiene que ser un número entero",
+  min: "No puede ser negativo",
+  max: "Máximo 365 días",
+});
 
 const formClientId = formString.pipe(
   z.string().trim().min(1, "Elige el cliente")

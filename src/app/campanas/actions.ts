@@ -12,6 +12,7 @@ export type CampaignActionResult = {
   ok: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
+  at?: number;
 };
 
 async function resolveClientId(data: {
@@ -128,7 +129,7 @@ export async function createCampaign(
   revalidatePath("/contenidos");
   revalidatePath("/finanzas");
 
-  return { ok: true };
+  return { ok: true, at: Date.now() };
 }
 
 export async function setCampaignStatus(formData: FormData) {

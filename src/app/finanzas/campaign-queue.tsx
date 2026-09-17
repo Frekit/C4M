@@ -69,9 +69,18 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
   >(markPlatformSubmitError, null);
   const [errorOpen, setErrorOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [seenErrorState, setSeenErrorState] = useState(errorState);
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(group.items.map((item) => [item.id, true]))
   );
+
+  if (errorState !== seenErrorState) {
+    setSeenErrorState(errorState);
+    if (errorState?.ok) {
+      setErrorOpen(false);
+      setReason("");
+    }
+  }
 
   useEffect(() => {
     if (state?.ok) {
@@ -91,8 +100,6 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
           ? "1 contenido marcado con error de subida"
           : `${errorState.count} contenidos marcados con error de subida`
       );
-      setErrorOpen(false);
-      setReason("");
     }
     if (errorState && !errorState.ok && errorState.error) {
       toast.error(errorState.error);

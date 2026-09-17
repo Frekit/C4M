@@ -1,4 +1,4 @@
-import { SETTLEMENT_MODE } from "@/lib/domain/enums";
+import { DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import { paymentDueDate } from "@/lib/domain/contract-math";
 import { isLiveDeliverable } from "@/lib/domain/rules";
 
@@ -66,7 +66,7 @@ export function isPayableWithPolicy(
     return true;
   }
 
-  return status === "SUBMITTED";
+  return status === DELIVERABLE_STATUS.SUBMITTED;
 }
 
 export function packPaymentDueAt(

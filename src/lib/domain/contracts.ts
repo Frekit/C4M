@@ -9,7 +9,6 @@ import { prisma } from "@/lib/db";
 import {
   CONTRACT_KIND,
   CONTRACT_STATUS,
-  DELIVERABLE_STATUS,
   SIGNATURE_STATUS,
   type ContractKind,
 } from "@/lib/domain/enums";

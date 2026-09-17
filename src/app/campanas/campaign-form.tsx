@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { FormErrorSummary } from "@/components/form-error-summary";
@@ -41,29 +41,52 @@ export function CampaignForm({
 }: {
   clients: CampaignClientOption[];
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [clientId, setClientId] = useState("");
-  const [newMode, setNewMode] = useState<SettlementMode>(
-    SETTLEMENT_MODE.PER_CONTENT
-  );
   const [state, formAction, pending] = useActionState<
     CampaignActionResult | null,
     FormData
   >(createCampaign, null);
+  const [formEpoch, setFormEpoch] = useState(0);
+  const [seenState, setSeenState] = useState(state);
+
+  if (state !== seenState) {
+    setSeenState(state);
+    if (state?.ok) setFormEpoch((epoch) => epoch + 1);
+  }
 
   useEffect(() => {
-    if (state?.ok) {
-      formRef.current?.reset();
-      setClientId("");
-      setNewMode(SETTLEMENT_MODE.PER_CONTENT);
-      toast.success("Campaña creada");
-    }
+    if (state?.ok) toast.success("Campaña creada");
   }, [state]);
 
+  return (
+    <CampaignFields
+      key={formEpoch}
+      clients={clients}
+      state={state?.ok ? null : state}
+      formAction={formAction}
+      pending={pending}
+    />
+  );
+}
+
+function CampaignFields({
+  clients,
+  state,
+  formAction,
+  pending,
+}: {
+  clients: CampaignClientOption[];
+  state: CampaignActionResult | null;
+  formAction: (payload: FormData) => void;
+  pending: boolean;
+}) {
+  const [clientId, setClientId] = useState("");
+  const [newMode, setNewMode] = useState<SettlementMode>(
+    SETTLEMENT_MODE.PER_CONTENT
+  );
   const creatingClient = clientId === "__new__";
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4">
+    <form action={formAction} className="grid gap-4">
       <FormErrorSummary
         error={state?.error}
         fieldErrors={state?.fieldErrors}

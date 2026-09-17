@@ -5,13 +5,20 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { DELIVERABLE_STATUS } from "@/lib/domain/enums";
 import {
-  isPayableWithPolicy,
-  packKey,
-  settlementPolicyOf,
-  summarizePacks,
-} from "@/lib/domain/settlement";
+  assertCanClearPlatformError,
+  assertCanMarkPaid,
+  assertCanMarkPlatformError,
+  assertCanSubmitToPlatform,
+  assertFoundAll,
+  assertIdsSelected,
+  paidPolicyOf,
+  parsePlatformErrorReason,
+  parseSelectedIds,
+  platformFlagOf,
+} from "@/lib/domain/finance-commands";
+import { summarizePacks } from "@/lib/domain/settlement";
 
 export type FinanceActionResult = {
   ok: boolean;
@@ -31,11 +38,9 @@ export async function markClientSubmitted(
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
-
-  if (ids.length === 0) {
-    return { ok: false, error: "No has seleccionado ningún contenido." };
-  }
+  const ids = parseSelectedIds(formData);
+  const selected = assertIdsSelected(ids);
+  if (!selected.ok) return selected;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
@@ -45,34 +50,18 @@ export async function markClientSubmitted(
     },
   });
 
-  if (items.length !== ids.length) {
-    return { ok: false, error: "Alguno de esos contenidos ya no existe." };
-  }
+  const found = assertFoundAll(items.length, ids.length);
+  if (!found.ok) return found;
 
-  const notPlatform = items.filter(
-    (item) => item.campaign?.client?.requiresPlatformSubmit !== true
+  const allowed = assertCanSubmitToPlatform(
+    items.map((item) => ({
+      status: item.status,
+      postUrl: item.postUrl,
+      requiresPlatformSubmit: platformFlagOf(item),
+      platformSubmitError: item.platformSubmitError,
+    }))
   );
-
-  if (notPlatform.length > 0) {
-    return {
-      ok: false,
-      error:
-        "Ese cliente no tiene plataforma: con Publicado en redes ya está entregado.",
-    };
-  }
-
-  const notReady = items.filter(
-    (item) =>
-      item.status !== DELIVERABLE_STATUS.PUBLISHED || !item.postUrl
-  );
-
-  if (notReady.length > 0) {
-    return {
-      ok: false,
-      error:
-        "Solo se pueden subir los que están publicados y tienen enlace del post.",
-    };
-  }
+  if (!allowed.ok) return allowed;
 
   const now = new Date();
 
@@ -99,33 +88,17 @@ export async function markClientSubmitted(
   return { ok: true, count: ids.length };
 }
 
-const PLATFORM_ERROR_MAX = 400;
-
 export async function markPlatformSubmitError(
   _prev: FinanceActionResult | null,
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
-  const reason = String(formData.get("reason") ?? "").trim();
+  const ids = parseSelectedIds(formData);
+  const selected = assertIdsSelected(ids);
+  if (!selected.ok) return selected;
 
-  if (ids.length === 0) {
-    return { ok: false, error: "No has seleccionado ningún contenido." };
-  }
-
-  if (reason.length < 3) {
-    return {
-      ok: false,
-      error: "Escribe por qué ha fallado la subida (mínimo unas palabras).",
-    };
-  }
-
-  if (reason.length > PLATFORM_ERROR_MAX) {
-    return {
-      ok: false,
-      error: `La nota no puede pasar de ${PLATFORM_ERROR_MAX} caracteres.`,
-    };
-  }
+  const reason = parsePlatformErrorReason(formData.get("reason"));
+  if (!reason.ok) return reason;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
@@ -135,40 +108,25 @@ export async function markPlatformSubmitError(
     },
   });
 
-  if (items.length !== ids.length) {
-    return { ok: false, error: "Alguno de esos contenidos ya no existe." };
-  }
+  const found = assertFoundAll(items.length, ids.length);
+  if (!found.ok) return found;
 
-  const notPlatform = items.filter(
-    (item) => item.campaign?.client?.requiresPlatformSubmit !== true
+  const allowed = assertCanMarkPlatformError(
+    items.map((item) => ({
+      status: item.status,
+      postUrl: item.postUrl,
+      requiresPlatformSubmit: platformFlagOf(item),
+      platformSubmitError: item.platformSubmitError,
+    }))
   );
-
-  if (notPlatform.length > 0) {
-    return {
-      ok: false,
-      error: "Ese cliente no tiene plataforma: no hay subida que marcar.",
-    };
-  }
-
-  const notReady = items.filter(
-    (item) =>
-      item.status !== DELIVERABLE_STATUS.PUBLISHED || !item.postUrl
-  );
-
-  if (notReady.length > 0) {
-    return {
-      ok: false,
-      error:
-        "Solo se puede marcar error en publicados que ya tienen enlace del post.",
-    };
-  }
+  if (!allowed.ok) return allowed;
 
   const now = new Date();
 
   await prisma.deliverable.updateMany({
     where: { id: { in: ids } },
     data: {
-      platformSubmitError: reason,
+      platformSubmitError: reason.reason,
       platformSubmitErrorAt: now,
     },
   });
@@ -178,7 +136,7 @@ export async function markPlatformSubmitError(
     entityId: ids.join(","),
     action: "PLATFORM_SUBMIT_ERROR",
     actor: user,
-    metadata: { count: ids.length, reason },
+    metadata: { count: ids.length, reason: reason.reason },
   });
 
   revalidateFinance();
@@ -191,32 +149,32 @@ export async function clearPlatformSubmitError(
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
-
-  if (ids.length === 0) {
-    return { ok: false, error: "No has seleccionado ningún contenido." };
-  }
+  const ids = parseSelectedIds(formData);
+  const selected = assertIdsSelected(ids);
+  if (!selected.ok) return selected;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
-    select: { id: true, status: true, platformSubmitError: true },
+    select: {
+      id: true,
+      status: true,
+      postUrl: true,
+      platformSubmitError: true,
+    },
   });
 
-  if (items.length !== ids.length) {
-    return { ok: false, error: "Alguno de esos contenidos ya no existe." };
-  }
+  const found = assertFoundAll(items.length, ids.length);
+  if (!found.ok) return found;
 
-  const notErrored = items.filter(
-    (item) =>
-      item.status !== DELIVERABLE_STATUS.PUBLISHED || !item.platformSubmitError
+  const allowed = assertCanClearPlatformError(
+    items.map((item) => ({
+      status: item.status,
+      postUrl: item.postUrl,
+      requiresPlatformSubmit: true,
+      platformSubmitError: item.platformSubmitError,
+    }))
   );
-
-  if (notErrored.length > 0) {
-    return {
-      ok: false,
-      error: "Solo se puede devolver a la cola lo que está en error de subida.",
-    };
-  }
+  if (!allowed.ok) return allowed;
 
   await prisma.deliverable.updateMany({
     where: { id: { in: ids } },
@@ -244,11 +202,9 @@ export async function markPaid(
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
-
-  if (ids.length === 0) {
-    return { ok: false, error: "No has seleccionado ningún contenido." };
-  }
+  const ids = parseSelectedIds(formData);
+  const selected = assertIdsSelected(ids);
+  if (!selected.ok) return selected;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
@@ -258,25 +214,8 @@ export async function markPaid(
     },
   });
 
-  if (items.length !== ids.length) {
-    return { ok: false, error: "Alguno de esos contenidos ya no existe." };
-  }
-
-  if (items.some((item) => item.paidAt)) {
-    return {
-      ok: false,
-      error: "Alguno ya estaba marcado como pagado.",
-    };
-  }
-
-  if (
-    items.some((item) => item.contract.status === CONTRACT_STATUS.CANCELLED)
-  ) {
-    return {
-      ok: false,
-      error: "No se puede pagar un contrato cancelado.",
-    };
-  }
+  const found = assertFoundAll(items.length, ids.length);
+  if (!found.ok) return found;
 
   const campaignIds = [
     ...new Set(
@@ -314,26 +253,18 @@ export async function markPaid(
     }
   }
 
-  const notPayable = items.filter((item) => {
-    const policy = settlementPolicyOf({
-      client: item.contract.client,
-      campaign: item.campaign,
-    });
-    const complete = item.campaignId
-      ? (packCompleteByKey.get(
-          packKey(item.campaignId, item.contract.creatorId)
-        ) ?? false)
-      : false;
-    return !isPayableWithPolicy(item.status, policy, complete);
-  });
-
-  if (notPayable.length > 0) {
-    return {
-      ok: false,
-      error:
-        "Solo se puede pagar lo que ya está en cola: submitted en plataforma, o el pack cerrado.",
-    };
-  }
+  const allowed = assertCanMarkPaid(
+    items.map((item) => ({
+      paidAt: item.paidAt,
+      contractStatus: item.contract.status,
+      status: item.status,
+      campaignId: item.campaignId,
+      creatorId: item.contract.creatorId,
+      policy: paidPolicyOf(item),
+    })),
+    packCompleteByKey
+  );
+  if (!allowed.ok) return allowed;
 
   const now = new Date();
 

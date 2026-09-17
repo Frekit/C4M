@@ -4,6 +4,8 @@ Aplicación para registrar influencers, generar su contrato automáticamente, ma
 
 Es la primera fase de un sistema mayor descrito en el documento de flujo financiero multi-sociedad. Lo que **sí** cubre hoy: talento, contratos, firma, contenidos, clientes con distinta liquidación (pieza a pieza vs pack), panel de finanzas (plataforma o packs, y cola de pago a perfiles). Lo que **no** cubre todavía: órdenes de compra, facturas emitidas, cobros de cliente, P&L, caja y multi-sociedad.
 
+La validez del contrato no vive en un smart contract: vive en el PDF, su SHA-256 y la auditoría. El mapa de ficheros e invariantes está en [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Stack
 
 - Next.js 16 (App Router) con TypeScript y Tailwind v4
@@ -28,12 +30,11 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 ## Cómo funciona el flujo
 
 1. **Registrar influencer** (`/creators/nuevo`): Instagram, cliente (Higgsfield, Many Chat, …), contenidos y precios. Al guardar se crea el contrato de ese cliente, en borrador.
-6. **Ampliar o renovar** es de **ese cliente**. Si el coste no cambia, anexo; si cambia, renovación. Para meterle en Many Chat (u otro) mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha, que abre una cadena nueva.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, **email de cobro (Zexel)**, moneda, situación fiscal y contacto, y aceptan. El IBAN y Wise los gestiona Zexel. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
 4. **Marcar contenidos publicados** (`/contenidos`): hacen falta el enlace del post y una sola fecha. Si el contrato aún no está firmado, se puede forzar (confirma en el diálogo); el acuerdo sigue pendiente de firma. La tabla pagina de 60 en 60; los contadores (estado, retrasados, devengo) miran todo el conjunto filtrado, no solo la página.
-5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces y se marcan como **submitted**. Si la plataforma rechaza, **Error al subir** con una nota saca el ítem de esa cola (sigue Publicado en redes) hasta que se reintente o se marque submitted. **Many Chat** y similares (pack): no se cobra ni se paga hasta que ese creator termine todos los contenidos de esa campaña. El cobro a perfiles se ejecuta **en un lote de Zexel**: CSV `email;importe_destino;moneda_destino`, se sube a Zexel Pay y **Lote ya pagado** vacía la cola.
-6. **Ampliar o renovar** sigue en el mismo cliente. Anexo si el coste no cambia; renovación si cambia. Para Many Chat u otro cliente mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha (contrato original nuevo).
+5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces y se marcan como **en plataforma**. Si la plataforma rechaza, **Error al subir** con una nota saca el ítem de esa cola (sigue Publicado en redes) hasta que se reintente o se marque en plataforma. **Many Chat** y similares (pack): no se cobra ni se paga hasta que ese creator termine todos los contenidos de esa campaña. El cobro a perfiles se ejecuta **en un lote de Zexel**: CSV `email;importe_destino;moneda_destino`, se sube a Zexel Pay y **Lote ya pagado** vacía la cola.
+6. **Ampliar o renovar** es de **ese cliente**. Si el coste no cambia, anexo; si cambia, renovación. Para meterle en Many Chat (u otro) mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha, que abre una cadena nueva.
 
 ### Reglas de negocio que el sistema impone
 
@@ -97,6 +98,7 @@ El esquema se escribió para que el salto sea barato: sin enums de base de datos
 
 - `npm run dev` — desarrollo en el puerto 43127
 - `npm run build` / `npm start`
-- `npm test` — pruebas de la aritmética de importes, márgenes y plazos
+- `npm run verify` — lint, TypeScript y tests (lo que corre el CI)
+- `npm test` — reglas de liquidación, colas, importes y firma
 - `npm run lint` · `npm run typecheck`
 - `npm run db:migrate` · `npm run db:seed` · `npm run db:studio` · `npm run db:reset`

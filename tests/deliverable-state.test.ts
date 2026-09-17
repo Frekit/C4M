@@ -4,9 +4,9 @@ import { test } from "node:test";
 import {
   isDeliverableLate,
   isLiveDeliverable,
-  isPayableDeliverable,
   resolveDeliverableState,
 } from "@/lib/domain/rules";
+import { isPayableWithPolicy } from "@/lib/domain/settlement";
 
 test("agendar admite fechas futuras y no devenga nada", () => {
   const future = new Date("2027-01-15T00:00:00.000Z");
@@ -183,10 +183,15 @@ test("marca como retrasado lo agendado cuya fecha ya pasó", () => {
   );
 });
 
-test("published está en redes y submitted es lo que se puede pagar", () => {
+test("published está en redes; pagar al perfil lo decide la política de liquidación", () => {
+  const higgsfield = {
+    settlementMode: "PER_CONTENT",
+    requiresPlatformSubmit: true,
+  };
+
   assert.equal(isLiveDeliverable("PUBLISHED"), true);
   assert.equal(isLiveDeliverable("SUBMITTED"), true);
   assert.equal(isLiveDeliverable("SCHEDULED"), false);
-  assert.equal(isPayableDeliverable("PUBLISHED"), false);
-  assert.equal(isPayableDeliverable("SUBMITTED"), true);
+  assert.equal(isPayableWithPolicy("PUBLISHED", higgsfield, false), false);
+  assert.equal(isPayableWithPolicy("SUBMITTED", higgsfield, false), true);
 });

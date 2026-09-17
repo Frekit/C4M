@@ -322,7 +322,7 @@ export default async function ContractPage({
           <CardDescription>
             {canEditDeliverables
               ? isSigned
-                ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha. Submitted es solo para clientes con plataforma."
+                ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha. En plataforma es solo para clientes con plataforma."
                 : "Puedes poner fecha, enlace y campaña desde ya. Publicado se puede forzar aunque el contrato siga sin firmar: te lo pedirá confirmar y el acuerdo permanece pendiente."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>
