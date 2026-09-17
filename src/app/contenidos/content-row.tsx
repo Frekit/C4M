@@ -34,6 +34,7 @@ export type ContentRowData = {
   contractCode: string;
   contractSigned: boolean;
   pack: PackProgress | null;
+  platformSubmitError: string | null;
 };
 
 const inputClass =
@@ -46,6 +47,7 @@ function editorKey(item: ContentRowData) {
     item.contentDate ?? "",
     item.campaignId ?? "",
     item.postUrl ?? "",
+    item.platformSubmitError ?? "",
   ].join(":");
 }
 
@@ -176,6 +178,11 @@ function ContentRowFields({
               </option>
             ))}
           </select>
+          {item.platformSubmitError ? (
+            <Badge variant="destructive" className="mt-1" title={item.platformSubmitError}>
+              Error al subir
+            </Badge>
+          ) : null}
           {item.isLate ? (
             <Badge variant="destructive" className="mt-1">
               Fecha pasada
@@ -193,6 +200,11 @@ function ContentRowFields({
             <Badge variant="outline" className="mt-1">
               Sin firmar
             </Badge>
+          ) : null}
+          {item.platformSubmitError ? (
+            <p className="mt-1 max-w-56 text-xs text-destructive">
+              {item.platformSubmitError}
+            </p>
           ) : null}
         </TableCell>
 

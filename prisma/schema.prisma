@@ -140,6 +140,9 @@ model Deliverable {
   paymentDueAt DateTime?
   // Cuándo Finanzas lo marcó como subido a la plataforma del cliente.
   clientSubmittedAt DateTime?
+  // Higgsfield (u otra plataforma) rechazó la subida. Sigue Publicado en redes.
+  platformSubmitError String?
+  platformSubmitErrorAt DateTime?
   // Cuándo Finanzas lo marcó como pagado al perfil. Sale de la cola de pagos.
   paidAt DateTime?
   notes        String?

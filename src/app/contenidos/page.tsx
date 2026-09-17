@@ -103,6 +103,7 @@ export default async function ContentsPage({
         publishedAt: true,
         paymentDueAt: true,
         postUrl: true,
+        platformSubmitError: true,
         contractId: true,
         contract: {
           select: {
@@ -227,6 +228,7 @@ export default async function ContentsPage({
       contractCode: item.contract.code,
       contractSigned: isSignedContract(item.contract.status),
       pack,
+      platformSubmitError: item.platformSubmitError,
     };
   });
 

@@ -11,6 +11,8 @@ export type FinancePublishRow = {
   contractId: string;
   costMinor: number;
   costCurrency: string;
+  platformSubmitError: string | null;
+  platformSubmitErrorAt: string | null;
 };
 
 export type CampaignQueueGroup = {
@@ -93,6 +95,8 @@ export type PlatformQueueSource = {
   contractId: string;
   costMinor: number;
   costCurrency: string;
+  platformSubmitError: string | null;
+  platformSubmitErrorAt: Date | null;
 };
 
 export type PackQueueSource = {
@@ -144,11 +148,14 @@ export type MissingPlatformLink = {
 
 export function splitPlatformQueue(items: PlatformQueueSource[]): {
   groups: CampaignQueueGroup[];
+  errorGroups: CampaignQueueGroup[];
   missingLink: MissingPlatformLink[];
   readyCount: number;
+  errorCount: number;
 } {
   const missingLink: MissingPlatformLink[] = [];
   const groups = new Map<string, CampaignQueueGroup>();
+  const errorGroups = new Map<string, CampaignQueueGroup>();
 
   for (const item of items) {
     if (!item.postUrl) {
@@ -160,7 +167,6 @@ export function splitPlatformQueue(items: PlatformQueueSource[]): {
       continue;
     }
 
-    const key = item.campaignId ?? "sin";
     const row: FinancePublishRow = {
       id: item.id,
       position: item.position,
@@ -171,27 +177,45 @@ export function splitPlatformQueue(items: PlatformQueueSource[]): {
       contractId: item.contractId,
       costMinor: item.costMinor,
       costCurrency: item.costCurrency,
+      platformSubmitError: item.platformSubmitError,
+      platformSubmitErrorAt: item.platformSubmitErrorAt?.toISOString() ?? null,
     };
 
-    const existing = groups.get(key);
-    if (existing) {
-      existing.items.push(row);
-    } else {
-      groups.set(key, {
-        key,
-        campaignId: item.campaignId,
-        campaignName: item.campaignName ?? "Sin campaña",
-        clientName: item.clientName,
-        items: [row],
-      });
-    }
+    const target = item.platformSubmitError ? errorGroups : groups;
+    pushCampaignRow(target, item, row);
   }
 
+  const readyGroups = [...groups.values()];
+  const errored = [...errorGroups.values()];
+
   return {
-    groups: [...groups.values()],
+    groups: readyGroups,
+    errorGroups: errored,
     missingLink,
-    readyCount: items.length - missingLink.length,
+    readyCount: readyGroups.reduce((total, group) => total + group.items.length, 0),
+    errorCount: errored.reduce((total, group) => total + group.items.length, 0),
   };
+}
+
+function pushCampaignRow(
+  groups: Map<string, CampaignQueueGroup>,
+  item: PlatformQueueSource,
+  row: FinancePublishRow
+) {
+  const key = item.campaignId ?? "sin";
+  const existing = groups.get(key);
+  if (existing) {
+    existing.items.push(row);
+    return;
+  }
+
+  groups.set(key, {
+    key,
+    campaignId: item.campaignId,
+    campaignName: item.campaignName ?? "Sin campaña",
+    clientName: item.clientName,
+    items: [row],
+  });
 }
 
 export function groupPackQueue(items: PackQueueSource[]): PackQueueGroup[] {

@@ -13,6 +13,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import type {
@@ -20,7 +30,11 @@ import type {
   FinancePublishRow,
 } from "@/lib/domain/finance-queues";
 
-import { markClientSubmitted, type FinanceActionResult } from "./actions";
+import {
+  markClientSubmitted,
+  markPlatformSubmitError,
+  type FinanceActionResult,
+} from "./actions";
 
 export type { CampaignQueueGroup, FinancePublishRow };
 
@@ -33,19 +47,7 @@ function totalsByCurrency(items: FinancePublishRow[]) {
 }
 
 export function CampaignQueue({ groups }: { groups: CampaignQueueGroup[] }) {
-  if (groups.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Nada pendiente de subir</CardTitle>
-          <CardDescription>
-            Cuando un contenido de un cliente con plataforma pase a Publicado y
-            tenga enlace, aparece aquí agrupado por campaña.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  if (groups.length === 0) return null;
 
   return (
     <div className="grid gap-4">
@@ -61,6 +63,12 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
     FinanceActionResult | null,
     FormData
   >(markClientSubmitted, null);
+  const [errorState, errorAction, errorPending] = useActionState<
+    FinanceActionResult | null,
+    FormData
+  >(markPlatformSubmitError, null);
+  const [errorOpen, setErrorOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(group.items.map((item) => [item.id, true]))
   );
@@ -76,6 +84,21 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
     if (state && !state.ok && state.error) toast.error(state.error);
   }, [state]);
 
+  useEffect(() => {
+    if (errorState?.ok) {
+      toast.success(
+        errorState.count === 1
+          ? "1 contenido marcado con error de subida"
+          : `${errorState.count} contenidos marcados con error de subida`
+      );
+      setErrorOpen(false);
+      setReason("");
+    }
+    if (errorState && !errorState.ok && errorState.error) {
+      toast.error(errorState.error);
+    }
+  }, [errorState]);
+
   const selectedItems = group.items.filter((item) => selected[item.id]);
   const links = group.items
     .map((item) => item.postUrl)
@@ -85,6 +108,7 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
     () => totalsByCurrency(selectedItems),
     [selectedItems]
   );
+  const busy = pending || errorPending;
 
   function toggleAll(next: boolean) {
     setSelected(Object.fromEntries(group.items.map((item) => [item.id, next])));
@@ -118,7 +142,10 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
                   <th className="w-8 p-2">
                     <input
                       type="checkbox"
-                      checked={selectedItems.length === group.items.length}
+                      checked={
+                        group.items.length > 0 &&
+                        selectedItems.length === group.items.length
+                      }
                       onChange={(event) => toggleAll(event.target.checked)}
                       aria-label="Seleccionar todos"
                       className="size-4 accent-primary"
@@ -195,13 +222,70 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
                 </Badge>
               ))}
             </p>
-            <Button type="submit" disabled={pending || selectedItems.length === 0}>
-              {pending
-                ? "Marcando…"
-                : "Ya están en la plataforma del cliente"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || selectedItems.length === 0}
+                onClick={() => setErrorOpen(true)}
+              >
+                Error al subir
+              </Button>
+              <Button type="submit" disabled={busy || selectedItems.length === 0}>
+                {pending
+                  ? "Marcando…"
+                  : "Ya están en la plataforma del cliente"}
+              </Button>
+            </div>
           </div>
         </form>
+
+        <Dialog open={errorOpen} onOpenChange={setErrorOpen}>
+          <DialogContent className="sm:max-w-md">
+            <form action={errorAction} className="grid gap-4">
+              {selectedItems.map((item) => (
+                <input
+                  key={item.id}
+                  type="hidden"
+                  name="deliverableIds"
+                  value={item.id}
+                />
+              ))}
+              <DialogHeader>
+                <DialogTitle>Error al subir a la plataforma</DialogTitle>
+                <DialogDescription>
+                  Siguen publicados en redes. Salen de esta cola hasta que lo
+                  revises. Deja la razón para Contents.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-2">
+                <Label htmlFor={`reason-${group.key}`}>Qué ha pasado</Label>
+                <Textarea
+                  id={`reason-${group.key}`}
+                  name="reason"
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder="Rechazado por Higgsfield, enlace incorrecto, formato…"
+                  required
+                  minLength={3}
+                  maxLength={400}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setErrorOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={errorPending || reason.trim().length < 3}>
+                  {errorPending ? "Guardando…" : "Marcar error"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

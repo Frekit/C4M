@@ -26,6 +26,8 @@ function platformItem(
     contractId: "ct-2",
     costMinor: 10000,
     costCurrency: "EUR",
+    platformSubmitError: null,
+    platformSubmitErrorAt: null,
     ...overrides,
   };
 }
@@ -75,6 +77,39 @@ test("la cola de plataforma agrupa por campaña y deja fuera los publicados sin 
   assert.equal(result.groups[0]?.items.length, 1);
   assert.equal(result.missingLink.length, 1);
   assert.equal(result.missingLink[0]?.contractCode, "CTR-2026-001");
+});
+
+test("un publicado con error de plataforma sale de listos y conserva la nota", () => {
+  const result = splitPlatformQueue([
+    platformItem({ id: "d1" }),
+    platformItem({
+      id: "d2",
+      platformSubmitError: "Rechazado por formato",
+      platformSubmitErrorAt: new Date("2026-09-17T00:00:00.000Z"),
+    }),
+  ]);
+
+  assert.equal(result.readyCount, 1);
+  assert.equal(result.errorCount, 1);
+  assert.equal(result.groups[0]?.items[0]?.id, "d1");
+  assert.equal(
+    result.errorGroups[0]?.items[0]?.platformSubmitError,
+    "Rechazado por formato"
+  );
+});
+
+test("al limpiar el error de plataforma el contenido vuelve a listos", () => {
+  const retried = splitPlatformQueue([
+    platformItem({
+      id: "d2",
+      platformSubmitError: null,
+      platformSubmitErrorAt: null,
+    }),
+  ]);
+
+  assert.equal(retried.errorCount, 0);
+  assert.equal(retried.readyCount, 1);
+  assert.equal(retried.groups[0]?.items[0]?.id, "d2");
 });
 
 test("el pack incompleto no entra a pagar aunque haya piezas publicadas", () => {

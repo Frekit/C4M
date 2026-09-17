@@ -63,6 +63,8 @@ export async function loadFinanceQueues() {
             publishedAt: true,
             campaignId: true,
             contractId: true,
+            platformSubmitError: true,
+            platformSubmitErrorAt: true,
             campaign: {
               select: {
                 name: true,
@@ -181,6 +183,8 @@ export async function loadFinanceQueues() {
     contractId: item.contractId,
     costMinor: item.contract.costMinorPerContent,
     costCurrency: item.contract.costCurrency,
+    platformSubmitError: item.platformSubmitError,
+    platformSubmitErrorAt: item.platformSubmitErrorAt,
   }));
 
   const packItems: PackQueueSource[] = packRows.flatMap((item) => {
@@ -264,8 +268,10 @@ export async function loadFinanceQueues() {
 
   return {
     platformGroups: platform.groups,
+    platformErrorGroups: platform.errorGroups,
     missingLink: platform.missingLink,
     readyToUploadCount: platform.readyCount,
+    platformErrorCount: platform.errorCount,
     packGroups: openPackGroups,
     readyPacks: openPackGroups.filter((group) => group.isComplete).length,
     payoutGroups: groupPayoutQueue(payableItems, payeeByContractId),

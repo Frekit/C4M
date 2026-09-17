@@ -3,6 +3,12 @@ import { redirect } from "next/navigation";
 import { LandmarkIcon, LayersIcon, WalletIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
@@ -10,6 +16,7 @@ import { loadFinanceQueues } from "@/lib/domain/finance";
 
 import { CampaignQueue } from "./campaign-queue";
 import { PackQueue } from "./pack-queue";
+import { PlatformErrorQueue } from "./platform-error-queue";
 import { PayoutQueue } from "./payout-queue";
 import { RecentPaid } from "./recent-paid";
 
@@ -47,6 +54,11 @@ export default async function FinanzasPage() {
         <Badge variant="secondary">
           Listos para pagar: {queues.payableCount}
         </Badge>
+        {queues.platformErrorCount > 0 ? (
+          <Badge variant="destructive">
+            Error al subir: {queues.platformErrorCount}
+          </Badge>
+        ) : null}
         {queues.missingLink.length > 0 ? (
           <Badge variant="destructive">
             Publicados sin enlace: {queues.missingLink.length}
@@ -86,7 +98,25 @@ export default async function FinanzasPage() {
                 .join(" · ")}
             </p>
           ) : null}
-          <CampaignQueue groups={queues.platformGroups} />
+          {queues.platformGroups.length === 0 &&
+          queues.platformErrorGroups.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Nada pendiente de subir</CardTitle>
+                <CardDescription>
+                  Cuando un contenido de un cliente con plataforma pase a
+                  Publicado y tenga enlace, aparece aquí agrupado por campaña.
+                  Si Higgsfield lo rechaza, márcalo con la razón y sale a
+                  revisar.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <>
+              <CampaignQueue groups={queues.platformGroups} />
+              <PlatformErrorQueue groups={queues.platformErrorGroups} />
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="packs" className="grid gap-4 pt-4">
