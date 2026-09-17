@@ -94,8 +94,8 @@ export default async function ContractPage({
   const isCancelled = contract.status === CONTRACT_STATUS.CANCELLED;
   const isSigned = Boolean(view.signedSignature);
 
-  // Planificar fechas y campañas se puede siempre; lo que exige contrato
-  // firmado es marcar un contenido como publicado, que es lo que devenga.
+  // Planificar fechas y campañas se puede siempre. Publicado se puede forzar
+  // con el contrato aún sin firmar; cancelado no se toca.
   const canEditDeliverables =
     can(user.role, "deliverables:publish") && !isCancelled;
 
@@ -318,7 +318,7 @@ export default async function ContractPage({
             {canEditDeliverables
               ? isSigned
                 ? "Cambia fecha, enlace, campaña o estado y se guarda solo. Para publicar hacen falta enlace y fecha. Submitted es solo para clientes con plataforma."
-                : "Puedes poner fecha y campaña desde ya: se guardan solas. Para marcar un contenido como publicado hacen falta el contrato firmado y el enlace."
+                : "Puedes poner fecha, enlace y campaña desde ya. Publicado se puede forzar aunque el contrato siga sin firmar: te lo pedirá confirmar y el acuerdo permanece pendiente."
               : "Tu rol no permite editar contenidos."}
           </CardDescription>
         </CardHeader>

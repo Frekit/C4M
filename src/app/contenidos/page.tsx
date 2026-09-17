@@ -30,7 +30,7 @@ import {
   SETTLEMENT_MODE,
   type DeliverableStatus,
 } from "@/lib/domain/enums";
-import { isDeliverableLate } from "@/lib/domain/rules";
+import { isDeliverableLate, isSignedContract } from "@/lib/domain/rules";
 import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
 import { toInputDate } from "@/lib/format";
@@ -159,9 +159,7 @@ export default async function ContentsPage({
       creatorId: item.contract.creatorId,
       contractId: item.contractId,
       contractCode: item.contract.code,
-      contractSigned:
-        item.contract.status !== CONTRACT_STATUS.DRAFT &&
-        item.contract.status !== CONTRACT_STATUS.SENT,
+      contractSigned: isSignedContract(item.contract.status),
       pack,
     };
   });
@@ -423,9 +421,11 @@ export default async function ContentsPage({
 
       <p className="text-xs text-muted-foreground">
         Los cambios se guardan solos. Para marcar como publicado hacen falta
-        el enlace y la fecha. Con clientes de plataforma, Submitted lo marca
-        Finanzas. Con clientes pack, no se cobra ni se paga hasta completar
-        todos los contenidos de ese perfil en la campaña.
+        el enlace y la fecha. Si el contrato aún no está firmado, se puede
+        forzar: confirma en el diálogo y la firma sigue pendiente. Con
+        clientes de plataforma, Submitted lo marca Finanzas. Con clientes
+        pack, no se cobra ni se paga hasta completar todos los contenidos de
+        ese perfil en la campaña.
       </p>
     </main>
   );

@@ -196,7 +196,8 @@ export default async function DashboardPage() {
             <PenLineIcon className="size-4 text-muted-foreground" />
             <CardTitle>Pendiente de firma ({awaitingSignature.length})</CardTitle>
             <CardDescription>
-              Sin contrato firmado no se pueden marcar contenidos publicados.
+              Contratos en borrador o enviados. Se puede marcar un post como
+              publicado igualmente; la firma sigue pendiente.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">

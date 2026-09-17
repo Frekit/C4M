@@ -21,7 +21,7 @@ import {
   type ContractTotals,
   type DeliverableProgress,
 } from "@/lib/domain/contract-math";
-import { canDeleteContract, countPublished, isLiveDeliverable } from "@/lib/domain/rules";
+import { canDeleteContract, countPublished, isLiveDeliverable, nextContractStatusAfterProgress } from "@/lib/domain/rules";
 
 export type SignatureWithPayee = SignatureRequest & {
   payee?: PayeeProfile | null;
@@ -199,33 +199,31 @@ export async function getContractChain(contract: Contract) {
   });
 }
 
-// Cuando se publica el último contenido, el contrato queda completado.
+// Cuando se publica el último contenido de un contrato ya firmado, queda
+// completado. Si sigue en borrador o enviado, no: la firma sigue pendiente.
 export async function syncContractCompletion(contractId: string) {
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: { deliverables: true },
   });
 
-  if (!contract || contract.status === CONTRACT_STATUS.CANCELLED) {
-    return;
-  }
+  if (!contract) return;
 
   const progress = deliverableProgress(contract.deliverables);
+  const nextStatus = nextContractStatusAfterProgress(
+    contract.status,
+    progress.isComplete
+  );
 
-  if (progress.isComplete && contract.status !== CONTRACT_STATUS.COMPLETED) {
-    await prisma.contract.update({
-      where: { id: contract.id },
-      data: { status: CONTRACT_STATUS.COMPLETED, completedAt: new Date() },
-    });
-    return;
-  }
+  if (nextStatus === contract.status) return;
 
-  if (!progress.isComplete && contract.status === CONTRACT_STATUS.COMPLETED) {
-    await prisma.contract.update({
-      where: { id: contract.id },
-      data: { status: CONTRACT_STATUS.SIGNED, completedAt: null },
-    });
-  }
+  await prisma.contract.update({
+    where: { id: contract.id },
+    data:
+      nextStatus === CONTRACT_STATUS.COMPLETED
+        ? { status: nextStatus, completedAt: new Date() }
+        : { status: nextStatus, completedAt: null },
+  });
 }
 
 // Al nacer un anexo o una renovación, el contrato padre queda marcado.

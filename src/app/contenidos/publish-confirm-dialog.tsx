@@ -17,6 +17,7 @@ export function PublishConfirmDialog({
   costMinor,
   costCurrency,
   pack,
+  unsigned = false,
   onConfirm,
   onCancel,
 }: {
@@ -24,6 +25,7 @@ export function PublishConfirmDialog({
   costMinor: number;
   costCurrency: string;
   pack?: PackProgress | null;
+  unsigned?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -36,13 +38,22 @@ export function PublishConfirmDialog({
     >
       <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>¿Confirmas que ya está publicado?</DialogTitle>
+          <DialogTitle>
+            {unsigned
+              ? "¿Publicar con el contrato sin firmar?"
+              : "¿Confirmas que ya está publicado?"}
+          </DialogTitle>
           <DialogDescription>
+            {unsigned
+              ? "El contrato seguirá pendiente de firma. Esto solo registra que el post ya está en redes; no se da por firmado ni se cierra el acuerdo. "
+              : ""}
             {pack
               ? pack.published + 1 >= pack.total
-                ? `Esto registra que el post ya está en redes. Con el pack cerrado se liquida el lote (${formatMoney(costMinor, costCurrency)} por pieza) a partir de esta última publicación.`
-                : `Esto registra que el post ya está en redes. El pack va ${pack.published + 1}/${pack.total}: hasta completarlo no se cobra al cliente ni se paga a este perfil.`
-              : `Esto registra que el post ya está en redes, con el enlace que has puesto, y calcula la fecha de pago (${formatMoney(costMinor, costCurrency)}). Pagar al perfil no empieza aquí: si el cliente tiene plataforma, Finanzas lo marca como submitted al subirlo.`}
+                ? `Con el pack cerrado se liquida el lote (${formatMoney(costMinor, costCurrency)} por pieza) a partir de esta última publicación.`
+                : `El pack va ${pack.published + 1}/${pack.total}: hasta completarlo no se cobra al cliente ni se paga a este perfil.`
+              : unsigned
+                ? `La fecha de pago (${formatMoney(costMinor, costCurrency)}) se calcula igual. Pagar al perfil no empieza aquí.`
+                : `Esto registra que el post ya está en redes, con el enlace que has puesto, y calcula la fecha de pago (${formatMoney(costMinor, costCurrency)}). Pagar al perfil no empieza aquí: si el cliente tiene plataforma, Finanzas lo marca como submitted al subirlo.`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -50,7 +61,7 @@ export function PublishConfirmDialog({
             Cancelar
           </Button>
           <Button type="button" onClick={onConfirm}>
-            Sí, está publicado
+            {unsigned ? "Publicar igualmente" : "Sí, está publicado"}
           </Button>
         </DialogFooter>
       </DialogContent>

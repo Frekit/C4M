@@ -111,7 +111,7 @@ export async function updateDeliverable(
     return {
       ok: false,
       error:
-        "Firma el contrato antes de marcarlo como publicado: si no, se devengaría dinero sin acuerdo firmado.",
+        "Este contrato está cancelado; no se pueden marcar contenidos como publicados.",
     };
   }
 

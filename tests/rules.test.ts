@@ -6,6 +6,7 @@ import {
   canPublishDeliverables,
   countPublished,
   isAnnexAllowed,
+  nextContractStatusAfterProgress,
 } from "@/lib/domain/rules";
 
 test("el anexo vale si el coste del creator no cambia", () => {
@@ -27,14 +28,22 @@ test("el anexo no vale si cambia el importe o la moneda", () => {
   );
 });
 
-test("solo se marcan contenidos publicados con contrato firmado", () => {
+test("publicado se puede forzar si el contrato sigue sin firmar, no si está cancelado", () => {
   assert.equal(canPublishDeliverables("SIGNED"), true);
   assert.equal(canPublishDeliverables("COMPLETED"), true);
   assert.equal(canPublishDeliverables("RENEWED"), true);
-
-  assert.equal(canPublishDeliverables("DRAFT"), false);
-  assert.equal(canPublishDeliverables("SENT"), false);
+  assert.equal(canPublishDeliverables("DRAFT"), true);
+  assert.equal(canPublishDeliverables("SENT"), true);
   assert.equal(canPublishDeliverables("CANCELLED"), false);
+});
+
+test("un borrador no se completa aunque estén todos los posts en redes", () => {
+  assert.equal(nextContractStatusAfterProgress("DRAFT", true), "DRAFT");
+  assert.equal(nextContractStatusAfterProgress("SENT", true), "SENT");
+  assert.equal(nextContractStatusAfterProgress("SIGNED", true), "COMPLETED");
+  assert.equal(nextContractStatusAfterProgress("RENEWED", true), "COMPLETED");
+  assert.equal(nextContractStatusAfterProgress("CANCELLED", true), "CANCELLED");
+  assert.equal(nextContractStatusAfterProgress("COMPLETED", false), "SIGNED");
 });
 
 test("un borrador virgen se puede borrar", () => {

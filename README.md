@@ -31,7 +31,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 6. **Ampliar o renovar** es de **ese cliente**. Si el coste no cambia, anexo; si cambia, renovación. Para meterle en Many Chat (u otro) mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha, que abre una cadena nueva.
 2. **Enviar a firma**: se genera un enlace privado con token. El firmante no necesita cuenta.
 3. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, datos bancarios, situación fiscal y contacto, y aceptan. Esos datos sirven para el contrato y para pagarle después. Queda rastro de auditoría: nombre, fecha, IP y huella SHA-256 del PDF.
-4. **Marcar contenidos publicados**: hace falta el enlace del post y una sola fecha. Sin contrato firmado no se puede marcar.
+4. **Marcar contenidos publicados**: hacen falta el enlace del post y una sola fecha. Si el contrato aún no está firmado, se puede forzar (confirma en el diálogo); el acuerdo sigue pendiente de firma.
 5. **Finanzas** (`/finanzas`): depende del cliente. **Higgsfield** (por contenido + plataforma): se copian los enlaces, se marcan como **submitted** y entonces se puede pagar. **Many Chat** y similares (pack): no se cobra al cliente ni se paga al perfil hasta que ese creator termine todos los contenidos de esa campaña.
 6. **Ampliar o renovar** sigue en el mismo cliente. Anexo si el coste no cambia; renovación si cambia. Para Many Chat u otro cliente mientras sigue con Higgsfield: **Meter con otro cliente** en su ficha (contrato original nuevo).
 

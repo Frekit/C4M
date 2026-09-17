@@ -17,14 +17,40 @@ export function isAnnexAllowed(parent: CostTerms, next: CostTerms): boolean {
   );
 }
 
-// Sin contrato firmado no se marca nada como publicado: devengaría dinero sin
-// acuerdo firmado.
+// Publicado se puede forzar en borrador o enviado a firma: el post queda en
+// redes y el contrato sigue pendiente. Cancelado no.
 export function canPublishDeliverables(contractStatus: string): boolean {
+  return contractStatus !== CONTRACT_STATUS.CANCELLED;
+}
+
+export function isSignedContract(contractStatus: string): boolean {
   return (
     contractStatus === CONTRACT_STATUS.SIGNED ||
     contractStatus === CONTRACT_STATUS.COMPLETED ||
     contractStatus === CONTRACT_STATUS.RENEWED
   );
+}
+
+// Un borrador no pasa a Completado aunque estén todos los posts en redes:
+// la firma sigue pendiente.
+export function nextContractStatusAfterProgress(
+  status: string,
+  allLive: boolean
+): string {
+  if (status === CONTRACT_STATUS.CANCELLED) return status;
+
+  if (
+    allLive &&
+    (status === CONTRACT_STATUS.SIGNED || status === CONTRACT_STATUS.RENEWED)
+  ) {
+    return CONTRACT_STATUS.COMPLETED;
+  }
+
+  if (!allLive && status === CONTRACT_STATUS.COMPLETED) {
+    return CONTRACT_STATUS.SIGNED;
+  }
+
+  return status;
 }
 
 export type DeletionFacts = {

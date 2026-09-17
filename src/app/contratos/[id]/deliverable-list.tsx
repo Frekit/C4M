@@ -165,15 +165,7 @@ function DeliverableRowFields({
               ? [...OPS_DELIVERABLE_STATUSES, DELIVERABLE_STATUS.SUBMITTED]
               : OPS_DELIVERABLE_STATUSES
             ).map((status) => (
-              <option
-                key={status}
-                value={status}
-                disabled={
-                  status === DELIVERABLE_STATUS.PUBLISHED &&
-                  !item.contractSigned &&
-                  item.status !== DELIVERABLE_STATUS.PUBLISHED
-                }
-              >
+              <option key={status} value={status}>
                 {DELIVERABLE_STATUS_LABELS[status]}
               </option>
             ))}
@@ -245,6 +237,7 @@ function DeliverableRowFields({
         costMinor={item.costMinor}
         costCurrency={item.costCurrency}
         pack={item.pack}
+        unsigned={!item.contractSigned}
         onConfirm={confirmPublish}
         onCancel={cancelPublish}
       />
