@@ -54,7 +54,7 @@ export type ContentsPageData = {
   counts: Record<string, number>;
   lateCount: number;
   accruedByCurrency: Record<string, number>;
-  creators: { id: string; handle: string }[];
+  selectedCreator: { id: string; handle: string } | null;
   campaigns: { id: string; name: string }[];
   campaignOptions: ContentsCampaignOption[];
   hasFilters: boolean;
@@ -73,7 +73,10 @@ export function hasContentFilters(filters: ContentFilters): boolean {
       filters.estado ||
       filters.desde ||
       filters.hasta ||
-      filters.retrasados
+      filters.retrasados ||
+      filters.sinEnlace ||
+      filters.errorPlataforma ||
+      filters.sinFirmar
   );
 }
 
@@ -148,8 +151,10 @@ export async function loadContentsPage(
     }),
     prisma.deliverable.count({ where: lateWhere }),
     prisma.creator.findMany({
+      where: filters.creador ? { id: filters.creador } : undefined,
       orderBy: { handle: "asc" },
       select: { id: true, handle: true },
+      take: filters.creador ? 1 : 0,
     }),
     prisma.campaign.findMany({
       orderBy: { name: "asc" },
@@ -163,6 +168,7 @@ export async function loadContentsPage(
     liveWhere
       ? prisma.deliverable.findMany({
           where: liveWhere,
+          take: filters.campana ? 4000 : 800,
           select: {
             status: true,
             campaignId: true,
@@ -258,7 +264,7 @@ export async function loadContentsPage(
       })),
       packs
     ),
-    creators,
+    selectedCreator: creators[0] ?? null,
     campaigns: campaigns.map((campaign) => ({
       id: campaign.id,
       name: campaign.name,

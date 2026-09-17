@@ -26,6 +26,7 @@ export default async function DashboardPage() {
     marginUsdCents,
     accruedByCurrency,
     awaitingSignature,
+    awaitingSignatureCount,
     upcomingPayments,
     opsAlerts,
   } = await loadDashboard();
@@ -83,9 +84,72 @@ export default async function DashboardPage() {
         ) : null}
       </div>
 
-      {opsAlerts.length > 0 ? (
+      {opsAlerts.expiredCount > 0 ||
+      opsAlerts.unsignedPublishedCount > 0 ||
+      opsAlerts.missingLinkCount > 0 ||
+      opsAlerts.platformErrorCount > 0 ? (
         <div className="grid gap-3">
-          {opsAlerts.map((alert) => (
+          {opsAlerts.expiredCount > 0 ? (
+            <Alert>
+              <AlertTitle>
+                Firma caducada ({opsAlerts.expiredCount})
+              </AlertTitle>
+              <AlertDescription>
+                <Link
+                  href="/contratos?estado=SENT"
+                  className="underline underline-offset-4"
+                >
+                  Abrir cola de contratos enviados
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {opsAlerts.unsignedPublishedCount > 0 ? (
+            <Alert>
+              <AlertTitle>
+                Publicado sin firmar ({opsAlerts.unsignedPublishedCount})
+              </AlertTitle>
+              <AlertDescription>
+                <Link
+                  href="/contenidos?sinFirmar=1"
+                  className="underline underline-offset-4"
+                >
+                  Ver en Contenidos
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {opsAlerts.missingLinkCount > 0 ? (
+            <Alert>
+              <AlertTitle>
+                Publicados sin enlace ({opsAlerts.missingLinkCount})
+              </AlertTitle>
+              <AlertDescription>
+                <Link
+                  href="/contenidos?sinEnlace=1"
+                  className="underline underline-offset-4"
+                >
+                  Completar URLs
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {opsAlerts.platformErrorCount > 0 ? (
+            <Alert>
+              <AlertTitle>
+                Error de plataforma ({opsAlerts.platformErrorCount})
+              </AlertTitle>
+              <AlertDescription>
+                <Link
+                  href="/contenidos?errorPlataforma=1"
+                  className="underline underline-offset-4"
+                >
+                  Revisar en Contenidos
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {opsAlerts.items.slice(0, 4).map((alert) => (
             <Alert key={`${alert.kind}-${alert.contractId}`}>
               <AlertTitle>
                 {alert.kind === "expired_signature"
@@ -156,7 +220,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <PenLineIcon className="size-4 text-muted-foreground" />
-            <CardTitle>Pendiente de firma ({awaitingSignature.length})</CardTitle>
+            <CardTitle>Pendiente de firma ({awaitingSignatureCount})</CardTitle>
             <CardDescription>
               Contratos en borrador o enviados. Se puede marcar un post como
               publicado igualmente; la firma sigue pendiente.

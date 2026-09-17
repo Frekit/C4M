@@ -197,3 +197,27 @@ export function paymentTermLabel(days: number) {
   const known = PAYMENT_TERMS.find((term) => term.days === days);
   return known ? known.label : `${days} días`;
 }
+
+export const MAIL_JOB_KIND = {
+  SIGNATURE: "SIGNATURE",
+} as const;
+
+export type MailJobKind = (typeof MAIL_JOB_KIND)[keyof typeof MAIL_JOB_KIND];
+
+export const MAIL_JOB_STATUS = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+} as const;
+
+export type MailJobStatus = (typeof MAIL_JOB_STATUS)[keyof typeof MAIL_JOB_STATUS];
+
+export const LIST_PAGE_SIZE = 50;
+export const FINANCE_PAGE_SIZE = 50;
+export const FINANCE_MAX_IDS = 100;
+export const MAIL_PROCESS_BATCH = 20;
+export const SIGNATURE_FILTER_BATCH = 80;
+export const ASSIGN_FILTER_BATCH = 200;
+export const IMPORT_MAX_ROWS = 200;
+export const CREATOR_SEARCH_LIMIT = 20;

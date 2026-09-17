@@ -1,4 +1,4 @@
-import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { CONTRACT_STATUS, DELIVERABLE_STATUS, FINANCE_MAX_IDS } from "@/lib/domain/enums";
 import {
   isPayableWithPolicy,
   packKey,
@@ -31,6 +31,19 @@ export type PaidCommandItem = {
 
 export function parseSelectedIds(formData: FormData): string[] {
   return formData.getAll("deliverableIds").map(String).filter(Boolean);
+}
+
+export function assertBatchSize(
+  ids: string[],
+  max = FINANCE_MAX_IDS
+): FinanceCommandResult {
+  if (ids.length > max) {
+    return {
+      ok: false,
+      error: `Como máximo ${max} contenidos por lote. Página o filtra la campaña.`,
+    };
+  }
+  return { ok: true };
 }
 
 export function parsePlatformErrorReason(

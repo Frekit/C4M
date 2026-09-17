@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { FileTextIcon } from "lucide-react";
 
+import { QueryPager } from "@/components/query-pager";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,23 +23,39 @@ import {
 } from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_KIND_LABELS, type ContractKind } from "@/lib/domain/enums";
+import {
+  contractsHref,
+  loadContractsPage,
+  type ContractListFilters,
+} from "@/lib/domain/contracts-list";
+import {
+  CONTRACT_KIND_LABELS,
+  CONTRACT_STATUS,
+  CONTRACT_STATUS_LABELS,
+  type ContractKind,
+  type ContractStatus,
+} from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
+
+import { ContractsBulkSignature } from "./bulk-signature";
 
 export const metadata: Metadata = {
   title: "Contratos",
 };
 
-export default async function ContractsPage() {
-  const user = await requireUser("/contratos");
+const inputClass =
+  "h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30";
 
-  const contracts = await prisma.contract.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { creator: true, client: true, deliverables: true },
-  });
+export default async function ContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<ContractListFilters>;
+}) {
+  const user = await requireUser("/contratos");
+  const filters = await searchParams;
+  const data = await loadContractsPage(filters);
+  const canSign = can(user.role, "signature:send");
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -48,8 +65,7 @@ export default async function ContractsPage() {
             Contratos
           </h1>
           <p className="text-sm text-muted-foreground">
-            Contratos iniciales, anexos y renovaciones, del más reciente al más
-            antiguo.
+            Lista paginada. Filtra por campaña antes de enviar a firma en lote.
           </p>
         </div>
         {can(user.role, "creators:write") ? (
@@ -63,14 +79,71 @@ export default async function ContractsPage() {
         ) : null}
       </div>
 
-      {contracts.length === 0 ? (
+      <form method="get" className="flex flex-wrap items-end gap-3">
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Campaña
+          <select
+            name="campana"
+            defaultValue={filters.campana ?? ""}
+            className={inputClass}
+          >
+            <option value="">Todas</option>
+            {data.campaigns.map((campaign) => (
+              <option key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Estado
+          <select
+            name="estado"
+            defaultValue={filters.estado ?? ""}
+            className={inputClass}
+          >
+            <option value="">Todos</option>
+            {Object.values(CONTRACT_STATUS).map((status) => (
+              <option key={status} value={status}>
+                {CONTRACT_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" size="sm">
+          Filtrar
+        </Button>
+        {filters.campana || filters.estado ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/contratos" />}
+          >
+            Limpiar
+          </Button>
+        ) : null}
+      </form>
+
+      {canSign && (filters.campana || filters.estado) ? (
+        <ContractsBulkSignature
+          unsignedCount={data.unsignedCount}
+          campaignId={filters.campana}
+          status={filters.estado}
+        />
+      ) : null}
+
+      {data.total === 0 ? (
         <Card>
           <CardHeader>
             <FileTextIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Aún no hay contratos</CardTitle>
+            <CardTitle>
+              {filters.campana || filters.estado
+                ? "Ningún contrato con esos filtros"
+                : "Aún no hay contratos"}
+            </CardTitle>
             <CardDescription>
-              Se crean solos al registrar un influencer con sus contenidos y
-              precios.
+              Se crean al registrar un influencer o al importar un CSV.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -91,9 +164,7 @@ export default async function ContractsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contracts.map((contract) => {
-                  const progress = deliverableProgress(contract.deliverables);
-
+                {data.rows.map((contract) => {
                   return (
                     <TableRow key={contract.id}>
                       <TableCell>
@@ -117,11 +188,9 @@ export default async function ContractsPage() {
                           @{contract.creator.handle}
                         </Link>
                       </TableCell>
+                      <TableCell>{contract.client?.name ?? "—"}</TableCell>
                       <TableCell>
-                        {contract.client?.name ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        {progress.published}/{progress.total}
+                        {contract._count.deliverables}/{contract.deliverableCount}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatMoney(
@@ -140,13 +209,22 @@ export default async function ContractsPage() {
                         {formatDate(contract.createdAt)}
                       </TableCell>
                       <TableCell>
-                        <ContractStatusBadge status={contract.status} />
+                        <ContractStatusBadge
+                          status={contract.status as ContractStatus}
+                        />
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
+            <QueryPager
+              page={data.page}
+              pageSize={data.pageSize}
+              total={data.total}
+              hrefForPage={(page) => contractsHref(filters, page)}
+              noun="contratos"
+            />
           </CardContent>
         </Card>
       )}

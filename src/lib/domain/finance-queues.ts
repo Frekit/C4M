@@ -21,6 +21,9 @@ export type CampaignQueueGroup = {
   campaignName: string;
   clientName: string | null;
   items: FinancePublishRow[];
+  total: number;
+  page: number;
+  pageSize: number;
 };
 
 export function joinPostUrls(items: { postUrl?: string | null }[]): string {
@@ -213,6 +216,7 @@ function pushCampaignRow(
   const existing = groups.get(key);
   if (existing) {
     existing.items.push(row);
+    existing.total += 1;
     return;
   }
 
@@ -222,6 +226,9 @@ function pushCampaignRow(
     campaignName: item.campaignName ?? "Sin campaña",
     clientName: item.clientName,
     items: [row],
+    total: 1,
+    page: 1,
+    pageSize: 0,
   });
 }
 

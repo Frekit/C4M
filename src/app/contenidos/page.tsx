@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { FilterIcon, LayoutListIcon } from "lucide-react";
 
+import { CreatorCombobox } from "@/components/creator-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,11 @@ import {
 } from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { CONTENTS_PAGE_SIZE, contentsHref } from "@/lib/domain/contents-query";
+import {
+  CONTENTS_PAGE_SIZE,
+  contentsHref,
+  type ContentFilters,
+} from "@/lib/domain/contents-query";
 import { loadContentsPage } from "@/lib/domain/contents";
 import {
   DELIVERABLE_STATUS_LABELS,
@@ -42,15 +47,7 @@ const inputClass =
 export default async function ContentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    creador?: string;
-    campana?: string;
-    estado?: string;
-    desde?: string;
-    hasta?: string;
-    retrasados?: string;
-    pagina?: string;
-  }>;
+  searchParams: Promise<ContentFilters>;
 }) {
   const user = await requireUser("/contenidos");
   const filters = await searchParams;
@@ -66,7 +63,8 @@ export default async function ContentsPage({
             Contenidos
           </h1>
           <p className="text-sm text-muted-foreground">
-            Todos los contenidos de todos los creators. Se editan aquí mismo.
+            Busca el creator; no cargamos 2.000 opciones. Asignar campaña
+            puede aplicarse al filtro, no solo a esta página.
           </p>
         </div>
         <Button
@@ -99,7 +97,8 @@ export default async function ContentsPage({
           <FilterIcon className="size-4 text-muted-foreground" />
           <CardTitle>Filtros</CardTitle>
           <CardDescription>
-            El rango de fechas mira la fecha del contenido.
+            El rango de fechas mira la fecha del contenido. Las colas de
+            incidencia (sin enlace, error, sin firmar) recortan el universo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,18 +108,7 @@ export default async function ContentsPage({
           >
             <label className="grid gap-1.5 text-xs text-muted-foreground">
               Creator
-              <select
-                name="creador"
-                defaultValue={filters.creador ?? ""}
-                className={inputClass}
-              >
-                <option value="">Todos</option>
-                {data.creators.map((creator) => (
-                  <option key={creator.id} value={creator.id}>
-                    @{creator.handle}
-                  </option>
-                ))}
-              </select>
+              <CreatorCombobox selected={data.selectedCreator} />
             </label>
 
             <label className="grid gap-1.5 text-xs text-muted-foreground">
@@ -185,7 +173,37 @@ export default async function ContentsPage({
                   defaultChecked={filters.retrasados === "1"}
                   className="size-4 accent-primary"
                 />
-                Solo con fecha pasada
+                Retrasados
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="sinEnlace"
+                  value="1"
+                  defaultChecked={filters.sinEnlace === "1"}
+                  className="size-4 accent-primary"
+                />
+                Sin enlace
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="errorPlataforma"
+                  value="1"
+                  defaultChecked={filters.errorPlataforma === "1"}
+                  className="size-4 accent-primary"
+                />
+                Error plataforma
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="sinFirmar"
+                  value="1"
+                  defaultChecked={filters.sinFirmar === "1"}
+                  className="size-4 accent-primary"
+                />
+                Sin firmar
               </label>
               <Button type="submit" size="sm">
                 Filtrar
@@ -205,8 +223,12 @@ export default async function ContentsPage({
         </CardContent>
       </Card>
 
-      {canGroup && data.rows.length > 0 ? (
-        <BulkCampaignBar campaigns={data.campaignOptions} />
+      {canGroup && data.total > 0 ? (
+        <BulkCampaignBar
+          campaigns={data.campaignOptions}
+          filters={filters}
+          matchingCount={data.total}
+        />
       ) : null}
 
       {data.total === 0 ? (

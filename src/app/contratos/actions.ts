@@ -1,10 +1,8 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getBaseUrl } from "@/lib/base-url";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
@@ -12,11 +10,19 @@ import { campaignForClient } from "@/lib/domain/client-campaign";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
 import { createContract, markParentRenewed } from "@/lib/domain/contracts";
 import { syncPackSettlement } from "@/lib/domain/pack-sync";
+import { processMailQueue } from "@/lib/domain/mail-queue";
+import {
+  queueContractSignature,
+  queueUnsignedContracts,
+} from "@/lib/domain/signature-send";
 import {
   CONTRACT_KIND,
   CONTRACT_STATUS,
+  CONTRACT_STATUS_LABELS,
+  SIGNATURE_FILTER_BATCH,
   SIGNATURE_STATUS,
   type ContractKind,
+  type ContractStatus,
 } from "@/lib/domain/enums";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
 import {
@@ -35,8 +41,6 @@ import {
   sendSignatureSchema,
 } from "@/lib/domain/validation";
 import { parseAmountToMinorUnits } from "@/lib/money";
-import { mailStatusCopy, sendMail } from "@/lib/mail/send";
-import { signatureMailCopy } from "@/lib/mail/templates";
 
 export type ContractActionResult = {
   ok: boolean;
@@ -77,64 +81,19 @@ export async function sendToSignature(
   const { contractId, recipientEmail, recipientKind, expiresInDays } =
     parsed.data;
 
-  const contract = await prisma.contract.findUnique({
-    where: { id: contractId },
-    include: {
-      signatureRequests: true,
-      creator: { select: { handle: true } },
-    },
+  const queued = await queueContractSignature({
+    contractId,
+    recipientEmail,
+    recipientKind,
+    expiresInDays,
+    createdBy: user.email,
   });
 
-  if (!contract) {
-    return { ok: false, error: "El contrato no existe." };
+  if (!queued.ok) {
+    return { ok: false, error: queued.error };
   }
 
-  if (contract.status === CONTRACT_STATUS.CANCELLED) {
-    return { ok: false, error: "Un contrato cancelado no se puede enviar a firma." };
-  }
-
-  if (
-    contract.signatureRequests.some(
-      (request) => request.status === SIGNATURE_STATUS.SIGNED
-    )
-  ) {
-    return { ok: false, error: "Este contrato ya está firmado." };
-  }
-
-  // Solo puede haber un enlace vivo a la vez.
-  await revokeLiveSignatures(contractId);
-
-  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-  const token = randomBytes(32).toString("base64url");
-
-  const request = await prisma.signatureRequest.create({
-    data: {
-      contractId,
-      token,
-      recipientEmail,
-      recipientKind,
-      expiresAt,
-      sentAt: new Date(),
-      createdBy: user.email,
-    },
-  });
-
-  await prisma.contract.update({
-    where: { id: contractId },
-    data: { status: CONTRACT_STATUS.SENT },
-  });
-
-  const baseUrl = await getBaseUrl();
-  const signatureUrl = `/firmar/${token}`;
-  const mail = await sendMail({
-    to: recipientEmail,
-    ...signatureMailCopy({
-      handle: contract.creator.handle,
-      code: contract.code,
-      url: `${baseUrl}${signatureUrl}`,
-      expiresAt,
-    }),
-  });
+  const mail = await processMailQueue(1);
 
   await recordAudit({
     entityType: "Contract",
@@ -144,8 +103,8 @@ export async function sendToSignature(
     metadata: {
       recipientEmail,
       recipientKind,
-      requestId: request.id,
-      mailStatus: mail.status,
+      requestId: queued.requestId,
+      mailProcessed: mail.processed,
     },
   });
 
@@ -153,11 +112,105 @@ export async function sendToSignature(
   revalidatePath("/contratos");
   revalidatePath(`/contratos/${contractId}`);
 
+  const mailStatus =
+    mail.sent > 0 ? "sent" : mail.skipped > 0 ? "skipped" : mail.failed > 0 ? "failed" : "skipped";
+
   return {
     ok: true,
-    signatureUrl,
-    mailStatus: mail.status,
-    message: mailStatusCopy(mail),
+    signatureUrl: queued.signatureUrl,
+    mailStatus,
+    message:
+      mail.sent > 0
+        ? "El correo ha salido. Si no llega, copia el enlace y mándalo tú."
+        : mail.failed > 0
+          ? "El correo no ha salido. Copia el enlace y mándalo tú."
+          : "No hay RESEND_API_KEY: copia el enlace y mándalo tú.",
+  };
+}
+
+export type BulkSignatureResult = {
+  ok: boolean;
+  error?: string;
+  message?: string;
+  queued?: number;
+  skipped?: number;
+  processed?: number;
+  remaining?: number;
+};
+
+export async function sendFilterSignatures(
+  _prev: BulkSignatureResult | null,
+  formData: FormData
+): Promise<BulkSignatureResult> {
+  const user = await requirePermission("signature:send", "/contratos");
+  const campaignId = String(formData.get("campana") ?? "").trim();
+  const statusRaw = String(formData.get("estado") ?? "").trim();
+  const expiresInDays = Number.parseInt(
+    String(formData.get("expiresInDays") ?? "14"),
+    10
+  );
+  const days =
+    Number.isFinite(expiresInDays) && expiresInDays >= 1 && expiresInDays <= 90
+      ? expiresInDays
+      : 14;
+
+  const status =
+    statusRaw && statusRaw in CONTRACT_STATUS_LABELS
+      ? (statusRaw as ContractStatus)
+      : undefined;
+
+  const contracts = await prisma.contract.findMany({
+    where: {
+      status: status
+        ? status
+        : { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+      ...(campaignId ? { deliverables: { some: { campaignId } } } : {}),
+    },
+    take: SIGNATURE_FILTER_BATCH,
+    select: { id: true },
+  });
+
+  if (contracts.length === 0) {
+    return {
+      ok: false,
+      error: "No hay contratos pendientes de firma en ese filtro.",
+    };
+  }
+
+  const queuedReport = await queueUnsignedContracts({
+    contractIds: contracts.map((contract) => contract.id),
+    expiresInDays: days,
+    createdBy: user.email,
+  });
+  const mail = await processMailQueue();
+
+  await recordAudit({
+    entityType: "Contract",
+    entityId: campaignId || "filter",
+    action: "SIGNATURE_BATCH",
+    actor: user,
+    metadata: {
+      queued: queuedReport.queued,
+      skipped: queuedReport.skipped,
+      processed: mail.processed,
+      campaignId: campaignId || null,
+      status: status ?? null,
+    },
+  });
+
+  revalidatePath("/contratos");
+  revalidatePath("/campanas");
+  revalidatePath("/");
+
+  const extra =
+    queuedReport.errors.length > 0 ? ` ${queuedReport.errors.join(" ")}` : "";
+  return {
+    ok: true,
+    queued: queuedReport.queued,
+    skipped: queuedReport.skipped,
+    processed: mail.processed,
+    remaining: mail.remaining,
+    message: `Encolados ${queuedReport.queued}. Sin email o ya firmados: ${queuedReport.skipped}. Correo procesado ${mail.processed} (quedan ${mail.remaining}).${extra}`,
   };
 }
 

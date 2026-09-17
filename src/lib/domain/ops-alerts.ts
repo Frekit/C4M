@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
 import {
   CONTRACT_STATUS,
+  DELIVERABLE_STATUS,
   SIGNATURE_STATUS,
 } from "@/lib/domain/enums";
-import { isLiveDeliverable } from "@/lib/domain/rules";
 
 export type OpsAlert = {
   kind: "expired_signature" | "unsigned_published";
@@ -12,6 +12,14 @@ export type OpsAlert = {
   handle: string;
   expiresAt?: Date | null;
   publishedCount?: number;
+};
+
+export type OpsAlertsSnapshot = {
+  items: OpsAlert[];
+  expiredCount: number;
+  unsignedPublishedCount: number;
+  missingLinkCount: number;
+  platformErrorCount: number;
 };
 
 export function isExpiredLiveSignature(input: {
@@ -41,20 +49,36 @@ export function isUnsignedWithPublished(input: {
   return input.publishedCount > 0;
 }
 
-export async function loadOpsAlerts(now = new Date()): Promise<OpsAlert[]> {
-  const [expiredRequests, unsignedContracts] = await Promise.all([
+const liveStatuses = [
+  DELIVERABLE_STATUS.PUBLISHED,
+  DELIVERABLE_STATUS.SUBMITTED,
+];
+
+export async function loadOpsAlerts(now = new Date()): Promise<OpsAlertsSnapshot> {
+  const expiredWhere = {
+    status: { in: [SIGNATURE_STATUS.PENDING, SIGNATURE_STATUS.VIEWED] },
+    expiresAt: { lt: now },
+    contract: {
+      status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+    },
+  };
+  const unsignedWhere = {
+    status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+    deliverables: { some: { status: { in: liveStatuses } } },
+  };
+
+  const [
+    expiredRequests,
+    expiredCount,
+    unsignedContracts,
+    unsignedPublishedCount,
+    missingLinkCount,
+    platformErrorCount,
+  ] = await Promise.all([
     prisma.signatureRequest.findMany({
-      where: {
-        status: {
-          in: [SIGNATURE_STATUS.PENDING, SIGNATURE_STATUS.VIEWED],
-        },
-        expiresAt: { lt: now },
-        contract: {
-          status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
-        },
-      },
+      where: expiredWhere,
       orderBy: { expiresAt: "asc" },
-      take: 12,
+      take: 8,
       select: {
         expiresAt: true,
         contract: {
@@ -66,17 +90,32 @@ export async function loadOpsAlerts(now = new Date()): Promise<OpsAlert[]> {
         },
       },
     }),
+    prisma.signatureRequest.count({ where: expiredWhere }),
     prisma.contract.findMany({
-      where: {
-        status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
-      },
+      where: unsignedWhere,
+      orderBy: { updatedAt: "desc" },
+      take: 8,
       select: {
         id: true,
         code: true,
-        status: true,
         creator: { select: { handle: true } },
-        deliverables: { select: { status: true } },
+        _count: {
+          select: {
+            deliverables: { where: { status: { in: liveStatuses } } },
+          },
+        },
       },
+    }),
+    prisma.contract.count({ where: unsignedWhere }),
+    prisma.deliverable.count({
+      where: {
+        status: DELIVERABLE_STATUS.PUBLISHED,
+        postUrl: null,
+        contract: { status: { not: CONTRACT_STATUS.CANCELLED } },
+      },
+    }),
+    prisma.deliverable.count({
+      where: { platformSubmitError: { not: null } },
     }),
   ]);
 
@@ -88,23 +127,19 @@ export async function loadOpsAlerts(now = new Date()): Promise<OpsAlert[]> {
     expiresAt: request.expiresAt,
   }));
 
-  const unsignedPublished: OpsAlert[] = unsignedContracts.flatMap((contract) => {
-    const publishedCount = contract.deliverables.filter((item) =>
-      isLiveDeliverable(item.status)
-    ).length;
-    if (!isUnsignedWithPublished({ status: contract.status, publishedCount })) {
-      return [];
-    }
-    return [
-      {
-        kind: "unsigned_published" as const,
-        contractId: contract.id,
-        code: contract.code,
-        handle: contract.creator.handle,
-        publishedCount,
-      },
-    ];
-  });
+  const unsignedPublished: OpsAlert[] = unsignedContracts.map((contract) => ({
+    kind: "unsigned_published",
+    contractId: contract.id,
+    code: contract.code,
+    handle: contract.creator.handle,
+    publishedCount: contract._count.deliverables,
+  }));
 
-  return [...expired, ...unsignedPublished].slice(0, 20);
+  return {
+    items: [...expired, ...unsignedPublished],
+    expiredCount,
+    unsignedPublishedCount,
+    missingLinkCount,
+    platformErrorCount,
+  };
 }

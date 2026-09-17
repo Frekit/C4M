@@ -118,6 +118,7 @@ model Contract {
   @@index([rootId])
   @@index([status])
   @@index([clientId])
+  @@index([status, createdAt])
 }
 
 model Deliverable {
@@ -154,12 +155,15 @@ model Deliverable {
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@unique([contractId, position])
+  @@index([contractId])
   @@index([status])
   @@index([campaignId])
   @@index([scheduledFor])
   @@index([publishedAt])
   @@index([paymentDueAt])
   @@index([paidAt])
+  @@index([status, campaignId, paidAt])
+  @@index([status, paidAt])
 }
 
 // Marca o plataforma a la que se venden los contenidos. Define cómo se liquida.
@@ -232,6 +236,7 @@ model SignatureRequest {
 
   @@index([contractId])
   @@index([status])
+  @@index([status, expiresAt])
 }
 
 // Datos que rellena el firmante: sirven para el contrato y para pagarle después.
@@ -309,4 +314,24 @@ model AuditEvent {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// Cola de correo: la firma masiva encola y se procesa a tandas.
+model MailJob {
+  id                 String    @id @default(cuid())
+  kind               String
+  toEmail            String
+  contractId         String?
+  signatureRequestId String?
+  subject            String
+  textBody           String
+  htmlBody           String
+  status             String    @default("PENDING")
+  error              String?
+  attempts           Int       @default(0)
+  createdAt          DateTime  @default(now())
+  processedAt        DateTime?
+
+  @@index([status, createdAt])
+  @@index([contractId])
 }

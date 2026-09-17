@@ -1,6 +1,6 @@
 # Producción
 
-SQLite y `AUTH_MODE=local` son de desarrollo. Cuando haya usuarios reales:
+SQLite y `AUTH_MODE=local` son de desarrollo. **Antes de una campaña de 1.000–2.000 talentos** hace falta Postgres, índices y cola de correo. El recorte de trabajo es la campaña, no el número de usuarios de la app.
 
 ## Auth0
 
@@ -16,10 +16,19 @@ El modo local no tiene contraseña: no lo uses fuera de esta máquina.
 
 ## PostgreSQL
 
-El esquema de Prisma no usa enums de base, JSON nativo ni `@db.*`. El salto:
+El esquema de Prisma no usa enums de base, JSON nativo ni `@db.*`. En local el provider sigue en SQLite (esta máquina no tiene Docker) **con los índices de colas**:
+
+- `Deliverable(contractId)`
+- `Deliverable(status, campaignId, paidAt)`
+- `Deliverable(status, paidAt)`
+- `SignatureRequest(status, expiresAt)`
+- `Contract(status, createdAt)`
+- `MailJob(status, createdAt)`
+
+El salto a Postgres:
 
 ```bash
-# 1. Levanta Postgres (opcional, docker compose)
+# 1. Levanta Postgres
 docker compose up -d db
 
 # 2. En prisma/schema.prisma: provider = "postgresql"
@@ -31,16 +40,18 @@ npx prisma migrate dev --name init_postgres
 
 Si ya hay datos en SQLite, no borres migraciones: exporta y carga, o monta una migración de conversión. El CI sigue generando el cliente contra el `schema.prisma` del repo (SQLite) hasta que cambies el provider.
 
+Una campaña masiva **no** se opera sobre SQLite: el autosave de contenidos y las firmas concurrentes saturan el fichero.
+
 ## Correo (Resend)
 
-Sin `RESEND_API_KEY` la app **sigue funcionando**: genera el enlace de firma y de invitación para copiarlo. Con la key, manda el correo y deja el enlace por si el buzón lo filtra.
+Sin `RESEND_API_KEY` la app **sigue funcionando**: genera el enlace de firma y de invitación para copiarlo. Con la key, encola el correo (`MailJob`) y lo procesa a tandas de 20. El click de «enviar a firma» ya no hace un `fetch` síncrono por cada contrato de la campaña.
 
 ```
 RESEND_API_KEY=re_...
 MAIL_FROM="Creators For Media <firma@tu-dominio>"
 ```
 
-El dominio de `MAIL_FROM` tiene que estar verificado en Resend.
+El dominio de `MAIL_FROM` tiene que estar verificado en Resend. `/estado` enseña cuántos correos quedan en cola.
 
 ## Comprobar
 

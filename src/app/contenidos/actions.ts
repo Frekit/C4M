@@ -3,11 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import type { AppUser } from "@/lib/auth/types";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { syncContractCompletion } from "@/lib/domain/contracts";
-import { DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
+import {
+  ASSIGN_FILTER_BATCH,
+  DELIVERABLE_STATUS,
+  SETTLEMENT_MODE,
+} from "@/lib/domain/enums";
+import {
+  buildDeliverableWhere,
+  contentFiltersFromForm,
+} from "@/lib/domain/contents-query";
 import {
   canPublishDeliverables,
   isLiveDeliverable,
@@ -222,15 +231,11 @@ export async function updateDeliverable(
 }
 
 // Agrupar varios contenidos en una campaña de una vez.
-export async function assignCampaign(
-  _prev: DeliverableActionResult | null,
-  formData: FormData
+async function assignIdsToCampaign(
+  user: AppUser,
+  ids: string[],
+  campaignId: string
 ): Promise<DeliverableActionResult> {
-  const user = await requirePermission("campaigns:manage", "/contenidos");
-
-  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
-  const campaignId = String(formData.get("campaignId") ?? "");
-
   if (ids.length === 0) {
     return { ok: false, error: "No has seleccionado ningún contenido." };
   }
@@ -298,4 +303,35 @@ export async function assignCampaign(
   revalidatePath("/");
 
   return { ok: true };
+}
+
+export async function assignCampaign(
+  _prev: DeliverableActionResult | null,
+  formData: FormData
+): Promise<DeliverableActionResult> {
+  const user = await requirePermission("campaigns:manage", "/contenidos");
+  const ids = formData.getAll("deliverableIds").map(String).filter(Boolean);
+  const campaignId = String(formData.get("campaignId") ?? "");
+  return assignIdsToCampaign(user, ids, campaignId);
+}
+
+export async function assignCampaignToFilter(
+  _prev: DeliverableActionResult | null,
+  formData: FormData
+): Promise<DeliverableActionResult> {
+  const user = await requirePermission("campaigns:manage", "/contenidos");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const filters = contentFiltersFromForm(formData);
+  const where = buildDeliverableWhere(filters);
+  const matches = await prisma.deliverable.findMany({
+    where,
+    take: ASSIGN_FILTER_BATCH,
+    select: { id: true },
+    orderBy: [{ createdAt: "asc" }],
+  });
+  const ids = matches.map((item) => item.id);
+  if (ids.length === 0) {
+    return { ok: false, error: "Ningún contenido del filtro para asignar." };
+  }
+  return assignIdsToCampaign(user, ids, campaignId);
 }

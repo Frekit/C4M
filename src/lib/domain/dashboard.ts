@@ -28,6 +28,7 @@ export async function loadDashboard() {
     deliverablePublished,
     liveContracts,
     awaitingSignature,
+    awaitingSignatureCount,
     packs,
     liveDeliverables,
     upcomingPayments,
@@ -61,6 +62,9 @@ export async function loadDashboard() {
         status: true,
         creator: { select: { handle: true } },
       },
+    }),
+    prisma.contract.count({
+      where: { status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] } },
     }),
     loadPackSummaries(),
     prisma.deliverable.findMany({
@@ -159,6 +163,7 @@ export async function loadDashboard() {
     marginUsdCents,
     accruedByCurrency,
     awaitingSignature,
+    awaitingSignatureCount,
     upcomingPayments,
     opsAlerts,
   };

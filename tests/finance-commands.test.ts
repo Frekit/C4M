@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { CONTRACT_STATUS, DELIVERABLE_STATUS } from "@/lib/domain/enums";
 import {
   PLATFORM_ERROR_MAX,
+  assertBatchSize,
   assertCanClearPlatformError,
   assertCanMarkPaid,
   assertCanMarkPlatformError,
@@ -49,6 +50,16 @@ function paidItem(overrides: Partial<PaidCommandItem> = {}): PaidCommandItem {
     ...overrides,
   };
 }
+
+test("un lote de Finanzas no traga más de 100 ids", () => {
+  assert.equal(assertBatchSize(["a"]).ok, true);
+  assert.equal(assertBatchSize(Array.from({ length: 100 }, (_, i) => String(i))).ok, true);
+  const tooMany = assertBatchSize(
+    Array.from({ length: 101 }, (_, i) => String(i))
+  );
+  assert.equal(tooMany.ok, false);
+  if (!tooMany.ok) assert.match(tooMany.error, /Como máximo/);
+});
 
 test("sin selección no se mueve nada en Finanzas", () => {
   const form = new FormData();

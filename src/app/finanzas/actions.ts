@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { DELIVERABLE_STATUS } from "@/lib/domain/enums";
+import { DELIVERABLE_STATUS, FINANCE_MAX_IDS } from "@/lib/domain/enums";
+import { listPlatformReadyIds } from "@/lib/domain/finance";
 import {
+  assertBatchSize,
   assertCanClearPlatformError,
   assertCanMarkPaid,
   assertCanMarkPlatformError,
@@ -33,14 +35,23 @@ function revalidateFinance() {
   revalidatePath("/");
 }
 
+function parseBatchIds(formData: FormData) {
+  const ids = parseSelectedIds(formData);
+  const selected = assertIdsSelected(ids);
+  if (!selected.ok) return selected;
+  const sized = assertBatchSize(ids);
+  if (!sized.ok) return sized;
+  return { ok: true as const, ids };
+}
+
 export async function markClientSubmitted(
   _prev: FinanceActionResult | null,
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = parseSelectedIds(formData);
-  const selected = assertIdsSelected(ids);
-  if (!selected.ok) return selected;
+  const parsed = parseBatchIds(formData);
+  if (!parsed.ok) return parsed;
+  const ids = parsed.ids;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
@@ -93,10 +104,9 @@ export async function markPlatformSubmitError(
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = parseSelectedIds(formData);
-  const selected = assertIdsSelected(ids);
-  if (!selected.ok) return selected;
-
+  const parsed = parseBatchIds(formData);
+  if (!parsed.ok) return parsed;
+  const ids = parsed.ids;
   const reason = parsePlatformErrorReason(formData.get("reason"));
   if (!reason.ok) return reason;
 
@@ -202,9 +212,9 @@ export async function markPaid(
   formData: FormData
 ): Promise<FinanceActionResult> {
   const user = await requirePermission("finance:manage", "/finanzas");
-  const ids = parseSelectedIds(formData);
-  const selected = assertIdsSelected(ids);
-  if (!selected.ok) return selected;
+  const parsed = parseBatchIds(formData);
+  if (!parsed.ok) return parsed;
+  const ids = parsed.ids;
 
   const items = await prisma.deliverable.findMany({
     where: { id: { in: ids } },
@@ -273,15 +283,26 @@ export async function markPaid(
     data: { paidAt: now },
   });
 
-  await recordAudit({
-    entityType: "Deliverable",
-    entityId: ids.join(","),
-    action: "PAID",
-    actor: user,
-    metadata: { count: ids.length },
-  });
-
   revalidateFinance();
 
   return { ok: true, count: ids.length };
+}
+
+export async function markReadyMatching(
+  _prev: FinanceActionResult | null,
+  formData: FormData
+): Promise<FinanceActionResult> {
+  const campaignId = String(formData.get("campaignId") ?? "");
+  if (!campaignId) {
+    return { ok: false, error: "Elige una campaña." };
+  }
+
+  const ids = await listPlatformReadyIds([campaignId], FINANCE_MAX_IDS);
+  if (ids.length === 0) {
+    return { ok: false, error: "No hay contenidos listos en esta campaña." };
+  }
+
+  const fake = new FormData();
+  for (const id of ids) fake.append("deliverableIds", id);
+  return markClientSubmitted(null, fake);
 }

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FINANCE_MAX_IDS } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import {
@@ -34,10 +35,21 @@ import {
 import {
   markClientSubmitted,
   markPlatformSubmitError,
+  markReadyMatching,
   type FinanceActionResult,
 } from "./actions";
 
 export type { CampaignQueueGroup, FinancePublishRow };
+
+function downloadText(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function totalsByCurrency(items: FinancePublishRow[]) {
   return items.reduce<Record<string, number>>((accumulator, item) => {
@@ -64,6 +76,10 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
     FinanceActionResult | null,
     FormData
   >(markClientSubmitted, null);
+  const [matchState, matchAction, matchPending] = useActionState<
+    FinanceActionResult | null,
+    FormData
+  >(markReadyMatching, null);
   const [errorState, errorAction, errorPending] = useActionState<
     FinanceActionResult | null,
     FormData
@@ -95,6 +111,17 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
   }, [state]);
 
   useEffect(() => {
+    if (matchState?.ok) {
+      toast.success(
+        `${matchState.count} contenidos del filtro marcados en plataforma`
+      );
+    }
+    if (matchState && !matchState.ok && matchState.error) {
+      toast.error(matchState.error);
+    }
+  }, [matchState]);
+
+  useEffect(() => {
     if (errorState?.ok) {
       toast.success(
         errorState.count === 1
@@ -116,7 +143,7 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
     () => totalsByCurrency(selectedItems),
     [selectedItems]
   );
-  const busy = pending || errorPending;
+  const busy = pending || errorPending || matchPending;
 
   function toggleAll(next: boolean) {
     setSelected(Object.fromEntries(group.items.map((item) => [item.id, next])));
@@ -128,9 +155,13 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
         <CardTitle>{group.campaignName}</CardTitle>
         <CardDescription>
           {group.clientName ? `Cliente: ${group.clientName} · ` : null}
-          {group.items.length}{" "}
-          {group.items.length === 1 ? "contenido" : "contenidos"}. Copia los
-          seleccionados y márcalos en plataforma.
+              {group.items.length}{" "}
+              {group.items.length === 1 ? "contenido" : "contenidos"} de esta
+              página
+              {group.total > group.items.length
+                ? ` (${group.total} en la cola)`
+                : ""}
+              . Copia o descarga los seleccionados y márcalos en plataforma.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -236,6 +267,19 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
               <Button
                 type="button"
                 variant="outline"
+                disabled={busy || selectedLinks.length === 0}
+                onClick={() =>
+                  downloadText(
+                    selectedLinks,
+                    `higgsfield-${group.campaignId ?? "campana"}-p${group.page}.txt`
+                  )
+                }
+              >
+                Descargar .txt
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 disabled={busy || selectedItems.length === 0}
                 onClick={() => setErrorOpen(true)}
               >
@@ -249,6 +293,39 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
             </div>
           </div>
         </form>
+
+        {group.campaignId ? (
+          <form
+            action={matchAction}
+            className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"
+          >
+            <input type="hidden" name="campaignId" value={group.campaignId} />
+            <p className="text-sm text-muted-foreground">
+              El formulario no manda {group.total} ids. Marca hasta{" "}
+              {FINANCE_MAX_IDS} de esta campaña, o descarga la tanda.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                nativeButton={false}
+                render={
+                  <a
+                    href={`/finanzas/export-urls?campana=${group.campaignId}`}
+                    download
+                  />
+                }
+              >
+                Descargar tanda .txt
+              </Button>
+              <Button type="submit" variant="secondary" disabled={busy}>
+                {matchPending
+                  ? "Marcando…"
+                  : `Marcar lote del filtro (${Math.min(FINANCE_MAX_IDS, group.total)})`}
+              </Button>
+            </div>
+          </form>
+        ) : null}
 
         <Dialog open={errorOpen} onOpenChange={setErrorOpen}>
           <DialogContent className="sm:max-w-md">

@@ -1,8 +1,10 @@
+import Link from "next/link";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { LandmarkIcon, LayersIcon, WalletIcon } from "lucide-react";
 
+import { QueryPager } from "@/components/query-pager";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -12,7 +14,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { FINANCE_PAGE_SIZE } from "@/lib/domain/enums";
 import { loadFinanceQueues } from "@/lib/domain/finance";
+import { queryHref } from "@/lib/domain/paging";
+import { redirect } from "next/navigation";
 
 import { CampaignQueue } from "./campaign-queue";
 import { PackQueue } from "./pack-queue";
@@ -24,14 +29,21 @@ export const metadata: Metadata = {
   title: "Finanzas",
 };
 
-export default async function FinanzasPage() {
+export default async function FinanzasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campana?: string; pagina?: string }>;
+}) {
   const user = await requireUser("/finanzas");
   if (!can(user.role, "finance:manage")) {
     redirect("/");
   }
 
-  const queues = await loadFinanceQueues();
+  const filters = await searchParams;
+  const queues = await loadFinanceQueues(filters);
   const canSeeFull = can(user.role, "payees:read_full");
+  const hrefForPage = (page: number) =>
+    queryHref("/finanzas", { campana: filters.campana }, page);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -40,12 +52,33 @@ export default async function FinanzasPage() {
           Finanzas
         </h1>
         <p className="text-sm text-muted-foreground">
-          Higgsfield: copia los enlaces seleccionados y márcalos en
-          plataforma. Many Chat y similares: espera a que el perfil cierre el
-          pack. El cobro a perfiles sale en un lote de Zexel (CSV con email,
-          importe y moneda).
+          Trabaja por campaña y por lote de {FINANCE_PAGE_SIZE}. Copia o
+          descarga URLs de la página y marca En plataforma; el formulario no
+          traga 2.000 ids de golpe.
         </p>
       </div>
+
+      <form method="get" className="flex flex-wrap items-end gap-3">
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Campaña
+          <select
+            name="campana"
+            defaultValue={filters.campana ?? ""}
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          >
+            <option value="">Todas (resumen)</option>
+            {queues.platformSummaries.map((item) => (
+              <option key={item.campaignId} value={item.campaignId}>
+                {item.campaignName}
+                {item.clientName ? ` · ${item.clientName}` : ""} ({item.count})
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" size="sm">
+          Filtrar
+        </Button>
+      </form>
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline">
@@ -60,12 +93,38 @@ export default async function FinanzasPage() {
             Error al subir: {queues.platformErrorCount}
           </Badge>
         ) : null}
-        {queues.missingLink.length > 0 ? (
+        {queues.missingLinkCount > 0 ? (
           <Badge variant="destructive">
-            Publicados sin enlace: {queues.missingLink.length}
+            Publicados sin enlace: {queues.missingLinkCount}
           </Badge>
         ) : null}
       </div>
+
+      {!filters.campana && queues.platformSummaries.length > 1 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Campañas con cola de plataforma</CardTitle>
+            <CardDescription>
+              Entra a una para paginar, copiar URLs y marcar el lote.
+            </CardDescription>
+          </CardHeader>
+          <div className="flex flex-wrap gap-2 px-4 pb-4">
+            {queues.platformSummaries.map((item) => (
+              <Button
+                key={item.campaignId}
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={
+                  <Link href={`/finanzas?campana=${item.campaignId}`} />
+                }
+              >
+                {item.campaignName} ({item.count})
+              </Button>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <Tabs defaultValue="cliente">
         <TabsList>
@@ -84,19 +143,22 @@ export default async function FinanzasPage() {
         </TabsList>
 
         <TabsContent value="cliente" className="grid gap-4 pt-4">
-          {queues.missingLink.length > 0 ? (
+          {queues.missingLinkCount > 0 ? (
             <p className="text-sm text-destructive">
-              Hay {queues.missingLink.length}{" "}
-              {queues.missingLink.length === 1
-                ? "contenido publicado sin enlace"
-                : "contenidos publicados sin enlace"}
-              . Hasta que Contents ponga la URL no se pueden subir al cliente:{" "}
-              {queues.missingLink
-                .map(
-                  (item) =>
-                    `@${item.creatorHandle} ${item.contractCode} nº ${item.position}`
-                )
-                .join(" · ")}
+              Hay {queues.missingLinkCount} publicados sin enlace.
+              {filters.campana ? (
+                <>
+                  {" "}
+                  <Link
+                    href={`/contenidos?campana=${filters.campana}&sinEnlace=1`}
+                    className="underline underline-offset-4"
+                  >
+                    Abrir en Contenidos
+                  </Link>
+                </>
+              ) : (
+                " Filtra una campaña para verlos."
+              )}
             </p>
           ) : null}
           {queues.platformGroups.length === 0 &&
@@ -106,15 +168,21 @@ export default async function FinanzasPage() {
                 <CardTitle>Nada pendiente de subir</CardTitle>
                 <CardDescription>
                   Cuando un contenido de un cliente con plataforma pase a
-                  Publicado y tenga enlace, aparece aquí agrupado por campaña.
-                  Si Higgsfield lo rechaza, márcalo con la razón y sale a
-                  revisar.
+                  Publicado y tenga enlace, aparece aquí. Elige una campaña si
+                  hay varias colas.
                 </CardDescription>
               </CardHeader>
             </Card>
           ) : (
             <>
               <CampaignQueue groups={queues.platformGroups} />
+              <QueryPager
+                page={queues.page}
+                pageSize={queues.pageSize}
+                total={queues.platformGroups[0]?.total ?? 0}
+                hrefForPage={hrefForPage}
+                noun="contenidos listos"
+              />
               <PlatformErrorQueue groups={queues.platformErrorGroups} />
             </>
           )}
@@ -122,12 +190,26 @@ export default async function FinanzasPage() {
 
         <TabsContent value="packs" className="grid gap-4 pt-4">
           <PackQueue groups={queues.packGroups} />
+          <QueryPager
+            page={queues.packPage}
+            pageSize={queues.pageSize}
+            total={queues.packTotal}
+            hrefForPage={hrefForPage}
+            noun="packs"
+          />
         </TabsContent>
 
         <TabsContent value="pagos" className="grid gap-4 pt-4">
           {canSeeFull ? (
             <>
               <PayoutQueue groups={queues.payoutGroups} />
+              <QueryPager
+                page={queues.page}
+                pageSize={queues.pageSize}
+                total={queues.payoutTotal}
+                hrefForPage={hrefForPage}
+                noun="perfiles a pagar"
+              />
               <RecentPaid items={queues.recentPaid} />
             </>
           ) : (

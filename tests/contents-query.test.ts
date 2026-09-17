@@ -95,6 +95,29 @@ test("los retrasados se cuentan sobre el universo filtrado, no sobre la página"
   });
 });
 
+test("sin enlace, error de plataforma y sin firmar recortan el where", () => {
+  const missing = buildDeliverableWhere({ sinEnlace: "1" });
+  assert.equal(missing.status, "PUBLISHED");
+  assert.equal(missing.postUrl, null);
+
+  const platform = buildDeliverableWhere({ errorPlataforma: "1" });
+  assert.deepEqual(platform.platformSubmitError, { not: null });
+
+  const unsigned = buildDeliverableWhere({ sinFirmar: "1" });
+  assert.ok(
+    unsigned.contract &&
+      typeof unsigned.contract === "object" &&
+      "status" in unsigned.contract
+  );
+});
+
+test("el enlace de contenidos incluye las colas de incidencia", () => {
+  assert.equal(
+    contentsHref({ campana: "c1", sinEnlace: "1", errorPlataforma: "1" }, 2),
+    "/contenidos?campana=c1&sinEnlace=1&errorPlataforma=1&pagina=2"
+  );
+});
+
 test("los badges de estado salen del groupBy, con ceros para los que no aparecen", () => {
   const counts = statusCountsFromGroup([
     { status: "PENDING", _count: { _all: 12 } },

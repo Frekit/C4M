@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { PlusIcon, UserPlusIcon } from "lucide-react";
+import { PlusIcon, UploadIcon, UserPlusIcon } from "lucide-react";
 
+import { QueryPager } from "@/components/query-pager";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +16,11 @@ import {
 } from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import { deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS } from "@/lib/domain/enums";
+import {
+  creatorsHref,
+  loadCreatorsPage,
+  type CreatorListFilters,
+} from "@/lib/domain/creators-list";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -25,19 +28,14 @@ export const metadata: Metadata = {
   title: "Creators",
 };
 
-export default async function CreatorsPage() {
+export default async function CreatorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<CreatorListFilters>;
+}) {
   const user = await requireUser("/creators");
-
-  const creators = await prisma.creator.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      contracts: {
-        include: { deliverables: true },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
+  const filters = await searchParams;
+  const data = await loadCreatorsPage(filters);
   const canWrite = can(user.role, "creators:write");
 
   return (
@@ -48,36 +46,72 @@ export default async function CreatorsPage() {
             Creators
           </h1>
           <p className="text-sm text-muted-foreground">
-            Cada creator tiene su cadena de contratos: inicial, anexos y
-            renovaciones.
+            Lista paginada. Para 1.000 altas, importa el CSV; no abras el
+            universo entero.
           </p>
         </div>
         {canWrite ? (
-          <Button nativeButton={false} render={<Link href="/creators/nuevo" />}>
-            <PlusIcon />
-            Registrar influencer
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/creators/importar" />}
+            >
+              <UploadIcon />
+              Importar CSV
+            </Button>
+            <Button nativeButton={false} render={<Link href="/creators/nuevo" />}>
+              <PlusIcon />
+              Registrar influencer
+            </Button>
+          </div>
         ) : null}
       </div>
 
-      {creators.length === 0 ? (
+      <form method="get" className="flex flex-wrap items-end gap-3">
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Buscar
+          <input
+            type="search"
+            name="q"
+            defaultValue={filters.q ?? ""}
+            placeholder="Handle o nombre"
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          />
+        </label>
+        <Button type="submit" size="sm">
+          Buscar
+        </Button>
+      </form>
+
+      {data.total === 0 ? (
         <Card>
           <CardHeader>
             <UserPlusIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Todavía no hay nadie registrado</CardTitle>
+            <CardTitle>
+              {data.query
+                ? "Nadie coincide con esa búsqueda"
+                : "Todavía no hay nadie registrado"}
+            </CardTitle>
             <CardDescription>
-              Empieza dando de alta un influencer con su enlace de Instagram, los
-              contenidos pactados y los precios. El contrato se genera solo.
+              Empieza dando de alta un influencer o importa un CSV de campaña.
             </CardDescription>
           </CardHeader>
           {canWrite ? (
-            <CardContent>
+            <CardContent className="flex flex-wrap gap-2">
               <Button
                 nativeButton={false}
                 render={<Link href="/creators/nuevo" />}
                 size="lg"
               >
                 Registrar el primero
+              </Button>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/creators/importar" />}
+              >
+                Importar CSV
               </Button>
             </CardContent>
           ) : null}
@@ -97,23 +131,7 @@ export default async function CreatorsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {creators.map((creator) => {
-                  const allDeliverables = creator.contracts.flatMap(
-                    (contract) => contract.deliverables
-                  );
-                  const progress = deliverableProgress(allDeliverables);
-                  const activeContracts = creator.contracts.filter(
-                    (contract) => contract.status !== CONTRACT_STATUS.CANCELLED
-                  );
-                  const costByCurrency = activeContracts.reduce<
-                    Record<string, number>
-                  >((accumulator, contract) => {
-                    accumulator[contract.costCurrency] =
-                      (accumulator[contract.costCurrency] ?? 0) +
-                      contract.costMinorPerContent * contract.deliverableCount;
-                    return accumulator;
-                  }, {});
-
+                {data.rows.map((creator) => {
                   return (
                     <TableRow key={creator.id}>
                       <TableCell>
@@ -130,13 +148,13 @@ export default async function CreatorsPage() {
                         ) : null}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {creator.contracts.length}
+                        {creator.contractCount}
                       </TableCell>
                       <TableCell>
-                        {progress.published}/{progress.total}
+                        {creator.published}/{creator.totalDeliverables}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {Object.entries(costByCurrency).map(
+                        {Object.entries(creator.costByCurrency).map(
                           ([currency, amount]) => (
                             <span key={currency} className="block text-sm">
                               {formatMoney(amount, currency)}
@@ -148,10 +166,8 @@ export default async function CreatorsPage() {
                         {formatDate(creator.createdAt)}
                       </TableCell>
                       <TableCell>
-                        {creator.contracts[0] ? (
-                          <ContractStatusBadge
-                            status={creator.contracts[0].status}
-                          />
+                        {creator.latestStatus ? (
+                          <ContractStatusBadge status={creator.latestStatus} />
                         ) : (
                           "—"
                         )}
@@ -161,6 +177,13 @@ export default async function CreatorsPage() {
                 })}
               </TableBody>
             </Table>
+            <QueryPager
+              page={data.page}
+              pageSize={data.pageSize}
+              total={data.total}
+              hrefForPage={(page) => creatorsHref(filters, page)}
+              noun="creators"
+            />
           </CardContent>
         </Card>
       )}

@@ -5,7 +5,14 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { CAMPAIGN_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
+import {
+  CAMPAIGN_STATUS,
+  CONTRACT_STATUS,
+  SETTLEMENT_MODE,
+  SIGNATURE_FILTER_BATCH,
+} from "@/lib/domain/enums";
+import { processMailQueue } from "@/lib/domain/mail-queue";
+import { queueUnsignedContracts } from "@/lib/domain/signature-send";
 import { campaignSchema, fieldErrorsFrom } from "@/lib/domain/validation";
 
 export type CampaignActionResult = {
@@ -163,11 +170,11 @@ export async function deleteCampaign(formData: FormData) {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: { deliverables: { select: { id: true } } },
+    include: { _count: { select: { deliverables: true } } },
   });
 
   // Con contenidos dentro no se borra: se cierra, para no perder la agrupación.
-  if (!campaign || campaign.deliverables.length > 0) {
+  if (!campaign || campaign._count.deliverables > 0) {
     return;
   }
 
@@ -182,4 +189,99 @@ export async function deleteCampaign(formData: FormData) {
   });
 
   revalidatePath("/campanas");
+}
+
+export type BulkSignatureResult = {
+  ok: boolean;
+  error?: string;
+  message?: string;
+  queued?: number;
+  skipped?: number;
+  processed?: number;
+  remaining?: number;
+};
+
+export async function sendCampaignSignatures(
+  _prev: BulkSignatureResult | null,
+  formData: FormData
+): Promise<BulkSignatureResult> {
+  const user = await requirePermission("signature:send", "/campanas");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const expiresInDays = Number.parseInt(
+    String(formData.get("expiresInDays") ?? "14"),
+    10
+  );
+  const days =
+    Number.isFinite(expiresInDays) && expiresInDays >= 1 && expiresInDays <= 90
+      ? expiresInDays
+      : 14;
+
+  if (!campaignId) {
+    return { ok: false, error: "Falta la campaña." };
+  }
+
+  const contracts = await prisma.contract.findMany({
+    where: {
+      status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+      deliverables: { some: { campaignId } },
+    },
+    take: SIGNATURE_FILTER_BATCH,
+    select: { id: true },
+  });
+
+  if (contracts.length === 0) {
+    return { ok: false, error: "No hay contratos pendientes de firma en esta campaña." };
+  }
+
+  const queuedReport = await queueUnsignedContracts({
+    contractIds: contracts.map((contract) => contract.id),
+    expiresInDays: days,
+    createdBy: user.email,
+  });
+  const queued = queuedReport.queued;
+  const skipped = queuedReport.skipped;
+  const errors = queuedReport.errors;
+
+  const mail = await processMailQueue();
+
+  await recordAudit({
+    entityType: "Campaign",
+    entityId: campaignId,
+    action: "SIGNATURE_BATCH",
+    actor: user,
+    metadata: { queued, skipped, processed: mail.processed },
+  });
+
+  revalidatePath(`/campanas/${campaignId}`);
+  revalidatePath("/contratos");
+  revalidatePath("/");
+
+  const extra = errors.length > 0 ? ` ${errors.join(" ")}` : "";
+  return {
+    ok: true,
+    queued,
+    skipped,
+    processed: mail.processed,
+    remaining: mail.remaining,
+    message: `Encolados ${queued}. Sin email o ya firmados: ${skipped}. Correo procesado ${mail.processed} (quedan ${mail.remaining}).${extra}`,
+  };
+}
+
+export async function processPendingMail(
+  _prev: BulkSignatureResult | null,
+  _formData: FormData
+): Promise<BulkSignatureResult> {
+  await requirePermission("signature:send", "/campanas");
+  const mail = await processMailQueue();
+  revalidatePath("/campanas");
+  revalidatePath("/contratos");
+  return {
+    ok: true,
+    processed: mail.processed,
+    remaining: mail.remaining,
+    message:
+      mail.processed === 0
+        ? "No hay correos pendientes."
+        : `Procesados ${mail.processed}. Enviados ${mail.sent}, copiar a mano ${mail.skipped}, fallidos ${mail.failed}. Quedan ${mail.remaining}.`,
+  };
 }

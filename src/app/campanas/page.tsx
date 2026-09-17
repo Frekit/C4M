@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { loadCampaignSummaries } from "@/lib/domain/campaign-stats";
 import {
   CAMPAIGN_STATUS,
   CAMPAIGN_STATUS_LABELS,
@@ -23,7 +24,6 @@ import {
   type SettlementMode,
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
-import { countPublished } from "@/lib/domain/rules";
 
 import { setCampaignStatus, deleteCampaign } from "./actions";
 import { CampaignForm } from "./campaign-form";
@@ -36,16 +36,8 @@ export default async function CampaignsPage() {
   const user = await requireUser("/campanas");
   const canManage = can(user.role, "campaigns:manage");
 
-  const [campaigns, clients] = await Promise.all([
-    prisma.campaign.findMany({
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      include: {
-        client: true,
-        deliverables: {
-          select: { id: true, status: true, contract: { select: { creatorId: true } } },
-        },
-      },
-    }),
+  const [summaries, clients] = await Promise.all([
+    loadCampaignSummaries(),
     prisma.client.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -81,7 +73,7 @@ export default async function CampaignsPage() {
         </Card>
       ) : null}
 
-      {campaigns.length === 0 ? (
+      {summaries.length === 0 ? (
         <Card>
           <CardHeader>
             <MegaphoneIcon className="size-5 text-muted-foreground" />
@@ -97,18 +89,19 @@ export default async function CampaignsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {campaigns.map((campaign) => {
-            const total = campaign.deliverables.length;
-            const published = countPublished(campaign.deliverables);
-            const creators = new Set(
-              campaign.deliverables.map((item) => item.contract.creatorId)
-            ).size;
-
+          {summaries.map(({ campaign, total, published }) => {
             return (
               <Card key={campaign.id}>
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle>{campaign.name}</CardTitle>
+                    <CardTitle>
+                      <Link
+                        href={`/campanas/${campaign.id}`}
+                        className="hover:underline"
+                      >
+                        {campaign.name}
+                      </Link>
+                    </CardTitle>
                     <Badge
                       variant={
                         campaign.status === CAMPAIGN_STATUS.ACTIVE
@@ -148,9 +141,6 @@ export default async function CampaignsPage() {
                       <span className="text-muted-foreground">
                         {published}/{total} publicados
                       </span>
-                      <span className="text-muted-foreground">
-                        {creators} {creators === 1 ? "creator" : "creators"}
-                      </span>
                     </div>
                     <Progress
                       value={total > 0 ? (published / total) * 100 : 0}
@@ -159,6 +149,14 @@ export default async function CampaignsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      nativeButton={false}
+                      render={<Link href={`/campanas/${campaign.id}`} />}
+                    >
+                      Banco de trabajo
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

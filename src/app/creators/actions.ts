@@ -9,8 +9,10 @@ import { recordAudit } from "@/lib/domain/audit";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
 import { campaignForClient } from "@/lib/domain/client-campaign";
 import { createContract } from "@/lib/domain/contracts";
-import { CONTRACT_KIND } from "@/lib/domain/enums";
+import { CONTRACT_KIND, IMPORT_MAX_ROWS } from "@/lib/domain/enums";
+import { parseCreatorCsv } from "@/lib/domain/creator-import";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
+import { isSupportedCurrency } from "@/lib/currencies";
 import {
   createCreatorContractSchema,
   extractInstagramHandle,
@@ -160,4 +162,187 @@ export async function createCreatorWithContract(
   revalidatePath("/contenidos");
   revalidatePath("/campanas");
   redirect(`/contratos/${contract.id}`);
+}
+
+export type ImportResult = {
+  ok: boolean;
+  error?: string;
+  created?: number;
+  skipped?: number;
+  issues?: { line: number; message: string }[];
+};
+
+export async function importCreatorsCsv(
+  _prev: ImportResult | null,
+  formData: FormData
+): Promise<ImportResult> {
+  const user = await requirePermission("creators:write", "/creators/importar");
+  const raw = String(formData.get("csv") ?? "");
+  const parsed = parseCreatorCsv(raw);
+
+  if (parsed.rows.length === 0) {
+    return {
+      ok: false,
+      error: parsed.errors[0]?.message ?? "El CSV no tiene filas válidas.",
+      issues: parsed.errors,
+    };
+  }
+
+  if (parsed.rows.length > IMPORT_MAX_ROWS) {
+    return {
+      ok: false,
+      error: `Como máximo ${IMPORT_MAX_ROWS} filas por tanda. Parte el CSV.`,
+    };
+  }
+
+  const [clients, campaigns] = await Promise.all([
+    prisma.client.findMany({ select: { id: true, name: true } }),
+    prisma.campaign.findMany({
+      select: { id: true, name: true, clientId: true },
+    }),
+  ]);
+  const clientByName = new Map(
+    clients.map((client) => [client.name.toLowerCase(), client])
+  );
+  const campaignByName = new Map(
+    campaigns.map((campaign) => [campaign.name.toLowerCase(), campaign])
+  );
+
+  let created = 0;
+  const issues = [...parsed.errors];
+
+  for (const row of parsed.rows) {
+    const existing = await prisma.creator.findUnique({
+      where: { handle: row.handle },
+    });
+    if (existing) {
+      issues.push({
+        line: row.line,
+        message: `@${row.handle} ya está registrado.`,
+      });
+      continue;
+    }
+
+    const client = clientByName.get(row.client.toLowerCase());
+    if (!client) {
+      issues.push({
+        line: row.line,
+        message: `Cliente «${row.client}» no existe. Créalo en /clientes.`,
+      });
+      continue;
+    }
+
+    if (!isSupportedCurrency(row.currency)) {
+      issues.push({
+        line: row.line,
+        message: `Moneda ${row.currency} no soportada.`,
+      });
+      continue;
+    }
+
+    const salePriceCentsPerContent = parseAmountToMinorUnits(row.saleUsd, "USD");
+    const costMinorPerContent = parseAmountToMinorUnits(row.cost, row.currency);
+    if (salePriceCentsPerContent === null || costMinorPerContent === null) {
+      issues.push({ line: row.line, message: "Revisa los importes." });
+      continue;
+    }
+
+    let campaignId: string | null = null;
+    if (row.campaign) {
+      const campaign = campaignByName.get(row.campaign.toLowerCase());
+      if (!campaign) {
+        issues.push({
+          line: row.line,
+          message: `Campaña «${row.campaign}» no existe.`,
+        });
+        continue;
+      }
+      if (campaign.clientId && campaign.clientId !== client.id) {
+        issues.push({
+          line: row.line,
+          message: `La campaña «${row.campaign}» no es de ${row.client}.`,
+        });
+        continue;
+      }
+      campaignId = campaign.id;
+    }
+
+    const fx = await resolveFxRate(row.currency);
+    if (fx.unitsPerUsd <= 0) {
+      issues.push({
+        line: row.line,
+        message: `No hay tipo de cambio para ${row.currency}.`,
+      });
+      continue;
+    }
+
+    const creator = await prisma.creator.create({
+      data: {
+        handle: row.handle,
+        instagramUrl: instagramUrlFor(row.handle),
+        contactEmail: row.email,
+        payoutCurrency: row.currency,
+        createdBy: user.email,
+      },
+    });
+
+    const contract = await createContract({
+      creatorId: creator.id,
+      kind: CONTRACT_KIND.ORIGINAL,
+      clientId: client.id,
+      campaignId,
+      economics: {
+        deliverableCount: row.deliverableCount,
+        salePriceCentsPerContent,
+        costCurrency: row.currency,
+        costMinorPerContent,
+        costUsdCentsPerContent: costPerContentUsdCents(
+          costMinorPerContent,
+          row.currency,
+          fx.unitsPerUsd
+        ),
+        fxUnitsPerUsd: fx.unitsPerUsd,
+        fxRateAt: fx.rateAt,
+        fxSource: fx.source,
+        paymentTermDays: row.termDays,
+      },
+      createdBy: user.email,
+    });
+
+    await recordAudit({
+      entityType: "Contract",
+      entityId: contract.id,
+      action: "IMPORTED",
+      actor: user,
+      metadata: {
+        handle: row.handle,
+        code: contract.code,
+        clientId: client.id,
+        campaignId,
+      },
+    });
+    created += 1;
+  }
+
+  revalidatePath("/creators");
+  revalidatePath("/contratos");
+  revalidatePath("/contenidos");
+  revalidatePath("/campanas");
+
+  if (created === 0) {
+    return {
+      ok: false,
+      error: "No se ha creado ningún perfil.",
+      created: 0,
+      skipped: issues.length,
+      issues: issues.slice(0, 20),
+    };
+  }
+
+  return {
+    ok: true,
+    created,
+    skipped: issues.length,
+    issues: issues.slice(0, 20),
+  };
 }

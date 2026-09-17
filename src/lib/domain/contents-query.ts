@@ -16,6 +16,9 @@ export type ContentFilters = {
   desde?: string;
   hasta?: string;
   retrasados?: string;
+  sinEnlace?: string;
+  errorPlataforma?: string;
+  sinFirmar?: string;
   pagina?: string;
 };
 
@@ -39,6 +42,9 @@ export function contentsHref(filters: ContentFilters, page = 1): string {
   if (filters.desde) params.set("desde", filters.desde);
   if (filters.hasta) params.set("hasta", filters.hasta);
   if (filters.retrasados === "1") params.set("retrasados", "1");
+  if (filters.sinEnlace === "1") params.set("sinEnlace", "1");
+  if (filters.errorPlataforma === "1") params.set("errorPlataforma", "1");
+  if (filters.sinFirmar === "1") params.set("sinFirmar", "1");
   if (page > 1) params.set("pagina", String(page));
 
   const query = params.toString();
@@ -85,6 +91,22 @@ export function buildDeliverableWhere(
       ],
     };
     where.scheduledFor = { lt: new Date() };
+  }
+
+  if (filters.sinEnlace === "1") {
+    where.status = DELIVERABLE_STATUS.PUBLISHED;
+    where.postUrl = null;
+  }
+
+  if (filters.errorPlataforma === "1") {
+    where.platformSubmitError = { not: null };
+  }
+
+  if (filters.sinFirmar === "1") {
+    contractFilter.status = {
+      in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT],
+    };
+    where.contract = contractFilter;
   }
 
   return where;
@@ -145,4 +167,25 @@ export function statusCountsFromGroup(
   }
 
   return counts;
+}
+
+export function contentFiltersFromForm(formData: FormData): ContentFilters {
+  const flag = (name: string) =>
+    String(formData.get(name) ?? "") === "1" ? "1" : undefined;
+  const text = (name: string) => {
+    const value = String(formData.get(name) ?? "").trim();
+    return value || undefined;
+  };
+
+  return {
+    creador: text("filterCreador"),
+    campana: text("filterCampana"),
+    estado: text("filterEstado"),
+    desde: text("filterDesde"),
+    hasta: text("filterHasta"),
+    retrasados: flag("filterRetrasados"),
+    sinEnlace: flag("filterSinEnlace"),
+    errorPlataforma: flag("filterErrorPlataforma"),
+    sinFirmar: flag("filterSinFirmar"),
+  };
 }

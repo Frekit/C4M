@@ -39,10 +39,11 @@ export default async function StatusPage() {
   const envStatus = getAuth0EnvStatus();
   const company = getCompany();
 
-  const [creators, contracts, signatures, rates] = await Promise.all([
+  const [creators, contracts, signatures, pendingMail, rates] = await Promise.all([
     prisma.creator.count(),
     prisma.contract.count(),
     prisma.signatureRequest.count({ where: { status: "SIGNED" } }),
+    prisma.mailJob.count({ where: { status: "PENDING" } }),
     prisma.fxRate.findMany({ orderBy: [{ currency: "asc" }] }),
   ]);
 
@@ -109,6 +110,10 @@ export default async function StatusPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Firmados</span>
               <span>{signatures}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Correos en cola</span>
+              <span>{pendingMail}</span>
             </div>
           </CardContent>
         </Card>
