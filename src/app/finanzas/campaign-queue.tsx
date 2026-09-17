@@ -227,7 +227,7 @@ function CampaignGroupCard({ group }: { group: CampaignQueueGroup }) {
                 value={selectedLinks}
                 disabled={busy || selectedLinks.length === 0}
                 label={
-                  selectedItems.length <= 1
+                  selectedItems.length === 1
                     ? "Copiar 1 enlace"
                     : `Copiar ${selectedItems.length} enlaces`
                 }
