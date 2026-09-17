@@ -12,7 +12,7 @@ export const localSessionCookieOptions = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-function parseLocalUser(raw: string | undefined): AppUser | null {
+export function parseLocalUser(raw: string | undefined): AppUser | null {
   if (!raw) {
     return null;
   }
