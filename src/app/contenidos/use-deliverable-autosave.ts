@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 
 import { DELIVERABLE_STATUS } from "@/lib/domain/enums";
 
@@ -81,7 +81,10 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
     const form = formRef.current;
     if (!form || !canEdit) return;
     if (!isDirty(form, item)) return;
-    formAction(new FormData(form));
+    const data = new FormData(form);
+    startTransition(() => {
+      formAction(data);
+    });
   }
 
   function scheduleSave() {
@@ -187,7 +190,10 @@ export function useDeliverableAutosave(item: DeliverableSnapshot, canEdit: boole
       queuedRef.current = true;
       return;
     }
-    formAction(new FormData(form));
+    const data = new FormData(form);
+    startTransition(() => {
+      formAction(data);
+    });
   }
 
   function cancelPublish() {
