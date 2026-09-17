@@ -181,7 +181,9 @@ export function ContractEconomicsFields({
           />
         </div>
 
-        {costCurrency !== "USD" ? (
+        {costCurrency === "USD" ? (
+          <input type="hidden" name="fxUnitsPerUsd" value="" />
+        ) : (
           <div className="grid gap-2">
             <Label htmlFor="fxUnitsPerUsd">
               Tipo de cambio ({costCurrency} por 1 USD)
@@ -207,7 +209,7 @@ export function ContractEconomicsFields({
               </p>
             )}
           </div>
-        ) : null}
+        )}
 
         <Separator />
 

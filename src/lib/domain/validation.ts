@@ -76,6 +76,20 @@ const currencyCode = z
   .toUpperCase()
   .refine(isSupportedCurrency, "Moneda no soportada");
 
+// Vacío o ausente (USD oculta el input) = usar el cambio guardado.
+export const optionalFxRate = formString.pipe(
+  z
+    .string()
+    .trim()
+    .transform((value) =>
+      value === "" ? null : Number(value.replace(",", "."))
+    )
+    .refine(
+      (value) => value === null || (Number.isFinite(value) && value > 0),
+      "El tipo de cambio tiene que ser mayor que cero"
+    )
+);
+
 export const createCreatorContractSchema = z.object({
   instagram: z
     .string()
@@ -97,16 +111,7 @@ export const createCreatorContractSchema = z.object({
   salePricePerContent: amountString,
   costCurrency: currencyCode,
   costPerContent: amountString,
-  fxUnitsPerUsd: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal(""))
-    .transform((value) => (value ? Number(value.replace(",", ".")) : null))
-    .refine(
-      (value) => value === null || (Number.isFinite(value) && value > 0),
-      "El tipo de cambio tiene que ser mayor que cero"
-    ),
+  fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: z.coerce
     .number()
     .int()
@@ -125,16 +130,7 @@ export const newClientContractSchema = z.object({
   salePricePerContent: amountString,
   costCurrency: currencyCode,
   costPerContent: amountString,
-  fxUnitsPerUsd: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal(""))
-    .transform((value) => (value ? Number(value.replace(",", ".")) : null))
-    .refine(
-      (value) => value === null || (Number.isFinite(value) && value > 0),
-      "El tipo de cambio tiene que ser mayor que cero"
-    ),
+  fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: z.coerce.number().int().min(0).max(365),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
@@ -145,16 +141,7 @@ export const renewalSchema = z.object({
   salePricePerContent: amountString,
   costCurrency: currencyCode,
   costPerContent: amountString,
-  fxUnitsPerUsd: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal(""))
-    .transform((value) => (value ? Number(value.replace(",", ".")) : null))
-    .refine(
-      (value) => value === null || (Number.isFinite(value) && value > 0),
-      "El tipo de cambio tiene que ser mayor que cero"
-    ),
+  fxUnitsPerUsd: optionalFxRate,
   paymentTermDays: z.coerce.number().int().min(0).max(365),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   campaignId: z.string().trim().optional().or(z.literal("")),
