@@ -1,42 +1,38 @@
 import { NextResponse } from "next/server";
 
-import { isAuth0Configured, safeReturnTo } from "@/lib/auth/config";
+import { isAuth0Active, safeReturnTo } from "@/lib/auth/config";
 import {
   LOCAL_SESSION_COOKIE,
   localSessionCookieOptions,
 } from "@/lib/auth/local-session";
-import type { AppUser } from "@/lib/auth/types";
-
-function buildLocalUser(name: string, email: string): AppUser {
-  const resolvedName = name.trim() || "Álvaro";
-  const resolvedEmail = email.trim() || "alvaro@local.dev";
-
-  return {
-    sub: `local|${resolvedEmail.toLowerCase()}`,
-    name: resolvedName,
-    email: resolvedEmail,
-    picture: null,
-    nickname: resolvedName.split(" ")[0] ?? resolvedName,
-    provider: "local",
-  };
-}
+import { prisma } from "@/lib/db";
 
 export async function POST(request: Request) {
-  if (isAuth0Configured()) {
+  if (isAuth0Active()) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
   const formData = await request.formData();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const returnTo = safeReturnTo(String(formData.get("returnTo") ?? ""));
-  const user = buildLocalUser(
-    String(formData.get("name") ?? ""),
-    String(formData.get("email") ?? "")
-  );
+
+  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+  // El acceso es solo por invitación: sin fila en User no se entra, ni en local.
+  if (!user || user.status !== "ACTIVE") {
+    const login = new URL("/iniciar-sesion", request.url);
+    login.searchParams.set("error", "sin-invitacion");
+    login.searchParams.set("email", email);
+    if (returnTo !== "/") login.searchParams.set("returnTo", returnTo);
+    return NextResponse.redirect(login, 303);
+  }
 
   const response = NextResponse.redirect(new URL(returnTo, request.url), 303);
   response.cookies.set(
     LOCAL_SESSION_COOKIE,
-    JSON.stringify(user),
+    JSON.stringify({ email: user.email, name: user.name ?? user.email }),
     localSessionCookieOptions
   );
   return response;

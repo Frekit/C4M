@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import type { AppUser } from "./types";
+import type { SessionIdentity } from "./types";
 
 export const LOCAL_SESSION_COOKIE = "app_local_session";
 
@@ -12,28 +12,25 @@ export const localSessionCookieOptions = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-export function parseLocalUser(raw: string | undefined): AppUser | null {
-  if (!raw) {
-    return null;
-  }
+// La cookie local solo guarda con quién dice entrar; el rol y el acceso se
+// resuelven siempre contra la base de datos.
+export function parseLocalIdentity(
+  raw: string | undefined
+): SessionIdentity | null {
+  if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as Partial<AppUser>;
+    const parsed = JSON.parse(raw) as { email?: unknown; name?: unknown };
 
-    if (
-      typeof parsed.sub !== "string" ||
-      typeof parsed.name !== "string" ||
-      typeof parsed.email !== "string"
-    ) {
+    if (typeof parsed.email !== "string" || !parsed.email.includes("@")) {
       return null;
     }
 
     return {
-      sub: parsed.sub,
-      name: parsed.name,
-      email: parsed.email,
-      picture: parsed.picture ?? null,
-      nickname: parsed.nickname ?? null,
+      sub: `local|${parsed.email.toLowerCase()}`,
+      email: parsed.email.toLowerCase(),
+      name: typeof parsed.name === "string" ? parsed.name : parsed.email,
+      picture: null,
       provider: "local",
     };
   } catch {
@@ -41,7 +38,7 @@ export function parseLocalUser(raw: string | undefined): AppUser | null {
   }
 }
 
-export async function getLocalUser(): Promise<AppUser | null> {
+export async function getLocalIdentity(): Promise<SessionIdentity | null> {
   const jar = await cookies();
-  return parseLocalUser(jar.get(LOCAL_SESSION_COOKIE)?.value);
+  return parseLocalIdentity(jar.get(LOCAL_SESSION_COOKIE)?.value);
 }

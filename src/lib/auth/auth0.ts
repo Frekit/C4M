@@ -1,11 +1,11 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
-import { isAuth0Configured } from "./config";
+import { isAuth0Active } from "./config";
 
 let auth0Client: Auth0Client | null = null;
 
 export function getAuth0Client(): Auth0Client | null {
-  if (!isAuth0Configured()) {
+  if (!isAuth0Active()) {
     return null;
   }
 

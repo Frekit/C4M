@@ -1,0 +1,246 @@
+// Esquema pensado para migrar a PostgreSQL sin reescribirlo:
+// - Sin enums de base de datos (SQLite no los soporta). Los estados son String
+//   y sus valores válidos viven en src/lib/domain/enums.ts.
+// - Sin campos Json: los metadatos se guardan como String con JSON serializado.
+// - Importes en unidades mínimas (Int), nunca en coma flotante.
+// - Sin tipos nativos (@db.*), que son específicos de cada motor.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- Acceso: el equipo entra solo por invitación ---
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String?
+  authSub     String?   @unique
+  role        String
+  status      String    @default("ACTIVE")
+  invitedBy   String?
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([role])
+}
+
+model Invitation {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  role       String
+  token      String    @unique
+  invitedBy  String?
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// --- Talento ---
+
+model Creator {
+  id             String   @id @default(cuid())
+  handle         String   @unique
+  instagramUrl   String
+  displayName    String?
+  contactEmail   String?
+  country        String?
+  payoutCurrency String
+  notes          String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contracts Contract[]
+  payees    PayeeProfile[]
+}
+
+// --- Contratos y su cadena de renovaciones ---
+
+model Contract {
+  id        String @id @default(cuid())
+  code      String @unique
+  creatorId String
+
+  // Cadena: el contrato raíz tiene parentId y rootId a null.
+  // Los descendientes guardan rootId para poder leer la cadena de una vez.
+  parentId String?
+  rootId   String?
+  kind     String // ORIGINAL | ANNEX | RENEWAL
+  status   String @default("DRAFT")
+
+  deliverableCount Int
+
+  // Lo que se factura al cliente: siempre USD.
+  salePriceCentsPerContent Int
+  // Lo que se paga al creator: su moneda.
+  costCurrency             String
+  costMinorPerContent      Int
+  // Foto del cambio aplicado al crear el contrato, para que el margen no se
+  // mueva después si el tipo de cambio varía.
+  fxUnitsPerUsd            Float
+  fxRateAt                 DateTime
+  fxSource                 String  @default("MANUAL")
+  costUsdCentsPerContent   Int
+
+  // Días desde la publicación de cada contenido hasta el pago. 0 = inmediato.
+  paymentTermDays Int
+
+  startsAt     DateTime?
+  endsAt       DateTime?
+  signedAt     DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  notes        String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator           Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  parent            Contract?          @relation("ContractChain", fields: [parentId], references: [id])
+  children          Contract[]         @relation("ContractChain")
+  deliverables      Deliverable[]
+  signatureRequests SignatureRequest[]
+
+  @@index([creatorId])
+  @@index([rootId])
+  @@index([status])
+}
+
+model Deliverable {
+  id         String @id @default(cuid())
+  contractId String
+  position   Int
+  status     String @default("PENDING") // PENDING | PUBLISHED
+
+  publishedAt  DateTime?
+  postUrl      String?
+  paymentDueAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, position])
+  @@index([status])
+}
+
+// --- Firma del contrato por el talento o su agencia ---
+
+model SignatureRequest {
+  id             String @id @default(cuid())
+  contractId     String
+  token          String @unique
+  recipientEmail String
+  recipientKind  String // TALENT | AGENCY
+  status         String @default("PENDING") // PENDING | VIEWED | SIGNED | REVOKED
+
+  expiresAt DateTime
+  sentAt    DateTime?
+  viewedAt  DateTime?
+  signedAt  DateTime?
+
+  // Rastro de auditoría de la firma.
+  signerFullName  String?
+  signerIp        String?
+  signerUserAgent String?
+  documentSha256  String?
+
+  payeeProfileId String? @unique
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contract Contract      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  payee    PayeeProfile? @relation(fields: [payeeProfileId], references: [id])
+
+  @@index([contractId])
+  @@index([status])
+}
+
+// Datos que rellena el firmante: sirven para el contrato y para pagarle después.
+model PayeeProfile {
+  id        String @id @default(cuid())
+  creatorId String
+  kind      String // INDIVIDUAL | COMPANY | AGENCY
+
+  // Identidad
+  legalName   String
+  taxId       String
+  country     String
+  addressLine String
+  city        String
+  postalCode  String
+  region      String?
+
+  // Bancarios
+  accountHolder  String
+  payoutMethod   String // BANK_TRANSFER | WISE
+  iban           String?
+  swiftBic       String?
+  bankName       String?
+  wiseEmail      String?
+  payoutCurrency String
+
+  // Fiscal
+  vatApplies         Boolean @default(false)
+  vatRate            Float?
+  withholdingApplies Boolean @default(false)
+  withholdingRate    Float?
+  taxRegime          String?
+
+  // Contacto
+  billingEmail  String
+  phone         String?
+  contactPerson String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator          Creator           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  signatureRequest SignatureRequest?
+
+  @@index([creatorId])
+}
+
+// --- Tipos de cambio ---
+
+model FxRate {
+  id          String   @id @default(cuid())
+  currency    String
+  date        DateTime
+  unitsPerUsd Float
+  source      String   @default("MANUAL")
+  createdAt   DateTime @default(now())
+
+  @@unique([currency, date])
+}
+
+// --- Rastro de auditoría transversal ---
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorEmail String?
+  actorRole  String?
+  ip         String?
+  userAgent  String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

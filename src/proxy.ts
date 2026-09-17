@@ -2,16 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { getAuth0Client } from "./lib/auth/auth0";
-import { isAuth0Configured } from "./lib/auth/config";
+import { isAuth0Active } from "./lib/auth/config";
 import {
   LOCAL_SESSION_COOKIE,
-  parseLocalUser,
+  parseLocalIdentity,
 } from "./lib/auth/local-session";
 
-const PROTECTED_PREFIXES = ["/cuenta"];
+// Rutas accesibles sin sesión. El enlace de firma es público a propósito: lo
+// abre el talento o su agencia, que no tienen cuenta en la plataforma.
+const PUBLIC_PREFIXES = ["/iniciar-sesion", "/sin-acceso", "/firmar", "/auth"];
 
-function isProtectedPath(pathname: string) {
-  return PROTECTED_PREFIXES.some(
+function isPublicPath(pathname: string) {
+  return PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -19,7 +21,7 @@ function isProtectedPath(pathname: string) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isAuth0Configured()) {
+  if (isAuth0Active()) {
     const auth0 = getAuth0Client();
 
     if (!auth0) {
@@ -28,7 +30,7 @@ export async function proxy(request: NextRequest) {
 
     const response = await auth0.middleware(request);
 
-    if (isProtectedPath(pathname)) {
+    if (!isPublicPath(pathname)) {
       const session = await auth0.getSession(request);
 
       if (!session) {
@@ -42,6 +44,7 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // Modo local: las rutas de Auth0 no existen, se manda al login propio.
   if (pathname.startsWith("/auth/") && !pathname.startsWith("/auth/local/")) {
     const login = request.nextUrl.clone();
     login.pathname = "/iniciar-sesion";
@@ -49,7 +52,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (isProtectedPath(pathname) && !parseLocalUser(request.cookies.get(LOCAL_SESSION_COOKIE)?.value)) {
+  if (
+    !isPublicPath(pathname) &&
+    !parseLocalIdentity(request.cookies.get(LOCAL_SESSION_COOKIE)?.value)
+  ) {
     const login = request.nextUrl.clone();
     login.pathname = "/iniciar-sesion";
     login.search = `?returnTo=${encodeURIComponent(pathname)}`;
