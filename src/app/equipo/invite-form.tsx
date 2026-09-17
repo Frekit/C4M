@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { SelectField } from "@/components/select-field";
+import { NativeSelectField } from "@/components/native-select-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,14 +53,15 @@ export function InviteForm({ baseUrl }: { baseUrl: string }) {
         ) : null}
       </div>
 
-      <div className="sm:w-56">
-        <SelectField
-          name="role"
-          label="Rol"
-          options={ROLE_OPTIONS}
-          defaultValue={ROLES.CREATORS}
-        />
-      </div>
+      <NativeSelectField
+        name="role"
+        label="Rol"
+        options={ROLE_OPTIONS}
+        defaultValue={ROLES.CREATORS}
+        error={state?.fieldErrors?.role}
+        className="sm:w-56"
+        required
+      />
 
       <Button type="submit" disabled={pending}>
         {pending ? "Creando…" : "Invitar"}

@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { AtSignIcon } from "lucide-react";
 
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
+import { FormErrorSummary } from "@/components/form-error-summary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import { createCreatorWithContract, type CreateResult } from "../actions";
+
+const FIELD_LABELS: Record<string, string> = {
+  instagram: "Enlace de Instagram",
+  displayName: "Nombre",
+  contactEmail: "Email de contacto",
+  deliverableCount: "Contenidos pactados",
+  salePricePerContent: "Precio de venta por contenido",
+  costCurrency: "Moneda de pago",
+  costPerContent: "Coste por contenido",
+  fxUnitsPerUsd: "Tipo de cambio",
+  paymentTermDays: "Plazo de pago",
+  notes: "Notas",
+};
 
 export function CreatorForm({ fxRates }: { fxRates: Record<string, number> }) {
   const [state, formAction, pending] = useActionState<
@@ -43,7 +57,9 @@ export function CreatorForm({ fxRates }: { fxRates: Record<string, number> }) {
             ) : null}
           </AlertDescription>
         </Alert>
-      ) : null}
+      ) : (
+        <FormErrorSummary fieldErrors={state?.fieldErrors} labels={FIELD_LABELS} />
+      )}
 
       <Card>
         <CardHeader>

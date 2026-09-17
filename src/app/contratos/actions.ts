@@ -25,6 +25,12 @@ import {
 } from "@/lib/domain/enums";
 import { resolveFxRate, upsertFxRate } from "@/lib/domain/fx";
 import {
+  canDeleteContract,
+  canPublishDeliverables,
+  countPublished,
+  isAnnexAllowed,
+} from "@/lib/domain/rules";
+import {
   fieldErrorsFrom,
   publishDeliverableSchema,
   renewalSchema,
@@ -185,13 +191,7 @@ export async function markDeliverablePublished(
     return { ok: false, error: "Ese contenido no existe." };
   }
 
-  // Sin contrato firmado no se devenga nada.
-  const signable =
-    deliverable.contract.status === CONTRACT_STATUS.SIGNED ||
-    deliverable.contract.status === CONTRACT_STATUS.COMPLETED ||
-    deliverable.contract.status === CONTRACT_STATUS.RENEWED;
-
-  if (!signable) {
+  if (!canPublishDeliverables(deliverable.contract.status)) {
     return {
       ok: false,
       error:
@@ -318,19 +318,14 @@ export async function deleteContract(formData: FormData) {
 
   if (!contract) return;
 
-  // Solo borrable si nunca hubo firma enviada, ni contenidos publicados, ni
-  // contratos colgando de este. En cualquier otro caso, se cancela.
-  const published = contract.deliverables.some(
-    (item) => item.status === DELIVERABLE_STATUS.PUBLISHED
-  );
-  const hadSignature = contract.signatureRequests.length > 0;
+  const deletable = canDeleteContract({
+    status: contract.status,
+    signatureCount: contract.signatureRequests.length,
+    publishedCount: countPublished(contract.deliverables),
+    childCount: contract.children.length,
+  });
 
-  if (
-    contract.status !== CONTRACT_STATUS.DRAFT ||
-    published ||
-    hadSignature ||
-    contract.children.length > 0
-  ) {
+  if (!deletable) {
     return;
   }
 
@@ -396,13 +391,10 @@ export async function createRenewal(
     return { ok: false, error: "Revisa los importes." };
   }
 
-  const costChanged =
-    data.costCurrency !== parent.costCurrency ||
-    costMinorPerContent !== parent.costMinorPerContent;
-
-  // Un anexo solo vale si el coste del creator no se toca; si cambia, hay que
-  // firmar un contrato nuevo.
-  if (data.mode === CONTRACT_KIND.ANNEX && costChanged) {
+  if (
+    data.mode === CONTRACT_KIND.ANNEX &&
+    !isAnnexAllowed(parent, { costCurrency: data.costCurrency, costMinorPerContent })
+  ) {
     return {
       ok: false,
       error:

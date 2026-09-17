@@ -1,10 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { BanknoteIcon, BuildingIcon, PhoneIcon, ReceiptIcon } from "lucide-react";
+import {
+  BanknoteIcon,
+  BuildingIcon,
+  ChevronDownIcon,
+  PhoneIcon,
+  ReceiptIcon,
+} from "lucide-react";
 
-import { SelectField } from "@/components/select-field";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FormErrorSummary } from "@/components/form-error-summary";
+import { NativeSelectField } from "@/components/native-select-field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,16 +19,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { NativeCheckboxField } from "@/components/native-checkbox-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CURRENCIES } from "@/lib/currencies";
 import {
   PAYEE_KIND,
@@ -42,6 +41,32 @@ const CURRENCY_OPTIONS = CURRENCIES.map((currency) => ({
   value: currency.code,
   label: `${currency.code} · ${currency.name}`,
 }));
+
+const FIELD_LABELS: Record<string, string> = {
+  kind: "Firmas como",
+  legalName: "Nombre o razón social",
+  taxId: "NIF / CIF / Tax ID",
+  country: "País",
+  addressLine: "Dirección",
+  city: "Ciudad",
+  postalCode: "Código postal",
+  region: "Provincia o estado",
+  accountHolder: "Titular de la cuenta",
+  payoutMethod: "Método de pago",
+  iban: "IBAN o número de cuenta",
+  swiftBic: "SWIFT / BIC",
+  bankName: "Banco",
+  wiseEmail: "Email de Wise",
+  payoutCurrency: "Moneda de cobro",
+  vatRate: "Tipo de IVA",
+  withholdingRate: "Tipo de retención",
+  taxRegime: "Régimen fiscal",
+  billingEmail: "Email de facturación",
+  phone: "Teléfono",
+  contactPerson: "Persona de contacto",
+  signerFullName: "Nombre completo del firmante",
+  acceptTerms: "Aceptación del contrato",
+};
 
 function Field({
   name,
@@ -94,12 +119,11 @@ export function SignForm({
     <form action={formAction} className="grid gap-5">
       <input type="hidden" name="token" value={token} />
 
-      {state?.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>No se ha podido firmar</AlertTitle>
-          <AlertDescription>{state.error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <FormErrorSummary
+        error={state?.error}
+        fieldErrors={state?.fieldErrors}
+        labels={FIELD_LABELS}
+      />
 
       <Card>
         <CardHeader>
@@ -110,14 +134,15 @@ export function SignForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <SelectField
-              name="kind"
-              label="Firmas como"
-              options={KIND_OPTIONS}
-              defaultValue={PAYEE_KIND.INDIVIDUAL}
-            />
-          </div>
+          <NativeSelectField
+            name="kind"
+            label="Firmas como"
+            options={KIND_OPTIONS}
+            defaultValue={PAYEE_KIND.INDIVIDUAL}
+            error={errors.kind}
+            className="sm:col-span-2"
+            required
+          />
 
           <Field name="legalName" label="Nombre o razón social" error={errors.legalName}>
             <Input id="legalName" name="legalName" autoComplete="organization" required />
@@ -173,26 +198,26 @@ export function SignForm({
 
           <div className="grid gap-2">
             <Label htmlFor="payoutMethod">Método de pago</Label>
-            <Select
-              name="payoutMethod"
-              items={Object.values(PAYOUT_METHOD).map((method) => ({
-                value: method,
-                label: PAYOUT_METHOD_LABELS[method],
-              }))}
-              value={payoutMethod}
-              onValueChange={(value) => setPayoutMethod(String(value))}
-            >
-              <SelectTrigger id="payoutMethod" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+            <div className="relative">
+              <select
+                id="payoutMethod"
+                name="payoutMethod"
+                value={payoutMethod}
+                onChange={(event) => setPayoutMethod(event.target.value)}
+                required
+                className="h-8 w-full appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+              >
                 {Object.values(PAYOUT_METHOD).map((method) => (
-                  <SelectItem key={method} value={method}>
+                  <option key={method} value={method}>
                     {PAYOUT_METHOD_LABELS[method]}
-                  </SelectItem>
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 text-muted-foreground" />
+            </div>
+            {errors.payoutMethod ? (
+              <p className="text-xs text-destructive">{errors.payoutMethod}</p>
+            ) : null}
           </div>
 
           {payoutMethod === PAYOUT_METHOD.WISE ? (
@@ -217,14 +242,15 @@ export function SignForm({
             </>
           )}
 
-          <div className="sm:col-span-2">
-            <SelectField
-              name="payoutCurrency"
-              label="Moneda en la que quieres cobrar"
-              options={CURRENCY_OPTIONS}
-              defaultValue={defaultCurrency}
-            />
-          </div>
+          <NativeSelectField
+            name="payoutCurrency"
+            label="Moneda en la que quieres cobrar"
+            options={CURRENCY_OPTIONS}
+            defaultValue={defaultCurrency}
+            error={errors.payoutCurrency}
+            className="sm:col-span-2"
+            required
+          />
         </CardContent>
       </Card>
 
@@ -237,19 +263,13 @@ export function SignForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <label className="flex items-start gap-3 rounded-lg border p-3">
-            <Checkbox
-              name="vatApplies"
-              checked={vatApplies}
-              onCheckedChange={(checked) => setVatApplies(Boolean(checked))}
-            />
-            <span className="grid gap-1">
-              <span className="text-sm font-medium">Mis facturas llevan IVA</span>
-              <span className="text-xs text-muted-foreground">
-                Marca esto si estás dado de alta y repercutes IVA.
-              </span>
-            </span>
-          </label>
+          <NativeCheckboxField
+            name="vatApplies"
+            title="Mis facturas llevan IVA"
+            description="Marca esto si estás dado de alta y repercutes IVA."
+            checked={vatApplies}
+            onCheckedChange={setVatApplies}
+          />
 
           {vatApplies ? (
             <Field name="vatRate" label="Tipo de IVA (%)" error={errors.vatRate}>
@@ -263,21 +283,13 @@ export function SignForm({
             </Field>
           ) : null}
 
-          <label className="flex items-start gap-3 rounded-lg border p-3">
-            <Checkbox
-              name="withholdingApplies"
-              checked={withholdingApplies}
-              onCheckedChange={(checked) => setWithholdingApplies(Boolean(checked))}
-            />
-            <span className="grid gap-1">
-              <span className="text-sm font-medium">
-                Se me practica retención de IRPF
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Habitual en profesionales residentes en España.
-              </span>
-            </span>
-          </label>
+          <NativeCheckboxField
+            name="withholdingApplies"
+            title="Se me practica retención de IRPF"
+            description="Habitual en profesionales residentes en España."
+            checked={withholdingApplies}
+            onCheckedChange={setWithholdingApplies}
+          />
 
           {withholdingApplies ? (
             <Field
@@ -357,20 +369,12 @@ export function SignForm({
             <Input id="signerFullName" name="signerFullName" required />
           </Field>
 
-          <label className="flex items-start gap-3 rounded-lg border p-3">
-            <Checkbox name="acceptTerms" />
-            <span className="grid gap-1">
-              <span className="text-sm font-medium">
-                He leído y acepto el contrato
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Declaro que los datos facilitados son correctos.
-              </span>
-            </span>
-          </label>
-          {errors.acceptTerms ? (
-            <p className="text-xs text-destructive">{errors.acceptTerms}</p>
-          ) : null}
+          <NativeCheckboxField
+            name="acceptTerms"
+            title="He leído y acepto el contrato"
+            description="Declaro que los datos facilitados son correctos."
+            error={errors.acceptTerms}
+          />
 
           <Button type="submit" size="lg" disabled={pending}>
             {pending ? "Firmando…" : "Firmar contrato"}

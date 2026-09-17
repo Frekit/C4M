@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { SendIcon } from "lucide-react";
 
 import { CopyButton } from "@/components/copy-button";
-import { SelectField } from "@/components/select-field";
+import { NativeSelectField } from "@/components/native-select-field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,7 +91,7 @@ export function SendSignatureCard({
               ) : null}
             </div>
 
-            <SelectField
+            <NativeSelectField
               name="recipientKind"
               label="Firma"
               options={[
@@ -99,6 +99,8 @@ export function SendSignatureCard({
                 { value: RECIPIENT_KIND.AGENCY, label: "Su agencia o management" },
               ]}
               defaultValue={RECIPIENT_KIND.TALENT}
+              error={state?.fieldErrors?.recipientKind}
+              required
             />
           </div>
 

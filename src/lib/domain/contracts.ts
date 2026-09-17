@@ -21,6 +21,7 @@ import {
   type ContractTotals,
   type DeliverableProgress,
 } from "@/lib/domain/contract-math";
+import { canDeleteContract, countPublished } from "@/lib/domain/rules";
 
 export type SignatureWithPayee = SignatureRequest & {
   payee?: PayeeProfile | null;
@@ -89,7 +90,12 @@ export function buildContractView(contract: ContractWithDetail): ContractView {
     signedSignature,
     canEditEconomics:
       contract.status === CONTRACT_STATUS.DRAFT && !hasCommitment,
-    canDelete: contract.status === CONTRACT_STATUS.DRAFT && !hasCommitment,
+    canDelete: canDeleteContract({
+      status: contract.status,
+      signatureCount: contract.signatureRequests.length,
+      publishedCount: countPublished(contract.deliverables),
+      childCount: 0,
+    }),
     hasCommitment,
   };
 }

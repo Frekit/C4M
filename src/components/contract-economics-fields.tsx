@@ -1,19 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TriangleAlertIcon } from "lucide-react";
+import { ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 
 import { MoneyInput } from "@/components/money-input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { CURRENCIES } from "@/lib/currencies";
 import { PAYMENT_TERMS } from "@/lib/domain/enums";
@@ -145,26 +138,30 @@ export function ContractEconomicsFields({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="costCurrency">Moneda de pago al creator</Label>
-            <Select
-              name="costCurrency"
-              items={CURRENCY_OPTIONS}
-              value={costCurrency}
-              onValueChange={(value) => setCostCurrency(String(value))}
-              disabled={lockCost}
-            >
-              <SelectTrigger id="costCurrency" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+            <div className="relative">
+              <select
+                id="costCurrency"
+                name="costCurrency"
+                value={costCurrency}
+                onChange={(event) => setCostCurrency(event.target.value)}
+                disabled={lockCost}
+                required
+                className="h-8 w-full appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
+              >
                 {CURRENCY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
-                  </SelectItem>
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 text-muted-foreground" />
+            </div>
+            {/* Un select deshabilitado no se envía: el anexo necesita el valor igual. */}
             {lockCost ? (
               <input type="hidden" name="costCurrency" value={costCurrency} />
+            ) : null}
+            {fieldErrors?.costCurrency ? (
+              <p className="text-xs text-destructive">{fieldErrors.costCurrency}</p>
             ) : null}
           </div>
 
