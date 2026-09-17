@@ -29,6 +29,11 @@ export async function POST(request: Request) {
     return NextResponse.redirect(login, 303);
   }
 
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+
   const response = NextResponse.redirect(new URL(returnTo, request.url), 303);
   response.cookies.set(
     LOCAL_SESSION_COOKIE,

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { prisma } from "@/lib/db";
 import { CONTRACT_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import { packPaymentDueAt, summarizePacks } from "@/lib/domain/settlement";
@@ -26,12 +28,15 @@ export async function syncPackSettlement(input: {
     include: { contract: true },
   });
 
+  const dueByTerm = new Map<number, Date | null>();
+
   await Promise.all(
     items.map((item) => {
-      const paymentDueAt = packPaymentDueAt(
-        items,
-        item.contract.paymentTermDays
-      );
+      let paymentDueAt = dueByTerm.get(item.contract.paymentTermDays);
+      if (paymentDueAt === undefined) {
+        paymentDueAt = packPaymentDueAt(items, item.contract.paymentTermDays);
+        dueByTerm.set(item.contract.paymentTermDays, paymentDueAt);
+      }
 
       if (
         (item.paymentDueAt?.toISOString() ?? null) ===
@@ -48,13 +53,13 @@ export async function syncPackSettlement(input: {
   );
 }
 
-export async function loadPackCampaignIds() {
+export const loadPackCampaignIds = cache(async () => {
   const clients = await prisma.client.findMany({
     where: { settlementMode: SETTLEMENT_MODE.PACK },
     select: { id: true },
   });
 
-  if (clients.length === 0) return [];
+  if (clients.length === 0) return [] as string[];
 
   const campaigns = await prisma.campaign.findMany({
     where: { clientId: { in: clients.map((client) => client.id) } },
@@ -62,9 +67,9 @@ export async function loadPackCampaignIds() {
   });
 
   return campaigns.map((campaign) => campaign.id);
-}
+});
 
-export async function loadPackSummaries() {
+export const loadPackSummaries = cache(async () => {
   const campaignIds = await loadPackCampaignIds();
   if (campaignIds.length === 0) return new Map();
 
@@ -87,4 +92,4 @@ export async function loadPackSummaries() {
       status: item.status,
     }))
   );
-}
+});

@@ -13,85 +13,20 @@ import {
 } from "@/components/ui/card";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import { contractTotals, deliverableProgress } from "@/lib/domain/contract-math";
-import { CONTRACT_STATUS, DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
-import { loadPackCampaignIds, loadPackSummaries } from "@/lib/domain/pack-sync";
-import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
+import { loadDashboard } from "@/lib/domain/dashboard";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 export default async function DashboardPage() {
   const user = await requireUser("/");
-
-  const packCampaignIds = await loadPackCampaignIds();
-  const [creatorCount, contracts, upcomingPayments, packs] = await Promise.all([
-    prisma.creator.count(),
-    prisma.contract.findMany({
-      include: {
-        creator: true,
-        client: true,
-        deliverables: { include: { campaign: { include: { client: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.deliverable.findMany({
-      where: {
-        paymentDueAt: { not: null },
-        OR: [
-          { status: DELIVERABLE_STATUS.SUBMITTED },
-          {
-            status: DELIVERABLE_STATUS.PUBLISHED,
-            campaignId: { in: packCampaignIds },
-          },
-        ],
-      },
-      orderBy: { paymentDueAt: "asc" },
-      take: 8,
-      include: { contract: { include: { creator: true } } },
-    }),
-    loadPackSummaries(),
-  ]);
-
-  const live = contracts.filter(
-    (contract) => contract.status !== CONTRACT_STATUS.CANCELLED
-  );
-
-  const allDeliverables = live.flatMap((contract) => contract.deliverables);
-  const progress = deliverableProgress(allDeliverables);
-
-  const marginUsdCents = live.reduce(
-    (total, contract) => total + contractTotals(contract).marginTotalUsdCents,
-    0
-  );
-
-  const accruedByCurrency = live.reduce<Record<string, number>>(
-    (accumulator, contract) => {
-      for (const item of contract.deliverables) {
-        const policy = settlementPolicyOf({
-          client: contract.client,
-          campaign: item.campaign,
-        });
-        const pack =
-          item.campaignId && policy?.settlementMode === SETTLEMENT_MODE.PACK
-            ? packs.get(packKey(item.campaignId, contract.creatorId))
-            : null;
-        if (isAccruedDeliverable(item.status, policy, pack?.isComplete ?? false)) {
-          accumulator[contract.costCurrency] =
-            (accumulator[contract.costCurrency] ?? 0) +
-            contract.costMinorPerContent;
-        }
-      }
-      return accumulator;
-    },
-    {}
-  );
-
-  const awaitingSignature = live.filter(
-    (contract) =>
-      contract.status === CONTRACT_STATUS.DRAFT ||
-      contract.status === CONTRACT_STATUS.SENT
-  );
+  const {
+    creatorCount,
+    progress,
+    marginUsdCents,
+    accruedByCurrency,
+    awaitingSignature,
+    upcomingPayments,
+  } = await loadDashboard();
 
   if (creatorCount === 0) {
     return (
@@ -206,7 +141,7 @@ export default async function DashboardPage() {
                 Nada pendiente. Todos los contratos vivos están firmados.
               </p>
             ) : (
-              awaitingSignature.slice(0, 6).map((contract) => (
+              awaitingSignature.map((contract) => (
                 <Link
                   key={contract.id}
                   href={`/contratos/${contract.id}`}

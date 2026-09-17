@@ -86,6 +86,36 @@ export function packPaymentDueAt(
   return paymentDueDate(last, paymentTermDays);
 }
 
+export function sumAccruedByCurrency(
+  items: {
+    status: string;
+    campaignId: string | null;
+    creatorId: string;
+    costCurrency: string;
+    costMinorPerContent: number;
+    policy: SettlementPolicy | null;
+  }[],
+  packs: Map<string, PackProgress>
+): Record<string, number> {
+  const result: Record<string, number> = {};
+
+  for (const item of items) {
+    const pack =
+      item.campaignId && isPackSettlement(item.policy)
+        ? packs.get(packKey(item.campaignId, item.creatorId))
+        : null;
+    if (
+      !isAccruedDeliverable(item.status, item.policy, pack?.isComplete ?? false)
+    ) {
+      continue;
+    }
+    result[item.costCurrency] =
+      (result[item.costCurrency] ?? 0) + item.costMinorPerContent;
+  }
+
+  return result;
+}
+
 export function summarizePacks(
   items: {
     campaignId: string | null;

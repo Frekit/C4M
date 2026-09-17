@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/db";
@@ -31,7 +33,8 @@ async function getIdentity(): Promise<SessionIdentity | null> {
   return getLocalIdentity();
 }
 
-export async function getAccessState(): Promise<AccessState> {
+// Una lectura por request: layout y la página no duplican el findUnique.
+export const getAccessState = cache(async (): Promise<AccessState> => {
   const identity = await getIdentity();
 
   if (!identity) {
@@ -56,11 +59,14 @@ export async function getAccessState(): Promise<AccessState> {
     !record.lastLoginAt ||
     record.lastLoginAt < twelveHoursAgo;
 
+  // No bloquea el HTML: el lastLogin se actualiza cuando la respuesta ya salió.
   if (needsTouch) {
-    await prisma.user.update({
-      where: { id: record.id },
-      data: { authSub: identity.sub, lastLoginAt: new Date() },
-    });
+    after(() =>
+      prisma.user.update({
+        where: { id: record.id },
+        data: { authSub: identity.sub, lastLoginAt: new Date() },
+      })
+    );
   }
 
   return {
@@ -74,7 +80,7 @@ export async function getAccessState(): Promise<AccessState> {
       picture: identity.picture ?? null,
     },
   };
-}
+});
 
 export async function getCurrentUser(): Promise<AppUser | null> {
   const state = await getAccessState();

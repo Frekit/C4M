@@ -10,6 +10,7 @@ import { syncContractCompletion } from "@/lib/domain/contracts";
 import { DELIVERABLE_STATUS, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import {
   canPublishDeliverables,
+  isLiveDeliverable,
   resolveDeliverableState,
 } from "@/lib/domain/rules";
 import { syncPackSettlement } from "@/lib/domain/pack-sync";
@@ -155,6 +156,17 @@ export async function updateDeliverable(
     return { ok: false, error: resolved.error };
   }
 
+  const statusChanged = resolved.value.status !== deliverable.status;
+  const campaignChanged = nextCampaignId !== previousCampaignId;
+  const dateChanged =
+    (resolved.value.scheduledFor?.toISOString() ?? null) !==
+      (deliverable.scheduledFor?.toISOString() ?? null) ||
+    (resolved.value.publishedAt?.toISOString() ?? null) !==
+      (deliverable.publishedAt?.toISOString() ?? null);
+  const liveChanged =
+    isLiveDeliverable(resolved.value.status) !==
+    isLiveDeliverable(deliverable.status);
+
   await prisma.deliverable.update({
     where: { id: deliverable.id },
     data: {
@@ -164,16 +176,21 @@ export async function updateDeliverable(
     },
   });
 
-  await syncContractCompletion(deliverable.contractId);
-  await syncPackSettlement({
-    campaignId: nextCampaignId,
-    creatorId: deliverable.contract.creatorId,
-  });
-  if (previousCampaignId && previousCampaignId !== nextCampaignId) {
+  if (statusChanged) {
+    await syncContractCompletion(deliverable.contractId);
+  }
+
+  if (statusChanged || campaignChanged || dateChanged) {
     await syncPackSettlement({
-      campaignId: previousCampaignId,
+      campaignId: nextCampaignId,
       creatorId: deliverable.contract.creatorId,
     });
+    if (previousCampaignId && previousCampaignId !== nextCampaignId) {
+      await syncPackSettlement({
+        campaignId: previousCampaignId,
+        creatorId: deliverable.contract.creatorId,
+      });
+    }
   }
 
   await recordAudit({
@@ -190,11 +207,16 @@ export async function updateDeliverable(
     },
   });
 
-  revalidatePath("/contenidos");
-  revalidatePath("/finanzas");
-  revalidatePath(`/contratos/${deliverable.contractId}`);
-  revalidatePath("/creators");
-  revalidatePath("/");
+  // Un cambio de enlace no recarga Panel/Finanzas/Creators. Publicado o pack sí.
+  if (statusChanged || campaignChanged || dateChanged) {
+    revalidatePath("/contenidos");
+    revalidatePath(`/contratos/${deliverable.contractId}`);
+  }
+  if (liveChanged || campaignChanged) {
+    revalidatePath("/finanzas");
+    revalidatePath("/");
+    revalidatePath("/creators");
+  }
 
   return { ok: true };
 }

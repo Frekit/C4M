@@ -8,6 +8,7 @@ import {
   isPayableWithPolicy,
   packPaymentDueAt,
   packProgress,
+  sumAccruedByCurrency,
   summarizePacks,
 } from "@/lib/domain/settlement";
 import { resolveDeliverableState } from "@/lib/domain/rules";
@@ -120,4 +121,35 @@ test("agrupa el progreso del pack por campaña y perfil", () => {
   assert.equal(packs.get("c1:a")?.total, 2);
   assert.equal(packs.get("c1:b")?.isComplete, true);
   assert.equal(packs.has("null:a"), false);
+});
+
+test("el devengo agrupa por moneda y espera al pack", () => {
+  const packs = summarizePacks([
+    { campaignId: "mc", creatorId: "a", status: "PUBLISHED" },
+    { campaignId: "mc", creatorId: "a", status: "PUBLISHED" },
+  ]);
+
+  const accrued = sumAccruedByCurrency(
+    [
+      {
+        status: "PUBLISHED",
+        campaignId: "h1",
+        creatorId: "a",
+        costCurrency: "EUR",
+        costMinorPerContent: 100,
+        policy: higgsfield,
+      },
+      {
+        status: "PUBLISHED",
+        campaignId: "mc",
+        creatorId: "a",
+        costCurrency: "EUR",
+        costMinorPerContent: 50,
+        policy: manyChat,
+      },
+    ],
+    packs
+  );
+
+  assert.equal(accrued.EUR, 150);
 });
