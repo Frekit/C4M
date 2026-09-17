@@ -89,5 +89,6 @@ El esquema se escribió para que el salto sea barato: sin enums de base de datos
 
 - `npm run dev` — desarrollo en el puerto 43127
 - `npm run build` / `npm start`
+- `npm test` — pruebas de la aritmética de importes, márgenes y plazos
 - `npm run lint` · `npm run typecheck`
 - `npm run db:migrate` · `npm run db:seed` · `npm run db:studio` · `npm run db:reset`
