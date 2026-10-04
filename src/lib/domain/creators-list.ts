@@ -8,6 +8,7 @@ import {
 import { parsePage, queryHref } from "@/lib/domain/paging";
 import { formatMoney } from "@/lib/money";
 import {
+  catalogSearchValues,
   loadRosterCatalog,
   remapCreatorCatalogValues,
   storedValuesForFilter,
@@ -42,15 +43,16 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
   const tarifa = filters.tarifa?.trim() ?? "";
   const catalog = await loadRosterCatalog();
   await remapCreatorCatalogValues(catalog);
+  const searchValues = query ? catalogSearchValues(catalog, query) : [];
   const where = {
     ...(query
       ? {
-          OR: [
-            { handle: { contains: query } },
-            { displayName: { contains: query } },
-            { country: { contains: query } },
-            { profileType: { contains: query } },
-          ],
+          OR: searchValues.flatMap((value) => [
+            { handle: { contains: value } },
+            { displayName: { contains: value } },
+            { country: { contains: value } },
+            { profileType: { contains: value } },
+          ]),
         }
       : {}),
     ...(country

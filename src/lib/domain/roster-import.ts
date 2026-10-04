@@ -142,29 +142,38 @@ export function parseRosterTable(raw: string): {
   errors: RosterImportIssue[];
 } {
   const text = stripBom(raw);
-  const firstLine = text.split(/\r?\n/).find((line) => line.trim()) ?? "";
-  if (!firstLine) {
+  if (!text.trim()) {
     return { rows: [], errors: [{ line: 0, message: "El archivo está vacío." }] };
   }
 
-  const delimiter = detectDelimiter(firstLine);
-  const records = splitCsvRecords(text, delimiter);
-
-  if (records.length === 0) {
-    return { rows: [], errors: [{ line: 0, message: "El archivo está vacío." }] };
-  }
-
+  const probeLines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  let delimiter = ",";
+  let records: { cells: string[]; line: number }[] = [];
   let headerIndex = 0;
   let headers: string[] = [];
   let instagramCol = -1;
 
-  for (let index = 0; index < Math.min(records.length, 8); index += 1) {
-    headers = (records[index]?.cells ?? []).map(normalizeHeader);
-    instagramCol = firstMatchingIndex(headers, INSTAGRAM_HEADERS);
-    if (instagramCol >= 0) {
-      headerIndex = index;
-      break;
+  for (const probe of probeLines) {
+    delimiter = detectDelimiter(probe);
+    records = splitCsvRecords(text, delimiter);
+    instagramCol = -1;
+    for (let index = 0; index < Math.min(records.length, 8); index += 1) {
+      headers = (records[index]?.cells ?? []).map(normalizeHeader);
+      instagramCol = firstMatchingIndex(headers, INSTAGRAM_HEADERS);
+      if (instagramCol >= 0) {
+        headerIndex = index;
+        break;
+      }
     }
+    if (instagramCol >= 0) break;
+  }
+
+  if (records.length === 0) {
+    return { rows: [], errors: [{ line: 0, message: "El archivo está vacío." }] };
   }
 
   if (instagramCol < 0) {

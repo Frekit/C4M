@@ -134,10 +134,20 @@ export async function setCampaignTalentStatus(formData: FormData) {
     throw new Error("Primero envía el perfil en una oleada.");
   }
 
-  const row = await prisma.campaignTalent.update({
-    where: { id },
+  const changed = await prisma.campaignTalent.updateMany({
+    where: {
+      id,
+      status: {
+        in: [CAMPAIGN_TALENT_STATUS.PROPOSED, CAMPAIGN_TALENT_STATUS.APPROVED],
+      },
+    },
     data: { status },
   });
+  if (changed.count !== 1) {
+    throw new Error("Esa línea ya no admite un ok de cliente.");
+  }
+
+  const row = await prisma.campaignTalent.findUniqueOrThrow({ where: { id } });
 
   await recordAudit({
     entityType: "CampaignTalent",
@@ -208,8 +218,13 @@ export async function saveCampaignTalentPrices(
     deliverableCount,
   };
 
-  const row = await prisma.campaignTalent.update({
-    where: { id },
+  const changed = await prisma.campaignTalent.updateMany({
+    where: {
+      id,
+      status: {
+        in: [CAMPAIGN_TALENT_STATUS.ROSTER, CAMPAIGN_TALENT_STATUS.READY],
+      },
+    },
     data: {
       salePriceCentsPerContent,
       costMinorPerContent,
@@ -218,6 +233,14 @@ export async function saveCampaignTalentPrices(
       status: statusAfterSavingQuote(lineQuoteComplete(quote)),
     },
   });
+  if (changed.count !== 1) {
+    return {
+      ok: false,
+      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
+    };
+  }
+
+  const row = await prisma.campaignTalent.findUniqueOrThrow({ where: { id } });
 
   if (
     costMinorPerContent != null &&
@@ -270,11 +293,6 @@ export async function activateCampaignTalent(formData: FormData) {
   );
   if (!matched.ok) throw new Error(matched.error);
 
-  const fx = await resolveFxRate(preview.costCurrency ?? "EUR");
-  if (fx.unitsPerUsd <= 0) {
-    throw new Error(`No hay tipo de cambio para ${preview.costCurrency}.`);
-  }
-
   const activated = await prisma.$transaction(async (tx) => {
     const row = await tx.campaignTalent.findUnique({
       where: { id },
@@ -301,6 +319,11 @@ export async function activateCampaignTalent(formData: FormData) {
     });
     if (claimed.count !== 1) {
       throw new Error("Esa línea ya no se puede activar.");
+    }
+
+    const fx = await resolveFxRate(row.costCurrency ?? "EUR");
+    if (fx.unitsPerUsd <= 0) {
+      throw new Error(`No hay tipo de cambio para ${row.costCurrency}.`);
     }
 
     const parent = await tx.contract.findFirst({

@@ -112,6 +112,7 @@ test("un presupuesto sin importe no se puede activar", () => {
   };
   assert.equal(canActivateLine(ready, policy, []).ok, false);
   assert.equal(requireBudgetSaleCents(CAMPAIGN_ENGAGEMENT.BUDGET, "").ok, false);
+  assert.equal(requireBudgetSaleCents(CAMPAIGN_ENGAGEMENT.BUDGET, "0.001").ok, false);
   assert.equal(requireBudgetSaleCents(CAMPAIGN_ENGAGEMENT.BUDGET, "50").ok, true);
 });
 

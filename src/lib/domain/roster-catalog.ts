@@ -80,11 +80,27 @@ export function collidingCatalogKey(
 
 export function storedValuesForFilter(
   options: RosterCatalogOption[],
-  slug: string
+  raw: string
 ) {
-  const option = options.find((item) => item.slug === slug);
-  if (!option) return [slug];
-  return [...new Set([option.slug, option.label, ...option.aliases, slug])];
+  const resolved = resolveCatalogOption(options, raw);
+  const option =
+    resolved.ok && resolved.option
+      ? resolved.option
+      : options.find((item) => item.slug === raw);
+  if (!option) return [raw];
+  return [...new Set([option.slug, option.label, ...option.aliases, raw])];
+}
+
+export function catalogSearchValues(catalog: RosterCatalog, query: string) {
+  const values = new Set<string>([query]);
+  for (const option of [...catalog.countries, ...catalog.profileTypes]) {
+    if (optionMatches(option, query)) {
+      values.add(option.slug);
+      values.add(option.label);
+      for (const alias of option.aliases) values.add(alias);
+    }
+  }
+  return [...values];
 }
 
 export function resolveCatalogOption(
@@ -246,7 +262,19 @@ export function resolveRosterFields(
 
 export async function remapCreatorCatalogValues(catalog?: RosterCatalog) {
   const resolved = catalog ?? (await loadRosterCatalog());
+  const countrySlugs = new Set(resolved.countries.map((item) => item.slug));
+  const typeSlugs = new Set(resolved.profileTypes.map((item) => item.slug));
+  const staleWhere = {
+    OR: [
+      { country: { not: null, notIn: [...countrySlugs] } },
+      { profileType: { not: null, notIn: [...typeSlugs] } },
+    ],
+  };
+  const pending = await prisma.creator.count({ where: staleWhere });
+  if (pending === 0) return;
+
   const creators = await prisma.creator.findMany({
+    where: staleWhere,
     select: { id: true, country: true, profileType: true },
   });
 

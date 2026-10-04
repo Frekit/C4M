@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { mergeCreatorPresence } from "@/lib/domain/campaign-talent";
 import { CAMPAIGN_TALENT_STATUS } from "@/lib/domain/enums";
 import {
+  catalogSearchValues,
   collidingCatalogKey,
   normalizeCatalogKey,
   resolveCatalogOption,
@@ -98,6 +99,24 @@ test("un alias no puede pisar otra opción del mismo tipo", () => {
   assert.equal(collidingCatalogKey([spain, mexico], ["es"]), "es");
   assert.equal(collidingCatalogKey([spain, mexico], ["col"], spain.id), null);
   assert.ok(storedValuesForFilter([spain], "espana").includes("España"));
+  assert.ok(storedValuesForFilter([spain], "es").includes("espana"));
+  assert.ok(
+    catalogSearchValues(
+      { countries: [spain], profileTypes: [] },
+      "España"
+    ).includes("espana")
+  );
+});
+
+test("un título suelto no rompe un CSV con punto y coma", () => {
+  const parsed = parseRosterTable(`Roster abril
+instagram;país;tipo
+@ana.garcia;México;UGC
+`);
+  assert.equal(parsed.errors.length, 0);
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0]?.handle, "ana.garcia");
+  assert.equal(parsed.rows[0]?.country, "México");
 });
 
 test("la visibilidad junta roster y campañas con piezas", () => {

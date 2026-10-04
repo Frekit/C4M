@@ -200,7 +200,7 @@ export function requireBudgetSaleCents(
     return { ok: true, cents: null };
   }
   const cents = parseBudgetUsd(raw);
-  if (cents == null) {
+  if (cents == null || cents <= 0) {
     return { ok: false, error: "Pon el presupuesto en USD." };
   }
   return { ok: true, cents };
@@ -211,7 +211,8 @@ export function parseBudgetUsd(raw: string | null | undefined) {
   if (!text) return null;
   const normalized = Number(text.replace(",", ".").replace(/[^\d.]/g, ""));
   if (!Number.isFinite(normalized) || normalized <= 0) return null;
-  return Math.round(normalized * 100);
+  const cents = Math.round(normalized * 100);
+  return cents > 0 ? cents : null;
 }
 
 export function parsePaymentTermDays(raw: string | null | undefined) {
