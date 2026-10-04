@@ -29,7 +29,7 @@ La semilla crea un administrador con el correo de `BOOTSTRAP_ADMIN_EMAIL` (por d
 
 ## Cómo funciona el flujo
 
-1. **Roster** (`/creators` e `/creators/importar`): Instagram, país y tipo, como en el Excel. Sin precio ni contrato. Luego, en `/campanas/[id]`, se mete el perfil, se le ponen precios para que el cliente valide y, si sí, se activa. La ficha dice si ese Instagram ya está en otra campaña.
+1. **Roster** (`/creators` e `/creators/importar`): Instagram, país y tipo. País y tipo son listas cerradas (`/creators/catalogo`); el Excel entra por el nombre o un alias (ES, spain → España). Sin precio ni contrato. Luego, en `/campanas/[id]`, se mete el perfil, se le ponen precios para que el cliente valide y, si sí, se activa. La ficha dice si ese Instagram ya está en otra campaña.
 2. **Registrar influencer con contrato** (`/creators/nuevo`): Instagram, cliente, contenidos y precios. Al guardar se crea el contrato de ese cliente, en borrador. Pack vs pieza y si hace falta plataforma se corrigen después en `/clientes`.
 3. **Enviar a firma**: se genera un enlace privado. Si hay `RESEND_API_KEY`, se manda al correo del talento o su agencia; si no, se copia para pegarlo a mano. El firmante no necesita cuenta.
 4. **Firmar** (`/firmar/[token]`): el talento o su agencia rellenan identidad fiscal, **email de cobro (Zexel)**, moneda, situación fiscal y contacto, y aceptan. El IBAN y Wise los gestiona Zexel. Queda rastro de auditoría: nombre, fecha, IP, huella SHA-256 y **el PDF firmado tal cual se aceptó** (no se regenera si cambia la plantilla).

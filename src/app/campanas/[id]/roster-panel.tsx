@@ -22,13 +22,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CatalogSelect } from "@/components/catalog-select";
 import type { CampaignRosterRow } from "@/lib/domain/campaign-roster";
 import {
   CAMPAIGN_TALENT_STATUS,
   CAMPAIGN_TALENT_STATUS_LABELS,
-  PROFILE_TYPE_SUGGESTIONS,
   type CampaignTalentStatus,
 } from "@/lib/domain/enums";
+import type { RosterCatalog } from "@/lib/domain/roster-catalog";
+import { labelForSlug } from "@/lib/domain/roster-catalog";
 
 function toastResult(state: CampaignRosterResult | null) {
   if (!state) return;
@@ -36,7 +38,13 @@ function toastResult(state: CampaignRosterResult | null) {
   else if (state.error) toast.error(state.error);
 }
 
-function AddTalentForm({ campaignId }: { campaignId: string }) {
+function AddTalentForm({
+  campaignId,
+  catalog,
+}: {
+  campaignId: string;
+  catalog: RosterCatalog;
+}) {
   const [state, formAction, pending] = useActionState<
     CampaignRosterResult | null,
     FormData
@@ -53,21 +61,15 @@ function AddTalentForm({ campaignId }: { campaignId: string }) {
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="country">País</Label>
-        <Input id="country" name="country" placeholder="Opcional" />
+        <CatalogSelect id="country" name="country" options={catalog.countries} />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="profileType">Tipo</Label>
-        <Input
+        <CatalogSelect
           id="profileType"
           name="profileType"
-          list="campaign-profile-types"
-          placeholder="Opcional"
+          options={catalog.profileTypes}
         />
-        <datalist id="campaign-profile-types">
-          {PROFILE_TYPE_SUGGESTIONS.map((type) => (
-            <option key={type} value={type} />
-          ))}
-        </datalist>
       </div>
       <div className="sm:col-span-4">
         <Button type="submit" disabled={pending}>
@@ -112,10 +114,12 @@ export function CampaignRosterPanel({
   campaignId,
   canWrite,
   rows,
+  catalog,
 }: {
   campaignId: string;
   canWrite: boolean;
   rows: CampaignRosterRow[];
+  catalog: RosterCatalog;
 }) {
   return (
     <Card>
@@ -127,7 +131,9 @@ export function CampaignRosterPanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        {canWrite ? <AddTalentForm campaignId={campaignId} /> : null}
+        {canWrite ? (
+          <AddTalentForm campaignId={campaignId} catalog={catalog} />
+        ) : null}
 
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -146,7 +152,13 @@ export function CampaignRosterPanel({
                       @{row.creator.handle}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {[row.creator.country, row.creator.profileType]
+                      {[
+                        labelForSlug(catalog.countries, row.creator.country),
+                        labelForSlug(
+                          catalog.profileTypes,
+                          row.creator.profileType
+                        ),
+                      ]
                         .filter(Boolean)
                         .join(" · ") || "Sin país ni tipo"}
                       {row.saleLabel

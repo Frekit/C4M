@@ -6,6 +6,10 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
+import {
+  loadRosterCatalog,
+  resolveRosterFields,
+} from "@/lib/domain/roster-catalog";
 import { parseRosterTable } from "@/lib/domain/roster-import";
 import {
   extractInstagramHandle,
@@ -22,10 +26,9 @@ export type RosterWriteResult = {
   creatorId?: string;
 };
 
-function cleanOptional(value: unknown, max = 80) {
+function optionalField(value: unknown) {
   const text = String(value ?? "").trim();
-  if (!text) return null;
-  return text.slice(0, max);
+  return text || null;
 }
 
 async function tableFromUpload(formData: FormData): Promise<string> {
@@ -102,10 +105,16 @@ export async function addRosterCreator(
     return { ok: false, error: "Pon un Instagram válido (enlace o handle)." };
   }
 
+  const resolved = resolveRosterFields(await loadRosterCatalog(), {
+    country: optionalField(formData.get("country")),
+    profileType: optionalField(formData.get("profileType")),
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
   const result = await upsertRosterCreator({
     handle,
-    country: cleanOptional(formData.get("country")),
-    profileType: cleanOptional(formData.get("profileType")),
+    country: resolved.country,
+    profileType: resolved.profileType,
     createdBy: user.email,
   });
 
@@ -149,15 +158,25 @@ export async function importRosterFile(
     };
   }
 
+  const catalog = await loadRosterCatalog();
   let created = 0;
   let updated = 0;
   const issues = [...parsed.errors];
 
   for (const row of parsed.rows) {
-    const result = await upsertRosterCreator({
-      handle: row.handle,
+    const resolved = resolveRosterFields(catalog, {
       country: row.country,
       profileType: row.profileType,
+    });
+    if (!resolved.ok) {
+      issues.push({ line: row.line, message: resolved.error });
+      continue;
+    }
+
+    const result = await upsertRosterCreator({
+      handle: row.handle,
+      country: resolved.country,
+      profileType: resolved.profileType,
       createdBy: user.email,
     });
     if (result.created) created += 1;

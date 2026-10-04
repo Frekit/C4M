@@ -94,6 +94,13 @@ async function main() {
   });
 
   console.log(`Clientes listos: ${higgsfield.name}, ${manyChat.name}`);
+
+  const { ensureRosterCatalog, remapCreatorCatalogValues } = await import(
+    "../src/lib/domain/roster-catalog"
+  );
+  await ensureRosterCatalog();
+  await remapCreatorCatalogValues();
+  console.log("Catálogo de países y tipos de perfil listo.");
 }
 
 main()

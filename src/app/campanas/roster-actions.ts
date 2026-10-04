@@ -20,6 +20,10 @@ import { resolveFxRate } from "@/lib/domain/fx";
 import { isSupportedCurrency } from "@/lib/currencies";
 import { parseAmountToMinorUnits } from "@/lib/money";
 import { extractInstagramHandle } from "@/lib/domain/validation";
+import {
+  loadRosterCatalog,
+  resolveRosterFields,
+} from "@/lib/domain/roster-catalog";
 
 export type CampaignRosterResult = {
   ok: boolean;
@@ -50,10 +54,16 @@ export async function addTalentToCampaign(
   });
   if (!campaign) return { ok: false, error: "Esa campaña no existe." };
 
-  const { creator } = await upsertRosterCreator({
-    handle,
+  const resolved = resolveRosterFields(await loadRosterCatalog(), {
     country: String(formData.get("country") ?? "").trim() || null,
     profileType: String(formData.get("profileType") ?? "").trim() || null,
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
+  const { creator } = await upsertRosterCreator({
+    handle,
+    country: resolved.country,
+    profileType: resolved.profileType,
     createdBy: user.email,
   });
 

@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { loadCreatorPresence } from "@/lib/domain/campaign-talent";
+import { labelForSlug, loadRosterCatalog } from "@/lib/domain/roster-catalog";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
 import {
@@ -72,7 +73,10 @@ export default async function CreatorPage({
     notFound();
   }
 
-  const presence = await loadCreatorPresence(creator.id);
+  const [presence, catalog] = await Promise.all([
+    loadCreatorPresence(creator.id),
+    loadRosterCatalog(),
+  ]);
   const packs = await loadPackSummaries();
   const allDeliverables = creator.contracts.flatMap(
     (contract) => contract.deliverables
@@ -164,8 +168,12 @@ export default async function CreatorPage({
           </h1>
           <p className="text-sm text-muted-foreground">
             {creator.displayName ?? "Sin nombre registrado"}
-            {creator.country ? ` · ${creator.country}` : ""}
-            {creator.profileType ? ` · ${creator.profileType}` : ""}
+            {labelForSlug(catalog.countries, creator.country)
+              ? ` · ${labelForSlug(catalog.countries, creator.country)}`
+              : ""}
+            {labelForSlug(catalog.profileTypes, creator.profileType)
+              ? ` · ${labelForSlug(catalog.profileTypes, creator.profileType)}`
+              : ""}
             {creator.contactEmail ? ` · ${creator.contactEmail}` : ""}
           </p>
         </div>

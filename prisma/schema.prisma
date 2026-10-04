@@ -68,6 +68,23 @@ model Creator {
   @@index([profileType])
 }
 
+// Listas cerradas del roster. El Excel se mapea por slug o alias
+// (españa / spain / es → el mismo país). Nadie escribe a mano en el formulario.
+model RosterOption {
+  id         String    @id @default(cuid())
+  kind       String
+  slug       String
+  label      String
+  aliases    String    @default("[]")
+  sortOrder  Int       @default(0)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([kind, slug])
+  @@index([kind, archivedAt])
+}
+
 // --- Contratos y su cadena de renovaciones ---
 
 model Contract {

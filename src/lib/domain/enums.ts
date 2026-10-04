@@ -160,21 +160,6 @@ export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> 
     REJECTED: "El cliente no lo quiere en esta campaña.",
   };
 
-export const PROFILE_TYPE_SUGGESTIONS = [
-  "UGC",
-  "Nano",
-  "Micro",
-  "Mid",
-  "Macro",
-  "Celebrity",
-  "Lifestyle",
-  "Tech",
-  "Beauty",
-  "Gaming",
-  "Fitness",
-  "Food",
-] as const;
-
 export const ROSTER_IMPORT_MAX_ROWS = 2000;
 
 export const SIGNATURE_STATUS = {

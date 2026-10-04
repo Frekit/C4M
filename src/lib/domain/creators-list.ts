@@ -43,8 +43,8 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
           ],
         }
       : {}),
-    ...(country ? { country: { contains: country } } : {}),
-    ...(profileType ? { profileType: { contains: profileType } } : {}),
+    ...(country ? { country } : {}),
+    ...(profileType ? { profileType } : {}),
   };
 
   const [rows, total] = await Promise.all([

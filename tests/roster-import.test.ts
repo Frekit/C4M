@@ -3,7 +3,28 @@ import { test } from "node:test";
 
 import { mergeCreatorPresence } from "@/lib/domain/campaign-talent";
 import { CAMPAIGN_TALENT_STATUS } from "@/lib/domain/enums";
+import {
+  normalizeCatalogKey,
+  resolveCatalogOption,
+  resolveRosterFields,
+  type RosterCatalogOption,
+} from "@/lib/domain/roster-catalog";
 import { parseRosterTable } from "@/lib/domain/roster-import";
+
+function option(
+  slug: string,
+  label: string,
+  aliases: string[] = []
+): RosterCatalogOption {
+  return {
+    id: slug,
+    kind: slug === "espana" ? "COUNTRY" : "PROFILE_TYPE",
+    slug,
+    label,
+    aliases,
+    archived: false,
+  };
+}
 
 test("lee Excel pegado con encabezados en español", () => {
   const parsed = parseRosterTable(`instagram;país;tipo
@@ -33,6 +54,28 @@ Pepe,Madrid
 `);
   assert.equal(parsed.rows.length, 0);
   assert.match(parsed.errors[0]?.message ?? "", /Instagram/);
+});
+
+test("el catálogo cierra país y tipo aunque el Excel lo escriba distinto", () => {
+  assert.equal(normalizeCatalogKey("España"), "espana");
+  const spain = option("espana", "España", ["es", "spain"]);
+  const micro = option("micro", "Micro", ["microinfluencer"]);
+  assert.equal(resolveCatalogOption([spain], "ES").ok, true);
+  assert.equal(resolveCatalogOption([spain], "spain").ok, true);
+  const resolved = resolveRosterFields(
+    { countries: [spain], profileTypes: [micro] },
+    { country: "Spain", profileType: "microinfluencer" }
+  );
+  assert.equal(resolved.ok, true);
+  if (resolved.ok) {
+    assert.equal(resolved.country, "espana");
+    assert.equal(resolved.profileType, "micro");
+  }
+  const unknown = resolveRosterFields(
+    { countries: [spain], profileTypes: [micro] },
+    { country: "Wakanda", profileType: "Micro" }
+  );
+  assert.equal(unknown.ok, false);
 });
 
 test("la visibilidad junta roster y campañas con piezas", () => {

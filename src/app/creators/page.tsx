@@ -23,6 +23,9 @@ import {
   loadCreatorsPage,
   type CreatorListFilters,
 } from "@/lib/domain/creators-list";
+import { CatalogSelect } from "@/components/catalog-select";
+import { labelForSlug, loadRosterCatalog } from "@/lib/domain/roster-catalog";
+
 import { RosterCreatorForm } from "./roster-form";
 
 export const metadata: Metadata = {
@@ -36,7 +39,10 @@ export default async function CreatorsPage({
 }) {
   const user = await requireUser("/creators");
   const filters = await searchParams;
-  const data = await loadCreatorsPage(filters);
+  const [data, catalog] = await Promise.all([
+    loadCreatorsPage(filters),
+    loadRosterCatalog(),
+  ]);
   const canWrite = can(user.role, "creators:write");
 
   return (
@@ -53,6 +59,13 @@ export default async function CreatorsPage({
         </div>
         {canWrite ? (
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/creators/catalogo" />}
+            >
+              Listas
+            </Button>
             <Button
               variant="outline"
               nativeButton={false}
@@ -78,7 +91,7 @@ export default async function CreatorsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RosterCreatorForm />
+            <RosterCreatorForm catalog={catalog} />
           </CardContent>
         </Card>
       ) : null}
@@ -90,28 +103,26 @@ export default async function CreatorsPage({
             type="search"
             name="q"
             defaultValue={filters.q ?? ""}
-            placeholder="Handle, país o tipo"
+            placeholder="Handle o nombre"
             className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
           />
         </label>
         <label className="grid gap-1 text-xs text-muted-foreground">
           País
-          <input
-            type="search"
+          <CatalogSelect
             name="pais"
-            defaultValue={filters.pais ?? ""}
-            placeholder="España"
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+            options={catalog.countries}
+            defaultValue={filters.pais}
+            emptyLabel="Todos"
           />
         </label>
         <label className="grid gap-1 text-xs text-muted-foreground">
           Tipo
-          <input
-            type="search"
+          <CatalogSelect
             name="tipo"
-            defaultValue={filters.tipo ?? ""}
-            placeholder="Micro"
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+            options={catalog.profileTypes}
+            defaultValue={filters.tipo}
+            emptyLabel="Todos"
           />
         </label>
         <Button type="submit" size="sm">
@@ -184,10 +195,11 @@ export default async function CreatorsPage({
                         ) : null}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm">
-                        {creator.country ?? "—"}
+                        {labelForSlug(catalog.countries, creator.country) ?? "—"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm">
-                        {creator.profileType ?? "—"}
+                        {labelForSlug(catalog.profileTypes, creator.profileType) ??
+                          "—"}
                       </TableCell>
                       <TableCell>
                         {creator.campaigns.length === 0 ? (

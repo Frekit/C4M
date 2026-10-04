@@ -4,12 +4,13 @@ import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { addRosterCreator, type RosterWriteResult } from "@/app/creators/roster-actions";
+import { CatalogSelect } from "@/components/catalog-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PROFILE_TYPE_SUGGESTIONS } from "@/lib/domain/enums";
+import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 
-export function RosterCreatorForm() {
+export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
   const [state, formAction, pending] = useActionState<
     RosterWriteResult | null,
     FormData
@@ -37,21 +38,19 @@ export function RosterCreatorForm() {
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="country">País</Label>
-        <Input id="country" name="country" placeholder="España" />
+        <CatalogSelect
+          id="country"
+          name="country"
+          options={catalog.countries}
+        />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="profileType">Tipo de perfil</Label>
-        <Input
+        <CatalogSelect
           id="profileType"
           name="profileType"
-          list="profile-types"
-          placeholder="Micro, UGC…"
+          options={catalog.profileTypes}
         />
-        <datalist id="profile-types">
-          {PROFILE_TYPE_SUGGESTIONS.map((type) => (
-            <option key={type} value={type} />
-          ))}
-        </datalist>
       </div>
       <div className="sm:col-span-4">
         <Button type="submit" disabled={pending}>

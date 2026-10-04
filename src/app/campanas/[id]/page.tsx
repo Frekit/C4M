@@ -15,6 +15,7 @@ import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { loadCampaignRoster } from "@/lib/domain/campaign-roster";
 import { loadCampaignWorkbench } from "@/lib/domain/campaign-stats";
+import { loadRosterCatalog } from "@/lib/domain/roster-catalog";
 import {
   CAMPAIGN_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -41,9 +42,10 @@ export default async function CampaignWorkbenchPage({
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
-  const [data, roster] = await Promise.all([
+  const [data, roster, catalog] = await Promise.all([
     loadCampaignWorkbench(id),
     loadCampaignRoster(id),
+    loadRosterCatalog(),
   ]);
 
   if (!data) notFound();
@@ -228,6 +230,7 @@ export default async function CampaignWorkbenchPage({
         campaignId={data.id}
         canWrite={canWrite}
         rows={roster}
+        catalog={catalog}
       />
 
       {canSign ? (

@@ -45,8 +45,11 @@ export default async function ImportCreatorsPage() {
           <CardTitle>Roster desde Excel</CardTitle>
           <CardDescription>
             Hasta {ROSTER_IMPORT_MAX_ROWS} filas. Columnas típicas:{" "}
-            {ROSTER_CSV_HEADER}. Si el handle ya existe, solo relleno país o
-            tipo vacíos.
+            {ROSTER_CSV_HEADER}. País y tipo tienen que existir en{" "}
+            <Link href="/creators/catalogo" className="underline underline-offset-4">
+              Listas
+            </Link>
+            ; los alias cubren «ES», «spain», etc.
           </CardDescription>
         </CardHeader>
         <CardContent>
