@@ -380,7 +380,7 @@ export function CampaignRosterPanel({
                       {row.others
                         .map(
                           (item) =>
-                            `${item.campaignName} (${CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]})`
+                            `${item.clientName ? `${item.clientName} · ` : ""}${item.campaignName} (${CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]})`
                         )
                         .join(", ")}
                       .

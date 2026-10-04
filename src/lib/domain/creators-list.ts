@@ -88,7 +88,13 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
           select: {
             status: true,
             campaignId: true,
-            campaign: { select: { name: true, status: true } },
+            campaign: {
+              select: {
+                name: true,
+                status: true,
+                client: { select: { id: true, name: true } },
+              },
+            },
           },
         },
         contracts: {
@@ -107,7 +113,14 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
             deliverables: {
               where: { campaignId: { not: null } },
               select: {
-                campaign: { select: { id: true, name: true, status: true } },
+                campaign: {
+                  select: {
+                    id: true,
+                    name: true,
+                    status: true,
+                    client: { select: { id: true, name: true } },
+                  },
+                },
               },
             },
           },

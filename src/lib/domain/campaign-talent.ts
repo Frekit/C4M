@@ -9,8 +9,16 @@ export type CreatorCampaignPresence = {
   campaignId: string;
   campaignName: string;
   campaignStatus: string;
+  clientId: string | null;
+  clientName: string | null;
   talentStatus: CampaignTalentStatus;
   source: "roster" | "deliverable";
+};
+
+type PresenceCampaign = {
+  name: string;
+  status: string;
+  client: { id: string; name: string } | null;
 };
 
 export function isCampaignTalentStatus(
@@ -21,17 +29,25 @@ export function isCampaignTalentStatus(
   );
 }
 
+function rememberClient(
+  current: CreatorCampaignPresence,
+  client: { id: string; name: string } | null
+) {
+  if (!current.clientId && client) {
+    current.clientId = client.id;
+    current.clientName = client.name;
+  }
+}
+
 export function mergeCreatorPresence(
   roster: {
     campaignId: string;
     status: string;
-    campaign: { name: string; status: string };
+    campaign: PresenceCampaign;
   }[],
-  deliverableCampaigns: {
+  deliverableCampaigns: ({
     id: string;
-    name: string;
-    status: string;
-  }[]
+  } & PresenceCampaign)[]
 ): CreatorCampaignPresence[] {
   const byId = new Map<string, CreatorCampaignPresence>();
 
@@ -41,6 +57,8 @@ export function mergeCreatorPresence(
       campaignId: row.campaignId,
       campaignName: row.campaign.name,
       campaignStatus: row.campaign.status,
+      clientId: row.campaign.client?.id ?? null,
+      clientName: row.campaign.client?.name ?? null,
       talentStatus: row.status,
       source: "roster",
     };
@@ -50,13 +68,20 @@ export function mergeCreatorPresence(
       TALENT_STATUS_RANK[next.talentStatus] >
         TALENT_STATUS_RANK[existing.talentStatus]
     ) {
+      if (existing && !next.clientId && existing.clientId) {
+        next.clientId = existing.clientId;
+        next.clientName = existing.clientName;
+      }
       byId.set(row.campaignId, next);
+    } else {
+      rememberClient(existing, row.campaign.client);
     }
   }
 
   for (const campaign of deliverableCampaigns) {
     const existing = byId.get(campaign.id);
     if (existing) {
+      rememberClient(existing, campaign.client);
       if (
         TALENT_STATUS_RANK[existing.talentStatus] <
         TALENT_STATUS_RANK[CAMPAIGN_TALENT_STATUS.ACTIVE]
@@ -69,6 +94,8 @@ export function mergeCreatorPresence(
       campaignId: campaign.id,
       campaignName: campaign.name,
       campaignStatus: campaign.status,
+      clientId: campaign.client?.id ?? null,
+      clientName: campaign.client?.name ?? null,
       talentStatus: CAMPAIGN_TALENT_STATUS.ACTIVE,
       source: "deliverable",
     });
@@ -86,14 +113,27 @@ export async function loadCreatorPresence(creatorId: string) {
       select: {
         campaignId: true,
         status: true,
-        campaign: { select: { name: true, status: true } },
+        campaign: {
+          select: {
+            name: true,
+            status: true,
+            client: { select: { id: true, name: true } },
+          },
+        },
       },
     }),
     prisma.deliverable.findMany({
       where: { contract: { creatorId }, campaignId: { not: null } },
       distinct: ["campaignId"],
       select: {
-        campaign: { select: { id: true, name: true, status: true } },
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            client: { select: { id: true, name: true } },
+          },
+        },
       },
     }),
   ]);

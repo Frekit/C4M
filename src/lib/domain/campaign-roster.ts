@@ -78,7 +78,13 @@ export async function loadCampaignRoster(
             select: {
               campaignId: true,
               status: true,
-              campaign: { select: { name: true, status: true } },
+              campaign: {
+                select: {
+                  name: true,
+                  status: true,
+                  client: { select: { id: true, name: true } },
+                },
+              },
             },
           },
           contracts: {
@@ -91,7 +97,14 @@ export async function loadCampaignRoster(
               deliverables: {
                 where: { campaignId: { not: null } },
                 select: {
-                  campaign: { select: { id: true, name: true, status: true } },
+                  campaign: {
+                    select: {
+                      id: true,
+                      name: true,
+                      status: true,
+                      client: { select: { id: true, name: true } },
+                    },
+                  },
                 },
               },
             },

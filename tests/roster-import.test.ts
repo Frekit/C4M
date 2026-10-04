@@ -136,12 +136,25 @@ test("la visibilidad junta roster y campañas con piezas", () => {
       {
         campaignId: "a",
         status: CAMPAIGN_TALENT_STATUS.PROPOSED,
-        campaign: { name: "Launch Q4", status: "ACTIVE" },
+        campaign: {
+          name: "Launch Q4",
+          status: "ACTIVE",
+          client: { id: "higgs", name: "Higgsfield" },
+        },
       },
     ],
-    [{ id: "b", name: "Always-on", status: "ACTIVE" }]
+    [
+      {
+        id: "b",
+        name: "Always-on",
+        status: "ACTIVE",
+        client: null,
+      },
+    ]
   );
   assert.equal(presence.length, 2);
   assert.equal(presence.find((item) => item.campaignId === "a")?.talentStatus, "PROPOSED");
+  assert.equal(presence.find((item) => item.campaignId === "a")?.clientName, "Higgsfield");
   assert.equal(presence.find((item) => item.campaignId === "b")?.source, "deliverable");
+  assert.equal(presence.find((item) => item.campaignId === "b")?.clientName, null);
 });

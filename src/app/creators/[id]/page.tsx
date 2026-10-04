@@ -316,16 +316,16 @@ export default async function CreatorPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Visibilidad entre campañas</CardTitle>
+          <CardTitle>Campañas y marcas</CardTitle>
           <CardDescription>
-            Si este perfil está en otra campaña, se ve aquí antes de proponerlo
-            a un cliente.
+            Cada campaña en la que entra este perfil queda aquí, con la marca
+            cuando la campaña tiene cliente. Sirve antes de proponerlo a otra.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {presence.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Libre: no está asignado a ninguna campaña.
+              Libre: no está en ninguna campaña ni con ninguna marca.
             </p>
           ) : (
             <ul className="grid gap-2">
@@ -334,9 +334,20 @@ export default async function CreatorPage({
                   key={item.campaignId}
                   className="flex flex-wrap items-center gap-2 text-sm"
                 >
+                  {item.clientId && item.clientName ? (
+                    <Link
+                      href={`/clientes/${item.clientId}`}
+                      className="font-medium underline underline-offset-4"
+                    >
+                      {item.clientName}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">Sin marca</span>
+                  )}
+                  <span className="text-muted-foreground">·</span>
                   <Link
                     href={`/campanas/${item.campaignId}`}
-                    className="font-medium underline underline-offset-4"
+                    className="underline underline-offset-4"
                   >
                     {item.campaignName}
                   </Link>

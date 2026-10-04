@@ -237,7 +237,9 @@ export default async function CreatorsPage({
                                 className="font-normal"
                               >
                                 <Link href={`/campanas/${campaign.campaignId}`}>
-                                  {campaign.campaignName}
+                                  {campaign.clientName
+                                    ? `${campaign.clientName} · ${campaign.campaignName}`
+                                    : campaign.campaignName}
                                 </Link>
                                 <span className="text-muted-foreground">
                                   ·{" "}
