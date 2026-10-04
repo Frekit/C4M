@@ -77,6 +77,14 @@ export function AppNav({ user }: { user: AppUser | null }) {
               variant="ghost"
               size="sm"
               nativeButton={false}
+              render={<Link href="/flujo" />}
+            >
+              Flujo
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
               render={<Link href="/clientes" />}
             >
               Clientes
