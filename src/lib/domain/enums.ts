@@ -131,6 +131,52 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   CLOSED: "Cerrada",
 };
 
+export const CAMPAIGN_TALENT_STATUS = {
+  ROSTER: "ROSTER",
+  PROPOSED: "PROPOSED",
+  APPROVED: "APPROVED",
+  ACTIVE: "ACTIVE",
+  REJECTED: "REJECTED",
+} as const;
+
+export type CampaignTalentStatus =
+  (typeof CAMPAIGN_TALENT_STATUS)[keyof typeof CAMPAIGN_TALENT_STATUS];
+
+export const CAMPAIGN_TALENT_STATUS_LABELS: Record<CampaignTalentStatus, string> =
+  {
+    ROSTER: "En roster",
+    PROPOSED: "Pendiente de cliente",
+    APPROVED: "Validado",
+    ACTIVE: "Activo en campaña",
+    REJECTED: "Descartado",
+  };
+
+export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> =
+  {
+    ROSTER: "Está en la mesa, todavía sin mandar a validar.",
+    PROPOSED: "El cliente tiene que decir si entra.",
+    APPROVED: "El cliente dijo que sí. Falta activar contrato o piezas.",
+    ACTIVE: "Ya opera en esta campaña.",
+    REJECTED: "El cliente no lo quiere en esta campaña.",
+  };
+
+export const PROFILE_TYPE_SUGGESTIONS = [
+  "UGC",
+  "Nano",
+  "Micro",
+  "Mid",
+  "Macro",
+  "Celebrity",
+  "Lifestyle",
+  "Tech",
+  "Beauty",
+  "Gaming",
+  "Fitness",
+  "Food",
+] as const;
+
+export const ROSTER_IMPORT_MAX_ROWS = 2000;
+
 export const SIGNATURE_STATUS = {
   PENDING: "PENDING",
   VIEWED: "VIEWED",

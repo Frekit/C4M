@@ -18,10 +18,16 @@ export function hostnameFromHostHeader(hostHeader: string | null | undefined): s
   return host.replace(/:\d+$/, "");
 }
 
+export function isAuth0LoopbackPath(pathname: string) {
+  return pathname.startsWith("/auth/") && !pathname.startsWith("/auth/local/");
+}
+
 export function rewriteLoopbackUrl(
   url: URL,
   hostHeader?: string | null
 ): URL | null {
+  if (!isAuth0LoopbackPath(url.pathname)) return null;
+
   const hostname = hostnameFromHostHeader(hostHeader) ?? url.hostname;
   const isLoopbackIp =
     hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";

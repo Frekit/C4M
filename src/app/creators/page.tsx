@@ -14,15 +14,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { CAMPAIGN_TALENT_STATUS_LABELS } from "@/lib/domain/enums";
 import {
   creatorsHref,
   loadCreatorsPage,
   type CreatorListFilters,
 } from "@/lib/domain/creators-list";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
+import { RosterCreatorForm } from "./roster-form";
 
 export const metadata: Metadata = {
   title: "Creators",
@@ -46,8 +47,8 @@ export default async function CreatorsPage({
             Creators
           </h1>
           <p className="text-sm text-muted-foreground">
-            Lista paginada. Para 1.000 altas, importa el CSV; no abras el
-            universo entero.
+            Roster único: Instagram, país y tipo. Luego le pones precio y lo
+            mandas a validar en una campaña.
           </p>
         </div>
         {canWrite ? (
@@ -68,6 +69,20 @@ export default async function CreatorsPage({
         ) : null}
       </div>
 
+      {canWrite ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Añadir al roster</CardTitle>
+            <CardDescription>
+              Sin contrato ni precio. Eso se asigna después, en la campaña.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RosterCreatorForm />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <form method="get" className="flex flex-wrap items-end gap-3">
         <label className="grid gap-1 text-xs text-muted-foreground">
           Buscar
@@ -75,7 +90,27 @@ export default async function CreatorsPage({
             type="search"
             name="q"
             defaultValue={filters.q ?? ""}
-            placeholder="Handle o nombre"
+            placeholder="Handle, país o tipo"
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          />
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          País
+          <input
+            type="search"
+            name="pais"
+            defaultValue={filters.pais ?? ""}
+            placeholder="España"
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          />
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Tipo
+          <input
+            type="search"
+            name="tipo"
+            defaultValue={filters.tipo ?? ""}
+            placeholder="Micro"
             className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
           />
         </label>
@@ -91,10 +126,10 @@ export default async function CreatorsPage({
             <CardTitle>
               {data.query
                 ? "Nadie coincide con esa búsqueda"
-                : "Todavía no hay nadie registrado"}
+                : "Todavía no hay nadie en el roster"}
             </CardTitle>
             <CardDescription>
-              Empieza dando de alta un influencer o importa un CSV de campaña.
+              Importa el Excel (Instagram, país, tipo) o añade un perfil aquí.
             </CardDescription>
           </CardHeader>
           {canWrite ? (
@@ -123,10 +158,11 @@ export default async function CreatorsPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Creator</TableHead>
-                  <TableHead className="hidden sm:table-cell">Contratos</TableHead>
-                  <TableHead>Entregados</TableHead>
-                  <TableHead className="hidden md:table-cell">Coste pactado</TableHead>
-                  <TableHead className="hidden lg:table-cell">Alta</TableHead>
+                  <TableHead className="hidden sm:table-cell">País</TableHead>
+                  <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                  <TableHead>Campañas</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contratos</TableHead>
+                  <TableHead className="hidden xl:table-cell">Entregados</TableHead>
                   <TableHead>Último estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -147,23 +183,46 @@ export default async function CreatorsPage({
                           </p>
                         ) : null}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {creator.contractCount}
+                      <TableCell className="hidden sm:table-cell text-sm">
+                        {creator.country ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">
+                        {creator.profileType ?? "—"}
                       </TableCell>
                       <TableCell>
-                        {creator.published}/{creator.totalDeliverables}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {Object.entries(creator.costByCurrency).map(
-                          ([currency, amount]) => (
-                            <span key={currency} className="block text-sm">
-                              {formatMoney(amount, currency)}
-                            </span>
-                          )
+                        {creator.campaigns.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            Libre
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {creator.campaigns.map((campaign) => (
+                              <Badge
+                                key={campaign.campaignId}
+                                variant="outline"
+                                className="font-normal"
+                              >
+                                <Link href={`/campanas/${campaign.campaignId}`}>
+                                  {campaign.campaignName}
+                                </Link>
+                                <span className="text-muted-foreground">
+                                  ·{" "}
+                                  {
+                                    CAMPAIGN_TALENT_STATUS_LABELS[
+                                      campaign.talentStatus
+                                    ]
+                                  }
+                                </span>
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                        {formatDate(creator.createdAt)}
+                      <TableCell className="hidden lg:table-cell">
+                        {creator.contractCount}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {creator.published}/{creator.totalDeliverables}
                       </TableCell>
                       <TableCell>
                         {creator.latestStatus ? (

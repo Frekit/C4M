@@ -52,14 +52,20 @@ model Creator {
   displayName    String?
   contactEmail   String?
   country        String?
+  // Texto libre: UGC, nano, micro, lifestyle… lo que venga del Excel.
+  profileType    String?
   payoutCurrency String
   notes          String?
   createdBy      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  contracts Contract[]
-  payees    PayeeProfile[]
+  contracts        Contract[]
+  payees           PayeeProfile[]
+  campaignTalents  CampaignTalent[]
+
+  @@index([country])
+  @@index([profileType])
 }
 
 // --- Contratos y su cadena de renovaciones ---
@@ -201,11 +207,38 @@ model Campaign {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client       Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   deliverables Deliverable[]
+  talents      CampaignTalent[]
 
   @@index([status])
   @@index([clientId])
+}
+
+// Perfil en una campaña antes (o además) del contrato. El Excel solo trae
+// Instagram, país y tipo; los precios y la validación del cliente llegan después.
+model CampaignTalent {
+  id         String @id @default(cuid())
+  campaignId String
+  creatorId  String
+  // ROSTER | PROPOSED | APPROVED | ACTIVE | REJECTED
+  status     String @default("ROSTER")
+
+  salePriceCentsPerContent Int?
+  costMinorPerContent      Int?
+  costCurrency             String?
+  notes                    String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorId])
+  @@index([creatorId])
+  @@index([campaignId, status])
 }
 
 // --- Firma del contrato por el talento o su agencia ---

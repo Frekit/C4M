@@ -10,10 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requirePermission } from "@/lib/auth/session";
-import { CREATOR_CSV_HEADER } from "@/lib/domain/creator-import";
-import { IMPORT_MAX_ROWS } from "@/lib/domain/enums";
+import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
+import { ROSTER_CSV_HEADER } from "@/lib/domain/roster-import";
 
 import { CreatorImportForm } from "./import-form";
+import { RosterImportForm } from "./roster-import-form";
 
 export const metadata: Metadata = {
   title: "Importar creators",
@@ -34,10 +35,24 @@ export default async function ImportCreatorsPage() {
           Alta masiva
         </h1>
         <p className="text-sm text-muted-foreground">
-          Hasta {IMPORT_MAX_ROWS} filas por tanda. El cliente y la campaña
-          tienen que existir. Columnas: {CREATOR_CSV_HEADER}.
+          Primero el roster (Instagram, país, tipo). El CSV de campaña, con
+          precios, es el segundo paso.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Roster desde Excel</CardTitle>
+          <CardDescription>
+            Hasta {ROSTER_IMPORT_MAX_ROWS} filas. Columnas típicas:{" "}
+            {ROSTER_CSV_HEADER}. Si el handle ya existe, solo relleno país o
+            tipo vacíos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RosterImportForm />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

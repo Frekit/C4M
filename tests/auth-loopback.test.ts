@@ -15,9 +15,13 @@ test("127.0.0.1 y ::1 pasan a localhost y conservan puerto y query", () => {
   assert.equal(ipv4?.pathname, "/auth/callback");
   assert.equal(ipv4?.searchParams.get("code"), "abc");
 
-  const ipv6 = rewriteLoopbackUrl(new URL("http://[::1]:43127/iniciar-sesion"));
+  const ipv6 = rewriteLoopbackUrl(new URL("http://[::1]:43127/auth/login"));
   assert.equal(ipv6?.hostname, "localhost");
   assert.equal(ipv6?.port, "43127");
+  assert.equal(
+    rewriteLoopbackUrl(new URL("http://127.0.0.1:43127/iniciar-sesion")),
+    null
+  );
 
   assert.equal(rewriteLoopbackUrl(new URL("http://localhost:43127/")), null);
 });

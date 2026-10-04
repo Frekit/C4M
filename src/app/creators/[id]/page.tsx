@@ -18,9 +18,11 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { loadCreatorPresence } from "@/lib/domain/campaign-talent";
 import { prisma } from "@/lib/db";
 import { deliverableProgress } from "@/lib/domain/contract-math";
 import {
+  CAMPAIGN_TALENT_STATUS_LABELS,
   CONTRACT_STATUS,
   SETTLEMENT_MODE,
   SETTLEMENT_MODE_LABELS,
@@ -70,6 +72,7 @@ export default async function CreatorPage({
     notFound();
   }
 
+  const presence = await loadCreatorPresence(creator.id);
   const packs = await loadPackSummaries();
   const allDeliverables = creator.contracts.flatMap(
     (contract) => contract.deliverables
@@ -161,6 +164,8 @@ export default async function CreatorPage({
           </h1>
           <p className="text-sm text-muted-foreground">
             {creator.displayName ?? "Sin nombre registrado"}
+            {creator.country ? ` · ${creator.country}` : ""}
+            {creator.profileType ? ` · ${creator.profileType}` : ""}
             {creator.contactEmail ? ` · ${creator.contactEmail}` : ""}
           </p>
         </div>
@@ -240,6 +245,42 @@ export default async function CreatorPage({
           </CardHeader>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Visibilidad entre campañas</CardTitle>
+          <CardDescription>
+            Si este perfil está en otra campaña, se ve aquí antes de proponerlo
+            a un cliente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {presence.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Libre: no está asignado a ninguna campaña.
+            </p>
+          ) : (
+            <ul className="grid gap-2">
+              {presence.map((item) => (
+                <li
+                  key={item.campaignId}
+                  className="flex flex-wrap items-center gap-2 text-sm"
+                >
+                  <Link
+                    href={`/campanas/${item.campaignId}`}
+                    className="font-medium underline underline-offset-4"
+                  >
+                    {item.campaignName}
+                  </Link>
+                  <Badge variant="outline">
+                    {CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {[...groups.values()].map((group) => {
         const deliverables = group.contracts.flatMap(

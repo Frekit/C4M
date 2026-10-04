@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { loadCampaignRoster } from "@/lib/domain/campaign-roster";
 import { loadCampaignWorkbench } from "@/lib/domain/campaign-stats";
 import {
   CAMPAIGN_STATUS_LABELS,
@@ -25,6 +26,7 @@ import {
 import { formatDate } from "@/lib/format";
 
 import { CampaignBulkSignature } from "./bulk-signature";
+import { CampaignRosterPanel } from "./roster-panel";
 
 export const metadata: Metadata = {
   title: "Campaña",
@@ -38,7 +40,11 @@ export default async function CampaignWorkbenchPage({
   const { id } = await params;
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
-  const data = await loadCampaignWorkbench(id);
+  const canWrite = can(user.role, "campaigns:manage");
+  const [data, roster] = await Promise.all([
+    loadCampaignWorkbench(id),
+    loadCampaignRoster(id),
+  ]);
 
   if (!data) notFound();
 
@@ -70,7 +76,11 @@ export default async function CampaignWorkbenchPage({
               {" · "}
             </>
           ) : null}
-          {data.creatorCount} {data.creatorCount === 1 ? "perfil" : "perfiles"}
+          {data.creatorCount}{" "}
+          {data.creatorCount === 1 ? "perfil activo" : "perfiles activos"}
+          {roster.length > 0
+            ? ` · ${roster.length} en roster`
+            : ""}
           {data.startsAt || data.endsAt
             ? ` · ${formatDate(data.startsAt)} → ${formatDate(data.endsAt)}`
             : ""}
@@ -213,6 +223,12 @@ export default async function CampaignWorkbenchPage({
           </Button>
         </CardContent>
       </Card>
+
+      <CampaignRosterPanel
+        campaignId={data.id}
+        canWrite={canWrite}
+        rows={roster}
+      />
 
       {canSign ? (
         <CampaignBulkSignature
