@@ -80,7 +80,7 @@ export function CampaignProposalPanel({
               />
             </div>
             <Button type="submit" size="sm" disabled={pending}>
-              {pending ? "…" : "Crear"}
+              {pending ? "…" : "Crear oleada"}
             </Button>
           </form>
         ) : null}

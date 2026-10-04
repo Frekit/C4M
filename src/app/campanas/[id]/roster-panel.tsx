@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -65,11 +65,24 @@ function AddTalentForm({
     CampaignRosterResult | null,
     FormData
   >(addTalentToCampaign, null);
+  const [formEpoch, setFormEpoch] = useState(0);
 
-  useEffect(() => toastResult(state), [state]);
+  useEffect(() => {
+    if (!state) return;
+    if (state.ok) {
+      toast.success("Mesa actualizada.");
+      setFormEpoch((epoch) => epoch + 1);
+    } else if (state.error) {
+      toast.error(state.error);
+    }
+  }, [state]);
 
   return (
-    <form action={formAction} className="grid gap-3 sm:grid-cols-4 sm:items-end">
+    <form
+      key={formEpoch}
+      action={formAction}
+      className="grid gap-3 sm:grid-cols-4 sm:items-end"
+    >
       <input type="hidden" name="campaignId" value={campaignId} />
       <div className="grid gap-1.5 sm:col-span-2">
         <Label htmlFor="instagram">Instagram</Label>
