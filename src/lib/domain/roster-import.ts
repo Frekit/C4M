@@ -5,6 +5,8 @@ export type RosterImportRow = {
   handle: string;
   country: string | null;
   profileType: string | null;
+  cost: string | null;
+  currency: string | null;
 };
 
 export type RosterImportIssue = {
@@ -12,12 +14,12 @@ export type RosterImportIssue = {
   message: string;
 };
 
-export const ROSTER_CSV_HEADER = "instagram,pais,tipo";
+export const ROSTER_CSV_HEADER = "instagram,pais,tipo,tarifa,moneda";
 
 export const ROSTER_CSV_EXAMPLE = `${ROSTER_CSV_HEADER}
-https://www.instagram.com/marcosrouder,España,Micro
-@anagarcia,México,UGC
-sofia.tech,,Tech
+https://www.instagram.com/marcosrouder,España,Micro,120,EUR
+@anagarcia,México,UGC,,
+sofia.tech,,Tech,80,USD
 `;
 
 const INSTAGRAM_HEADERS = [
@@ -34,6 +36,10 @@ const INSTAGRAM_HEADERS = [
 ];
 
 const COUNTRY_HEADERS = ["pais", "country", "nacion", "nation", "geo"];
+
+const COST_HEADERS = ["tarifa", "coste", "cost", "rate", "precio"];
+
+const CURRENCY_HEADERS = ["moneda", "currency", "divisa"];
 
 const TYPE_HEADERS = [
   "tipo",
@@ -191,6 +197,8 @@ export function parseRosterTable(raw: string): {
 
   const countryCol = firstMatchingIndex(headers, COUNTRY_HEADERS);
   const typeCol = firstMatchingIndex(headers, TYPE_HEADERS);
+  const costCol = firstMatchingIndex(headers, COST_HEADERS);
+  const currencyCol = firstMatchingIndex(headers, CURRENCY_HEADERS);
   const rows: RosterImportRow[] = [];
   const errors: RosterImportIssue[] = [];
   const seen = new Set<string>();
@@ -217,6 +225,9 @@ export function parseRosterTable(raw: string): {
       handle,
       country: countryCol >= 0 ? cleanCell(record.cells[countryCol] ?? "") : null,
       profileType: typeCol >= 0 ? cleanCell(record.cells[typeCol] ?? "") : null,
+      cost: costCol >= 0 ? cleanCell(record.cells[costCol] ?? "") : null,
+      currency:
+        currencyCol >= 0 ? cleanCell(record.cells[currencyCol] ?? "") : null,
     });
   }
 

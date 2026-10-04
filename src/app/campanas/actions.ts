@@ -212,6 +212,44 @@ export async function updateCampaignPolicy(
   return { ok: true };
 }
 
+export async function setCampaignClient(
+  _prev: CampaignActionResult | null,
+  formData: FormData
+): Promise<CampaignActionResult> {
+  const user = await requirePermission("campaigns:manage", "/campanas");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const clientId = String(formData.get("clientId") ?? "");
+  if (!campaignId) return { ok: false, error: "Falta la campaña." };
+  if (!clientId) return { ok: false, error: "Elige un cliente." };
+
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  if (!client) return { ok: false, error: "Ese cliente no existe." };
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { id: true },
+  });
+  if (!campaign) return { ok: false, error: "Esa campaña no existe." };
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { clientId: client.id },
+  });
+
+  await recordAudit({
+    entityType: "Campaign",
+    entityId: campaignId,
+    action: "CLIENT_SET",
+    actor: user,
+    metadata: { clientId: client.id, clientName: client.name },
+  });
+
+  revalidatePath("/campanas");
+  revalidatePath(`/campanas/${campaignId}`);
+  revalidatePath(`/clientes/${client.id}`);
+  return { ok: true };
+}
+
 function isCampaignEngagementSafe(value: string) {
   return (
     value === CAMPAIGN_ENGAGEMENT.SLATE ||

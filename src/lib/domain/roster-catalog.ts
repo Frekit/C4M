@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 
+export { labelForSlug } from "@/lib/domain/roster-labels";
+
 export const ROSTER_OPTION_KIND = {
   COUNTRY: "COUNTRY",
   PROFILE_TYPE: "PROFILE_TYPE",
@@ -114,14 +116,6 @@ export function resolveCatalogOption(
   const match = options.find((option) => optionMatches(option, value));
   if (!match) return { ok: false, value };
   return { ok: true, option: match };
-}
-
-export function labelForSlug(
-  options: RosterCatalogOption[],
-  slug: string | null | undefined
-) {
-  if (!slug) return null;
-  return options.find((option) => option.slug === slug)?.label ?? slug;
 }
 
 const DEFAULT_COUNTRIES: { label: string; aliases: string[] }[] = [

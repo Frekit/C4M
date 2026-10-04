@@ -33,6 +33,7 @@ const FIELD_LABELS: Record<string, string> = {
   description: "Descripción",
   startsAt: "Inicio",
   endsAt: "Fin",
+  budgetUsd: "Presupuesto",
 };
 
 export type CampaignClientOption = {
@@ -89,6 +90,10 @@ function CampaignFields({
   pending: boolean;
 }) {
   const [clientId, setClientId] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [newMode, setNewMode] = useState<SettlementMode>(
     SETTLEMENT_MODE.PER_CONTENT
   );
@@ -110,6 +115,8 @@ function CampaignFields({
             name="name"
             placeholder="Navidad 2026"
             required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.name)}
           />
         </div>
@@ -199,7 +206,13 @@ function CampaignFields({
 
         <div className="grid gap-2">
           <Label htmlFor="startsAt">Inicio (opcional)</Label>
-          <Input id="startsAt" name="startsAt" type="date" />
+          <Input
+            id="startsAt"
+            name="startsAt"
+            type="date"
+            value={startsAt}
+            onChange={(event) => setStartsAt(event.target.value)}
+          />
         </div>
 
         <div className="grid gap-2">
@@ -208,13 +221,21 @@ function CampaignFields({
             id="endsAt"
             name="endsAt"
             type="date"
+            value={endsAt}
+            onChange={(event) => setEndsAt(event.target.value)}
             aria-invalid={Boolean(state?.fieldErrors?.endsAt)}
           />
         </div>
 
         <div className="grid gap-2 sm:col-span-2">
           <Label htmlFor="description">Descripción (opcional)</Label>
-          <Textarea id="description" name="description" rows={2} />
+          <Textarea
+            id="description"
+            name="description"
+            rows={2}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
         </div>
 
         <CampaignPolicyFields />
@@ -242,6 +263,8 @@ export function CampaignPolicyFields({
 }) {
   const [kind, setKind] = useState<CampaignEngagement>(engagementKind);
   const [approval, setApproval] = useState<CampaignApproval>(approvalMode);
+  const [budget, setBudget] = useState(budgetUsd);
+  const [termDays, setTermDays] = useState(String(paymentTermDays));
 
   return (
     <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
@@ -293,7 +316,8 @@ export function CampaignPolicyFields({
           <Input
             id={`${idPrefix}budgetUsd`}
             name="budgetUsd"
-            defaultValue={budgetUsd}
+            value={budget}
+            onChange={(event) => setBudget(event.target.value)}
             placeholder="50000"
           />
         </div>
@@ -307,7 +331,8 @@ export function CampaignPolicyFields({
         <Input
           id={`${idPrefix}defaultPaymentTermDays`}
           name="defaultPaymentTermDays"
-          defaultValue={String(paymentTermDays)}
+          value={termDays}
+          onChange={(event) => setTermDays(event.target.value)}
         />
       </div>
     </div>

@@ -42,7 +42,9 @@ import {
   type CampaignTalentStatus,
 } from "@/lib/domain/enums";
 import type { RosterCatalog } from "@/lib/domain/roster-catalog";
-import { labelForSlug } from "@/lib/domain/roster-catalog";
+import { labelForSlug } from "@/lib/domain/roster-labels";
+import { CURRENCIES } from "@/lib/currencies";
+import { formatMoney, fromMinorUnits } from "@/lib/money";
 
 import { AddToProposalForm } from "./proposal-panel";
 
@@ -137,7 +139,9 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
         <Input
           name="cost"
           defaultValue={
-            defaultCost != null ? String(defaultCost / 100) : ""
+            defaultCost != null
+              ? String(fromMinorUnits(defaultCost, defaultCurrency))
+              : ""
           }
           placeholder="80"
           className="w-20"
@@ -145,7 +149,20 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
       </div>
       <div className="grid gap-1">
         <Label className="text-xs">Moneda</Label>
-        <Input name="currency" defaultValue={defaultCurrency} className="w-20" />
+        <select
+          name="currency"
+          defaultValue={defaultCurrency}
+          className="h-8 w-24 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          {CURRENCIES.some((item) => item.code === defaultCurrency) ? null : (
+            <option value={defaultCurrency}>{defaultCurrency}</option>
+          )}
+          {CURRENCIES.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.code}
+            </option>
+          ))}
+        </select>
       </div>
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending ? "…" : "Guardar línea"}
@@ -163,6 +180,7 @@ export function CampaignRosterPanel({
   engagementKind,
   budgetSaleCents,
   drafts,
+  hasClient,
 }: {
   campaignId: string;
   canWrite: boolean;
@@ -172,6 +190,7 @@ export function CampaignRosterPanel({
   engagementKind: CampaignEngagement;
   budgetSaleCents: number | null;
   drafts: CampaignProposalRow[];
+  hasClient: boolean;
 }) {
   const policy = policyFromCampaign({
     engagementKind,
@@ -224,7 +243,14 @@ export function CampaignRosterPanel({
                             ? `${row.deliverableCount} piezas`
                             : null,
                           row.saleLabel ? `venta ${row.saleLabel}` : null,
-                          row.costLabel ? `coste ${row.costLabel}` : null,
+                          row.costLabel
+                            ? `coste ${row.costLabel}`
+                            : row.creator.defaultCostMinor != null
+                              ? `tarifa ${formatMoney(
+                                  row.creator.defaultCostMinor,
+                                  row.creator.defaultCostCurrency ?? "EUR"
+                                )}`
+                              : "sin tarifa",
                         ]
                           .filter(Boolean)
                           .join(" · ") || "Sin país, tipo ni precios"}
@@ -263,7 +289,7 @@ export function CampaignRosterPanel({
                       row.status === CAMPAIGN_TALENT_STATUS.ROSTER ? (
                         <AddToProposalForm talentId={row.id} drafts={drafts} />
                       ) : null}
-                      {activate.ok ? (
+                      {activate.ok && hasClient ? (
                         <form action={activateCampaignTalent}>
                           <input type="hidden" name="talentId" value={row.id} />
                           <Button type="submit" size="sm">
@@ -272,7 +298,9 @@ export function CampaignRosterPanel({
                         </form>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          {activate.error}
+                          {activate.ok
+                            ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
+                            : activate.error}
                         </p>
                       )}
                     </div>
@@ -314,17 +342,20 @@ export function CampaignRosterPanel({
                   row.status !== CAMPAIGN_TALENT_STATUS.REJECTED ? (
                     <div className="grid gap-3">
                       {row.status === CAMPAIGN_TALENT_STATUS.APPROVED &&
-                      activate.ok ? (
+                      activate.ok &&
+                      hasClient ? (
                         <form action={activateCampaignTalent}>
                           <input type="hidden" name="talentId" value={row.id} />
                           <Button type="submit" size="sm">
                             Activar contrato
                           </Button>
                         </form>
-                      ) : !activate.ok &&
-                        row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE ? (
+                      ) : row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE &&
+                        (activate.ok ? !hasClient : true) ? (
                         <p className="text-xs text-muted-foreground">
-                          {activate.error}
+                          {activate.ok
+                            ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
+                            : activate.error}
                         </p>
                       ) : null}
                       <p className="text-xs text-muted-foreground">

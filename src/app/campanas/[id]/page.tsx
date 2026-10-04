@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { committedSaleCents } from "@/lib/domain/campaign-desk";
 import {
   loadCampaignProposals,
@@ -35,6 +36,7 @@ import {
 import { formatDate } from "@/lib/format";
 
 import { CampaignBulkSignature } from "./bulk-signature";
+import { CampaignClientForm } from "./client-form";
 import { CampaignPolicyCard } from "./policy-form";
 import { CampaignProposalPanel } from "./proposal-panel";
 import { CampaignRosterPanel } from "./roster-panel";
@@ -52,11 +54,15 @@ export default async function CampaignWorkbenchPage({
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
-  const [data, roster, catalog, proposals] = await Promise.all([
+  const [data, roster, catalog, proposals, clients] = await Promise.all([
     loadCampaignWorkbench(id),
     loadCampaignRoster(id),
     loadRosterCatalog(),
     loadCampaignProposals(id),
+    prisma.client.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
   if (!data) notFound();
@@ -98,7 +104,11 @@ export default async function CampaignWorkbenchPage({
               </Link>
               {" · "}
             </>
-          ) : null}
+          ) : (
+            <span className="text-amber-700 dark:text-amber-400">
+              Sin cliente ·{" "}
+            </span>
+          )}
           {data.creatorCount}{" "}
           {data.creatorCount === 1 ? "perfil activo" : "perfiles activos"}
           {roster.length > 0
@@ -109,6 +119,14 @@ export default async function CampaignWorkbenchPage({
             : ""}
         </p>
       </div>
+
+      {canWrite ? (
+        <CampaignClientForm
+          campaignId={data.id}
+          clientId={data.client?.id ?? ""}
+          clients={clients}
+        />
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -273,6 +291,7 @@ export default async function CampaignWorkbenchPage({
         engagementKind={data.engagementKind as CampaignEngagement}
         budgetSaleCents={data.budgetSaleCents}
         drafts={proposals.filter((item) => item.status === "DRAFT")}
+        hasClient={Boolean(data.client)}
       />
 
       {canSign ? (

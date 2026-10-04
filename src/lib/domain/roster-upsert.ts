@@ -39,7 +39,7 @@ export async function upsertRosterCreator(input: {
   if (!existing.profileType && input.profileType) {
     data.profileType = input.profileType;
   }
-  if (!existing.defaultCostMinor && input.defaultCostMinor) {
+  if (input.defaultCostMinor) {
     data.defaultCostMinor = input.defaultCostMinor;
     if (input.defaultCostCurrency) {
       data.defaultCostCurrency = input.defaultCostCurrency;

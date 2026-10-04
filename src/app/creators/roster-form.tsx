@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { addRosterCreator, type RosterWriteResult } from "@/app/creators/roster-actions";
@@ -8,6 +8,7 @@ import { CatalogSelect } from "@/components/catalog-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CURRENCIES } from "@/lib/currencies";
 import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 
 export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
@@ -16,17 +17,29 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
     FormData
   >(addRosterCreator, null);
 
+  const [formEpoch, setFormEpoch] = useState(0);
+
   useEffect(() => {
     if (state?.ok && (state.created ?? 0) > 0) {
       toast.success("Perfil añadido al roster.");
+      setFormEpoch((epoch) => epoch + 1);
     } else if (state?.ok) {
-      toast.message("Ese Instagram ya estaba. Actualicé país o tipo si faltaban.");
+      toast.message(
+        state.updated
+          ? "Ese Instagram ya estaba. Actualicé tarifa, país o tipo."
+          : "Ese Instagram ya estaba. No había nada nuevo que guardar."
+      );
+      setFormEpoch((epoch) => epoch + 1);
     }
     if (state && !state.ok && state.error) toast.error(state.error);
   }, [state]);
 
   return (
-    <form action={formAction} className="grid gap-3 sm:grid-cols-6 sm:items-end">
+    <form
+      key={formEpoch}
+      action={formAction}
+      className="grid gap-3 sm:grid-cols-6 sm:items-end"
+    >
       <div className="grid gap-1.5 sm:col-span-2">
         <Label htmlFor="instagram">Instagram</Label>
         <Input
@@ -53,16 +66,23 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="defaultCost">Tarifa (opcional)</Label>
-        <Input id="defaultCost" name="defaultCost" placeholder="80" />
+        <Label htmlFor="defaultCost">Tarifa del creador</Label>
+        <Input id="defaultCost" name="defaultCost" placeholder="120" />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="defaultCostCurrency">Moneda</Label>
-        <Input
+        <select
           id="defaultCostCurrency"
           name="defaultCostCurrency"
           defaultValue="EUR"
-        />
+          className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          {CURRENCIES.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.code}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="sm:col-span-6">
         <Button type="submit" disabled={pending}>

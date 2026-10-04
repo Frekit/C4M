@@ -42,6 +42,17 @@ https://www.instagram.com/marcosrouder;España;Micro
   assert.equal(parsed.rows[1]?.profileType, "UGC");
 });
 
+test("la columna de tarifa entra con el perfil", () => {
+  const parsed = parseRosterTable(`instagram,pais,tipo,tarifa,moneda
+@ana.garcia,México,UGC,120,EUR
+@sin.precio,España,Micro,,
+`);
+  assert.equal(parsed.errors.length, 0);
+  assert.equal(parsed.rows[0]?.cost, "120");
+  assert.equal(parsed.rows[0]?.currency, "EUR");
+  assert.equal(parsed.rows[1]?.cost, null);
+});
+
 test("acepta solo la columna de Instagram", () => {
   const parsed = parseRosterTable(`handle
 sofia.tech

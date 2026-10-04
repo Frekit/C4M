@@ -98,8 +98,8 @@ export default async function WorkflowPage() {
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           <p>
-            El Excel trae Instagram, país y tipo. La tarifa del perfil es
-            opcional. La venta y las piezas son de la línea en campaña. El
+            El Excel trae Instagram, país, tipo y, si la tienes, la tarifa
+            del creador. La venta y las piezas son de la línea en campaña. El
             encargo puede ser always-on, un sobre de 50K o un paquete; la
             oleada no cierra la campaña. Si el cliente no aprueba perfiles, se
             activa en cuanto la línea está lista.
@@ -138,8 +138,9 @@ export default async function WorkflowPage() {
               hrefLabel="Creators"
             >
               Alta suelta o importar Excel/CSV. Queda el Instagram, el país y el
-              tipo. La tarifa (coste) es opcional: el inventario incluye a los
-              que aún no la hemos cerrado.
+              tipo. La tarifa del creador se puede poner en el alta, en el
+              Excel (columna tarifa) o después en su ficha. Si aún no la
+              tienes, el perfil entra igual.
             </Step>
             <Arrow />
             <Step

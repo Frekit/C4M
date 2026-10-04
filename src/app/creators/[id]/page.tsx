@@ -40,7 +40,9 @@ import {
   settlementPolicyOf,
 } from "@/lib/domain/settlement";
 import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, fromMinorUnits } from "@/lib/money";
+
+import { CreatorRateForm } from "./rate-form";
 
 export const metadata: Metadata = {
   title: "Ficha del creator",
@@ -158,6 +160,11 @@ export default async function CreatorPage({
 
   const canRenew = can(user.role, "contracts:renew");
   const canAddClient = can(user.role, "contracts:write");
+  const canSetRate = can(user.role, "creators:write");
+  const rateLabel =
+    creator.defaultCostMinor != null && creator.defaultCostCurrency
+      ? formatMoney(creator.defaultCostMinor, creator.defaultCostCurrency)
+      : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -175,6 +182,7 @@ export default async function CreatorPage({
               ? ` · ${labelForSlug(catalog.profileTypes, creator.profileType)}`
               : ""}
             {creator.contactEmail ? ` · ${creator.contactEmail}` : ""}
+            {rateLabel ? ` · tarifa ${rateLabel}` : " · sin tarifa"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -205,6 +213,37 @@ export default async function CreatorPage({
           ) : null}
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tarifa del creador</CardTitle>
+          <CardDescription>
+            Lo que le pagamos por contenido, en su moneda. Se puede poner aquí
+            o al dar de alta el perfil. La venta al cliente va en la línea de
+            la campaña, no en esta ficha.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {canSetRate ? (
+            <CreatorRateForm
+              creatorId={creator.id}
+              amount={
+                creator.defaultCostMinor != null && creator.defaultCostCurrency
+                  ? String(
+                      fromMinorUnits(
+                        creator.defaultCostMinor,
+                        creator.defaultCostCurrency
+                      )
+                    )
+                  : ""
+              }
+              currency={creator.defaultCostCurrency ?? "EUR"}
+            />
+          ) : (
+            <p className="text-sm">{rateLabel ?? "Sin tarifa"}</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
