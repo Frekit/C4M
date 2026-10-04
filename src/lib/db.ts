@@ -66,6 +66,7 @@ if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
   if (
     staleSchema ||
     !hasClientModel(globalForPrisma.prisma) ||
+    !hasCampaignDeskModels(globalForPrisma.prisma) ||
     isStaleDeliverableClient(globalForPrisma.prisma)
   ) {
     void globalForPrisma.prisma.$disconnect();
