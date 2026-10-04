@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
+import { isSupportedCurrency } from "@/lib/currencies";
 import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
+import { parseAmountToMinorUnits } from "@/lib/money";
 import {
   loadRosterCatalog,
   resolveRosterFields,
@@ -57,6 +59,8 @@ export async function upsertRosterCreator(input: {
   handle: string;
   country?: string | null;
   profileType?: string | null;
+  defaultCostMinor?: number | null;
+  defaultCostCurrency?: string | null;
   createdBy: string;
 }) {
   const existing = await prisma.creator.findUnique({
@@ -70,17 +74,30 @@ export async function upsertRosterCreator(input: {
         instagramUrl: instagramUrlFor(input.handle),
         country: input.country || null,
         profileType: input.profileType || null,
-        payoutCurrency: "EUR",
+        defaultCostMinor: input.defaultCostMinor || null,
+        defaultCostCurrency: input.defaultCostCurrency || null,
+        payoutCurrency: input.defaultCostCurrency || "EUR",
         createdBy: input.createdBy,
       },
     });
     return { creator: created, created: true, updated: false };
   }
 
-  const data: { country?: string; profileType?: string } = {};
+  const data: {
+    country?: string;
+    profileType?: string;
+    defaultCostMinor?: number;
+    defaultCostCurrency?: string;
+  } = {};
   if (!existing.country && input.country) data.country = input.country;
   if (!existing.profileType && input.profileType) {
     data.profileType = input.profileType;
+  }
+  if (!existing.defaultCostMinor && input.defaultCostMinor) {
+    data.defaultCostMinor = input.defaultCostMinor;
+    if (input.defaultCostCurrency) {
+      data.defaultCostCurrency = input.defaultCostCurrency;
+    }
   }
 
   if (Object.keys(data).length === 0) {
@@ -111,10 +128,26 @@ export async function addRosterCreator(
   });
   if (!resolved.ok) return { ok: false, error: resolved.error };
 
+  const costRaw = optionalField(formData.get("defaultCost"));
+  const currency = (optionalField(formData.get("defaultCostCurrency")) ?? "EUR")
+    .toUpperCase();
+  let defaultCostMinor: number | null = null;
+  if (costRaw) {
+    if (!isSupportedCurrency(currency)) {
+      return { ok: false, error: `Moneda ${currency} no soportada.` };
+    }
+    defaultCostMinor = parseAmountToMinorUnits(costRaw, currency);
+    if (defaultCostMinor === null) {
+      return { ok: false, error: "Revisa la tarifa del perfil." };
+    }
+  }
+
   const result = await upsertRosterCreator({
     handle,
     country: resolved.country,
     profileType: resolved.profileType,
+    defaultCostMinor,
+    defaultCostCurrency: defaultCostMinor ? currency : null,
     createdBy: user.email,
   });
 

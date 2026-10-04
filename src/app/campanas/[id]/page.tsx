@@ -13,13 +13,21 @@ import {
 } from "@/components/ui/card";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { loadCampaignRoster } from "@/lib/domain/campaign-roster";
+import { committedSaleCents } from "@/lib/domain/campaign-desk";
+import {
+  loadCampaignProposals,
+  loadCampaignRoster,
+} from "@/lib/domain/campaign-roster";
 import { loadCampaignWorkbench } from "@/lib/domain/campaign-stats";
 import { loadRosterCatalog } from "@/lib/domain/roster-catalog";
 import {
+  CAMPAIGN_APPROVAL_LABELS,
+  CAMPAIGN_ENGAGEMENT_LABELS,
   CAMPAIGN_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
   DELIVERABLE_STATUS_LABELS,
+  type CampaignApproval,
+  type CampaignEngagement,
   type CampaignStatus,
   type ContractStatus,
   type DeliverableStatus,
@@ -27,6 +35,8 @@ import {
 import { formatDate } from "@/lib/format";
 
 import { CampaignBulkSignature } from "./bulk-signature";
+import { CampaignPolicyCard } from "./policy-form";
+import { CampaignProposalPanel } from "./proposal-panel";
 import { CampaignRosterPanel } from "./roster-panel";
 
 export const metadata: Metadata = {
@@ -42,10 +52,11 @@ export default async function CampaignWorkbenchPage({
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
-  const [data, roster, catalog] = await Promise.all([
+  const [data, roster, catalog, proposals] = await Promise.all([
     loadCampaignWorkbench(id),
     loadCampaignRoster(id),
     loadRosterCatalog(),
+    loadCampaignProposals(id),
   ]);
 
   if (!data) notFound();
@@ -64,6 +75,16 @@ export default async function CampaignWorkbenchPage({
           </h1>
           <Badge variant="outline">
             {CAMPAIGN_STATUS_LABELS[data.status as CampaignStatus]}
+          </Badge>
+          <Badge variant="secondary">
+            {
+              CAMPAIGN_ENGAGEMENT_LABELS[
+                data.engagementKind as CampaignEngagement
+              ]
+            }
+          </Badge>
+          <Badge variant="secondary">
+            {CAMPAIGN_APPROVAL_LABELS[data.approvalMode as CampaignApproval]}
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -226,11 +247,32 @@ export default async function CampaignWorkbenchPage({
         </CardContent>
       </Card>
 
+      <CampaignPolicyCard
+        campaignId={data.id}
+        canWrite={canWrite}
+        engagementKind={data.engagementKind as CampaignEngagement}
+        approvalMode={data.approvalMode as CampaignApproval}
+        budgetSaleCents={data.budgetSaleCents}
+        defaultPaymentTermDays={data.defaultPaymentTermDays}
+        committedCents={committedSaleCents(roster)}
+      />
+
+      <CampaignProposalPanel
+        campaignId={data.id}
+        canWrite={canWrite}
+        approvalMode={data.approvalMode as CampaignApproval}
+        proposals={proposals}
+      />
+
       <CampaignRosterPanel
         campaignId={data.id}
         canWrite={canWrite}
         rows={roster}
         catalog={catalog}
+        approvalMode={data.approvalMode as CampaignApproval}
+        engagementKind={data.engagementKind as CampaignEngagement}
+        budgetSaleCents={data.budgetSaleCents}
+        drafts={proposals.filter((item) => item.status === "DRAFT")}
       />
 
       {canSign ? (

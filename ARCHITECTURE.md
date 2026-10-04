@@ -27,6 +27,9 @@ Eso basta para operar y para reconstruir el documento. Una firma electrónica cu
 | `PER_CONTENT` | Se liquida pieza a pieza (Higgsfield). |
 | `PACK` | No se cobra ni se paga hasta cerrar campaña + perfil (Many Chat). |
 | `CONDITIONS_ANNEX` | Anexo jurídico: mismos importes, 0 contenidos, firma nueva. |
+| `READY` | Línea de campaña con piezas + venta + coste. Aún no es contrato. |
+| Oleada (`CampaignProposal`) | Envío de 1–N líneas. No cierra la campaña. |
+| Tarifa (`defaultCost*`) | Coste del perfil. La venta es de la línea. |
 
 ## Dónde cambiar qué
 
@@ -45,8 +48,24 @@ Eso basta para operar y para reconstruir el documento. Una firma electrónica cu
 | Auth0 vs local | `src/lib/auth/config.ts` y `src/proxy.ts` |
 | Copiar un lote a Zexel | `src/lib/domain/zexel-batch.ts` |
 | Historial de pagos del creator | `src/lib/domain/creator-payments.ts` + ficha `/creators/[id]` |
+| Mesa de campaña, oleadas, presupuesto | `src/lib/domain/campaign-desk.ts` |
 
 Las páginas en `src/app/` pintan. Las mutations viven en `actions.ts` de cada ruta y delegan las reglas al dominio.
+
+## Foundations (calidad y escala)
+
+No hace falta un API HTTP ni un microservicio para esto. El cuello de calidad es **un solo módulo de invariantes** (`campaign-desk.ts`) + tests, no más endpoints. Las server actions ya son la API interna.
+
+Lo que sí escala la calidad, y ya entra en este corte:
+
+1. Máquina de estados de la línea (listo / oleada / activar) en dominio puro, no en el formulario.
+2. Política por campaña (`ALWAYS_ON` / `BUDGET` / `SLATE` + aprobación interna o de cliente).
+3. Tarifa en el perfil, venta en la línea.
+4. Oleada como objeto; la campaña no se cierra al enviar.
+
+Lo que **no** hay que montar ahora: REST público, portal de cliente, Neon Functions, cola extra. El portal, cuando toque, lee `CampaignProposal` + líneas. El Excel de 50 perfiles es otro render del mismo objeto.
+
+Riesgo técnico que queda: «Registrar influencer» (`/creators/nuevo`) sigue creando contrato al vuelo y se salta la mesa. SQLite aguanta el vibe; el salto a Postgres está en el esquema, no en nuevas APIs.
 
 ## Arranque para un CTO
 

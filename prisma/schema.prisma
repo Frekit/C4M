@@ -52,8 +52,11 @@ model Creator {
   displayName    String?
   contactEmail   String?
   country        String?
-  // Texto libre: UGC, nano, micro, lifestyle… lo que venga del Excel.
+  // Slug del catálogo RosterOption (PROFILE_TYPE).
   profileType    String?
+  // Tarifa del perfil (lo que se le paga). La venta al cliente es de la línea.
+  defaultCostMinor    Int?
+  defaultCostCurrency String?
   payoutCurrency String
   notes          String?
   createdBy      String?
@@ -224,12 +227,38 @@ model Campaign {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // SLATE | BUDGET | ALWAYS_ON — la campaña no se cierra al mandar una oleada.
+  engagementKind String @default("ALWAYS_ON")
+  // INTERNAL | CLIENT_APPROVES
+  approvalMode   String @default("INTERNAL")
+  budgetSaleCents Int?
+  defaultPaymentTermDays Int @default(30)
+
   client       Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   deliverables Deliverable[]
   talents      CampaignTalent[]
+  proposals    CampaignProposal[]
 
   @@index([status])
   @@index([clientId])
+}
+
+// Oleada opcional: 1 o 50 líneas. No cierra la campaña.
+model CampaignProposal {
+  id         String    @id @default(cuid())
+  campaignId String
+  title      String
+  status     String    @default("DRAFT") // DRAFT | SENT | CLOSED
+  notes      String?
+  sentAt     DateTime?
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  campaign Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  talents  CampaignTalent[]
+
+  @@index([campaignId, status])
 }
 
 // Perfil en una campaña antes (o además) del contrato. El Excel solo trae
@@ -244,18 +273,22 @@ model CampaignTalent {
   salePriceCentsPerContent Int?
   costMinorPerContent      Int?
   costCurrency             String?
+  deliverableCount         Int?
   notes                    String?
+  proposalId               String?
 
   createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  creator  Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  campaign Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  Creator           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  proposal CampaignProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
 
-  @@unique([campaignId, creatorId])
+  @@index([campaignId, creatorId])
   @@index([creatorId])
   @@index([campaignId, status])
+  @@index([proposalId])
 }
 
 // --- Firma del contrato por el talento o su agencia ---

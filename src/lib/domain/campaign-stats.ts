@@ -32,6 +32,10 @@ export type CampaignWorkbench = {
   contractsByStatus: CampaignStatusCounts;
   unsignedCount: number;
   expiredSignatureCount: number;
+  engagementKind: string;
+  approvalMode: string;
+  budgetSaleCents: number | null;
+  defaultPaymentTermDays: number;
 };
 
 export async function loadCampaignSummaries() {
@@ -196,5 +200,9 @@ export async function loadCampaignWorkbench(
     contractsByStatus,
     unsignedCount,
     expiredSignatureCount,
+    engagementKind: campaign.engagementKind,
+    approvalMode: campaign.approvalMode,
+    budgetSaleCents: campaign.budgetSaleCents,
+    defaultPaymentTermDays: campaign.defaultPaymentTermDays,
   };
 }

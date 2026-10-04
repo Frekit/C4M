@@ -6,11 +6,17 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
+  CAMPAIGN_APPROVAL,
+  CAMPAIGN_ENGAGEMENT,
   CAMPAIGN_STATUS,
   CONTRACT_STATUS,
   SETTLEMENT_MODE,
   SIGNATURE_FILTER_BATCH,
 } from "@/lib/domain/enums";
+import {
+  parseBudgetUsd,
+  parsePaymentTermDays,
+} from "@/lib/domain/campaign-desk";
 import { processMailQueue } from "@/lib/domain/mail-queue";
 import { queueUnsignedContracts } from "@/lib/domain/signature-send";
 import { campaignSchema, fieldErrorsFrom } from "@/lib/domain/validation";
@@ -74,6 +80,10 @@ export async function createCampaign(
     description: formData.get("description"),
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt"),
+    engagementKind: formData.get("engagementKind"),
+    approvalMode: formData.get("approvalMode"),
+    budgetUsd: formData.get("budgetUsd"),
+    defaultPaymentTermDays: formData.get("defaultPaymentTermDays"),
   });
 
   if (!parsed.success) {
@@ -113,6 +123,9 @@ export async function createCampaign(
     };
   }
 
+  const engagementKind =
+    data.engagementKind || CAMPAIGN_ENGAGEMENT.ALWAYS_ON;
+  const approvalMode = data.approvalMode || CAMPAIGN_APPROVAL.INTERNAL;
   const campaign = await prisma.campaign.create({
     data: {
       name: data.name,
@@ -120,6 +133,13 @@ export async function createCampaign(
       description: data.description || null,
       startsAt: data.startsAt,
       endsAt: data.endsAt,
+      engagementKind,
+      approvalMode,
+      budgetSaleCents:
+        engagementKind === CAMPAIGN_ENGAGEMENT.BUDGET
+          ? parseBudgetUsd(data.budgetUsd)
+          : null,
+      defaultPaymentTermDays: parsePaymentTermDays(data.defaultPaymentTermDays),
       createdBy: user.email,
     },
   });
@@ -137,6 +157,68 @@ export async function createCampaign(
   revalidatePath("/finanzas");
 
   return { ok: true, at: Date.now() };
+}
+
+export async function updateCampaignPolicy(
+  _prev: CampaignActionResult | null,
+  formData: FormData
+): Promise<CampaignActionResult> {
+  const user = await requirePermission("campaigns:manage", "/campanas");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  if (!campaignId) return { ok: false, error: "Falta la campaña." };
+
+  const engagementKind = isCampaignEngagementSafe(
+    String(formData.get("engagementKind") ?? "")
+  )
+    ? String(formData.get("engagementKind"))
+    : CAMPAIGN_ENGAGEMENT.ALWAYS_ON;
+  const approvalMode = isCampaignApprovalSafe(
+    String(formData.get("approvalMode") ?? "")
+  )
+    ? String(formData.get("approvalMode"))
+    : CAMPAIGN_APPROVAL.INTERNAL;
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: {
+      engagementKind,
+      approvalMode,
+      budgetSaleCents:
+        engagementKind === CAMPAIGN_ENGAGEMENT.BUDGET
+          ? parseBudgetUsd(String(formData.get("budgetUsd") ?? ""))
+          : null,
+      defaultPaymentTermDays: parsePaymentTermDays(
+        String(formData.get("defaultPaymentTermDays") ?? "")
+      ),
+    },
+  });
+
+  await recordAudit({
+    entityType: "Campaign",
+    entityId: campaignId,
+    action: "POLICY_UPDATED",
+    actor: user,
+    metadata: { engagementKind, approvalMode },
+  });
+
+  revalidatePath("/campanas");
+  revalidatePath(`/campanas/${campaignId}`);
+  return { ok: true };
+}
+
+function isCampaignEngagementSafe(value: string) {
+  return (
+    value === CAMPAIGN_ENGAGEMENT.SLATE ||
+    value === CAMPAIGN_ENGAGEMENT.BUDGET ||
+    value === CAMPAIGN_ENGAGEMENT.ALWAYS_ON
+  );
+}
+
+function isCampaignApprovalSafe(value: string) {
+  return (
+    value === CAMPAIGN_APPROVAL.INTERNAL ||
+    value === CAMPAIGN_APPROVAL.CLIENT_APPROVES
+  );
 }
 
 export async function setCampaignStatus(formData: FormData) {

@@ -91,15 +91,18 @@ export default async function WorkflowPage() {
         <CardHeader>
           <CardTitle>En una frase</CardTitle>
           <CardDescription>
-            Roster → campaña → precio → ok del cliente → contrato → firma →
-            publicar → (si toca) plataforma → pagar por Zexel.
+            Roster (con o sin tarifa) → mesa de campaña → línea con piezas y
+            precios → (oleada si el cliente aprueba) → contrato → firma →
+            publicar → pagar.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           <p>
-            El Excel solo trae Instagram, país y tipo. El precio y el contrato
-            nacen en la campaña, cuando el cliente ya ha dicho que sí (o cuando
-            alguien pulsa Activar sin ese sí).
+            El Excel trae Instagram, país y tipo. La tarifa del perfil es
+            opcional. La venta y las piezas son de la línea en campaña. El
+            encargo puede ser always-on, un sobre de 50K o un paquete; la
+            oleada no cierra la campaña. Si el cliente no aprueba perfiles, se
+            activa en cuanto la línea está lista.
           </p>
           <p className="text-muted-foreground">
             En paralelo sigue existiendo «Registrar influencer»: Instagram +
@@ -135,7 +138,8 @@ export default async function WorkflowPage() {
               hrefLabel="Creators"
             >
               Alta suelta o importar Excel/CSV. Queda el Instagram, el país y el
-              tipo. Sin precio, sin cliente, sin contrato.
+              tipo. La tarifa (coste) es opcional: el inventario incluye a los
+              que aún no la hemos cerrado.
             </Step>
             <Arrow />
             <Step
@@ -144,26 +148,24 @@ export default async function WorkflowPage() {
               href="/campanas"
               hrefLabel="Campañas"
             >
-              Pasa a «En roster». Si ese Instagram ya está en otra campaña, se
-              avisa. Todavía no hay piezas.
+              Entra en mesa aunque no tenga precio. Si ese Instagram ya está en
+              otra campaña, se avisa. En always-on se puede abrir otra pasada.
             </Step>
             <Arrow />
-            <Step n="4" title="Poner precios">
-              Venta en USD y coste en la moneda del perfil. Al guardar, el
-              estado salta solo a «Pendiente de cliente».
+            <Step n="4" title="Completar la línea">
+              Piezas + venta USD + coste. Pasa a Listo. Si el perfil no tenía
+              tarifa, se guarda. Sin eso no se propone ni se activa.
             </Step>
             <Arrow />
-            <Step n="5" title="Validación del cliente (manual)">
-              El equipo marca Validado o Descartado. No hay portal para el
-              cliente: es un botón vuestro. Se puede activar también desde
-              Pendiente, sin validar.
+            <Step n="5" title="Oleada (opcional)">
+              1 o 50 perfiles en un envío. Solo si la campaña pide ok del
+              cliente. No cierra el encargo: mañana podéis mandar otra.
             </Step>
             <Arrow />
             <Step n="6" title="Activar">
-              Pedís número de piezas. Si la campaña tiene cliente y el perfil
-              no tiene contrato con ese cliente, se crea un contrato en
-              borrador (plazo de pago fijo a 30 días). Si ya tenía contrato con
-              ese cliente, solo marca «Activo»: no crea piezas nuevas.
+              Uso interno: desde Listo. Si el cliente aprueba: solo desde
+              Aprobado. Crea contrato o anexo/renovación con esas piezas. El
+              plazo sale de la política de la campaña.
             </Step>
           </ol>
         </section>
@@ -353,27 +355,28 @@ export default async function WorkflowPage() {
         <ul className="grid gap-2">
           <li>
             <Tension>
-              Dos altas. Roster (sin contrato) y «Registrar influencer» (con
-              contrato). El vacío del Panel manda al segundo.
+              Sigue existiendo «Registrar influencer» (contrato al guardar). El
+              vacío del Panel todavía empuja ahí. El camino de producto es
+              roster → mesa → línea.
             </Tension>
           </li>
           <li>
             <Tension>
-              «Pendiente de cliente» no es un envío al cliente: es un estado
-              interno. Se puede Activar sin haber marcado Validado.
+              El cliente sigue sin portal. «Marcar enviada» y Aprobado son
+              botones vuestros. El enlace para que el cliente abra la oleada
+              no está.
             </Tension>
           </li>
           <li>
             <Tension>
-              Si el perfil ya tiene contrato con ese cliente, Activar no crea
-              contenidos de esta campaña: solo pone Activo. El cruce roster ↔
-              piezas queda a medias.
+              Activar ahora sí crea piezas (contrato nuevo, anexo o renovación).
+              Revisad siempre que la campaña tenga cliente.
             </Tension>
           </li>
           <li>
             <Tension>
-              Al activar desde roster el plazo de pago se fija a 30 días. En el
-              alta con contrato sí se elige.
+              El plazo de pago es de la campaña (por defecto 30). No se elige
+              por línea.
             </Tension>
           </li>
           <li>

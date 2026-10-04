@@ -17,9 +17,13 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { loadCampaignSummaries } from "@/lib/domain/campaign-stats";
 import {
+  CAMPAIGN_APPROVAL_LABELS,
+  CAMPAIGN_ENGAGEMENT_LABELS,
   CAMPAIGN_STATUS,
   CAMPAIGN_STATUS_LABELS,
   SETTLEMENT_MODE_LABELS,
+  type CampaignApproval,
+  type CampaignEngagement,
   type CampaignStatus,
   type SettlementMode,
 } from "@/lib/domain/enums";
@@ -110,6 +114,20 @@ export default async function CampaignsPage() {
                       }
                     >
                       {CAMPAIGN_STATUS_LABELS[campaign.status as CampaignStatus]}
+                    </Badge>
+                    <Badge variant="outline">
+                      {
+                        CAMPAIGN_ENGAGEMENT_LABELS[
+                          campaign.engagementKind as CampaignEngagement
+                        ]
+                      }
+                    </Badge>
+                    <Badge variant="outline">
+                      {
+                        CAMPAIGN_APPROVAL_LABELS[
+                          campaign.approvalMode as CampaignApproval
+                        ]
+                      }
                     </Badge>
                   </div>
                   <CardDescription>

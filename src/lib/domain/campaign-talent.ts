@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { TALENT_STATUS_RANK } from "@/lib/domain/campaign-desk";
 import {
   CAMPAIGN_TALENT_STATUS,
   type CampaignTalentStatus,
@@ -36,19 +37,30 @@ export function mergeCreatorPresence(
 
   for (const row of roster) {
     if (!isCampaignTalentStatus(row.status)) continue;
-    byId.set(row.campaignId, {
+    const next: CreatorCampaignPresence = {
       campaignId: row.campaignId,
       campaignName: row.campaign.name,
       campaignStatus: row.campaign.status,
       talentStatus: row.status,
       source: "roster",
-    });
+    };
+    const existing = byId.get(row.campaignId);
+    if (
+      !existing ||
+      TALENT_STATUS_RANK[next.talentStatus] >
+        TALENT_STATUS_RANK[existing.talentStatus]
+    ) {
+      byId.set(row.campaignId, next);
+    }
   }
 
   for (const campaign of deliverableCampaigns) {
     const existing = byId.get(campaign.id);
     if (existing) {
-      if (existing.talentStatus === CAMPAIGN_TALENT_STATUS.ROSTER) {
+      if (
+        TALENT_STATUS_RANK[existing.talentStatus] <
+        TALENT_STATUS_RANK[CAMPAIGN_TALENT_STATUS.ACTIVE]
+      ) {
         existing.talentStatus = CAMPAIGN_TALENT_STATUS.ACTIVE;
       }
       continue;

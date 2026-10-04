@@ -131,8 +131,63 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   CLOSED: "Cerrada",
 };
 
+export const CAMPAIGN_ENGAGEMENT = {
+  SLATE: "SLATE",
+  BUDGET: "BUDGET",
+  ALWAYS_ON: "ALWAYS_ON",
+} as const;
+
+export type CampaignEngagement =
+  (typeof CAMPAIGN_ENGAGEMENT)[keyof typeof CAMPAIGN_ENGAGEMENT];
+
+export const CAMPAIGN_ENGAGEMENT_LABELS: Record<CampaignEngagement, string> = {
+  SLATE: "Paquete cerrado",
+  BUDGET: "Presupuesto",
+  ALWAYS_ON: "Always-on",
+};
+
+export const CAMPAIGN_ENGAGEMENT_HINTS: Record<CampaignEngagement, string> = {
+  SLATE: "Un lote concreto. Se pueden mandar oleadas, la campaña no se cierra sola.",
+  BUDGET: "Hay un sobre en USD. Las líneas van comiendo del presupuesto.",
+  ALWAYS_ON: "Se siguen metiendo y repitiendo perfiles. No hay cierre por lote.",
+};
+
+export const CAMPAIGN_APPROVAL = {
+  INTERNAL: "INTERNAL",
+  CLIENT_APPROVES: "CLIENT_APPROVES",
+} as const;
+
+export type CampaignApproval =
+  (typeof CAMPAIGN_APPROVAL)[keyof typeof CAMPAIGN_APPROVAL];
+
+export const CAMPAIGN_APPROVAL_LABELS: Record<CampaignApproval, string> = {
+  INTERNAL: "Uso interno",
+  CLIENT_APPROVES: "El cliente aprueba perfiles",
+};
+
+export const CAMPAIGN_APPROVAL_HINTS: Record<CampaignApproval, string> = {
+  INTERNAL: "No hay ok del cliente. Si la línea está lista, se puede activar.",
+  CLIENT_APPROVES: "Se manda una oleada. El contrato solo sale de lo aprobado.",
+};
+
+export const PROPOSAL_STATUS = {
+  DRAFT: "DRAFT",
+  SENT: "SENT",
+  CLOSED: "CLOSED",
+} as const;
+
+export type ProposalStatus =
+  (typeof PROPOSAL_STATUS)[keyof typeof PROPOSAL_STATUS];
+
+export const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
+  DRAFT: "Borrador",
+  SENT: "Enviada",
+  CLOSED: "Cerrada",
+};
+
 export const CAMPAIGN_TALENT_STATUS = {
   ROSTER: "ROSTER",
+  READY: "READY",
   PROPOSED: "PROPOSED",
   APPROVED: "APPROVED",
   ACTIVE: "ACTIVE",
@@ -144,20 +199,22 @@ export type CampaignTalentStatus =
 
 export const CAMPAIGN_TALENT_STATUS_LABELS: Record<CampaignTalentStatus, string> =
   {
-    ROSTER: "En roster",
-    PROPOSED: "Pendiente de cliente",
-    APPROVED: "Validado",
-    ACTIVE: "Activo en campaña",
+    ROSTER: "En mesa",
+    READY: "Listo",
+    PROPOSED: "En oleada",
+    APPROVED: "Aprobado",
+    ACTIVE: "Activo",
     REJECTED: "Descartado",
   };
 
 export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> =
   {
-    ROSTER: "Está en la mesa, todavía sin mandar a validar.",
-    PROPOSED: "El cliente tiene que decir si entra.",
-    APPROVED: "El cliente dijo que sí. Falta activar contrato o piezas.",
-    ACTIVE: "Ya opera en esta campaña.",
-    REJECTED: "El cliente no lo quiere en esta campaña.",
+    ROSTER: "En la campaña, todavía sin piezas o precios.",
+    READY: "Piezas y precios puestos. Se puede activar o meter en una oleada.",
+    PROPOSED: "Está en una oleada enviada al cliente.",
+    APPROVED: "El cliente dijo que sí. Falta activar el contrato.",
+    ACTIVE: "Ya opera en esta pasada.",
+    REJECTED: "No entra en esta pasada.",
   };
 
 export const ROSTER_IMPORT_MAX_ROWS = 2000;

@@ -26,7 +26,7 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
   }, [state]);
 
   return (
-    <form action={formAction} className="grid gap-3 sm:grid-cols-4 sm:items-end">
+    <form action={formAction} className="grid gap-3 sm:grid-cols-6 sm:items-end">
       <div className="grid gap-1.5 sm:col-span-2">
         <Label htmlFor="instagram">Instagram</Label>
         <Input
@@ -52,7 +52,19 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
           options={catalog.profileTypes}
         />
       </div>
-      <div className="sm:col-span-4">
+      <div className="grid gap-1.5">
+        <Label htmlFor="defaultCost">Tarifa (opcional)</Label>
+        <Input id="defaultCost" name="defaultCost" placeholder="80" />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="defaultCostCurrency">Moneda</Label>
+        <Input
+          id="defaultCostCurrency"
+          name="defaultCostCurrency"
+          defaultValue="EUR"
+        />
+      </div>
+      <div className="sm:col-span-6">
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Añadir al roster"}
         </Button>

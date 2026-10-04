@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { isSupportedCurrency } from "@/lib/currencies";
 import {
+  CAMPAIGN_APPROVAL,
+  CAMPAIGN_ENGAGEMENT,
   PAYEE_KIND,
   PAYOUT_METHOD,
   RECIPIENT_KIND,
@@ -333,6 +335,37 @@ export const campaignSchema = z.object({
   description: optionalText(1000),
   startsAt: optionalDate,
   endsAt: optionalDate,
+  engagementKind: z.unknown().optional().transform((raw, ctx) => {
+    const value = fromFormString(raw).trim();
+    if (value === "") return CAMPAIGN_ENGAGEMENT.ALWAYS_ON;
+    if (
+      value === CAMPAIGN_ENGAGEMENT.SLATE ||
+      value === CAMPAIGN_ENGAGEMENT.BUDGET ||
+      value === CAMPAIGN_ENGAGEMENT.ALWAYS_ON
+    ) {
+      return value;
+    }
+    ctx.addIssue({ code: "custom", message: "Elige cómo es el encargo" });
+    return z.NEVER;
+  }),
+  approvalMode: z.unknown().optional().transform((raw, ctx) => {
+    const value = fromFormString(raw).trim();
+    if (value === "") return CAMPAIGN_APPROVAL.INTERNAL;
+    if (
+      value === CAMPAIGN_APPROVAL.INTERNAL ||
+      value === CAMPAIGN_APPROVAL.CLIENT_APPROVES
+    ) {
+      return value;
+    }
+    ctx.addIssue({ code: "custom", message: "Elige si el cliente aprueba" });
+    return z.NEVER;
+  }),
+  budgetUsd: z.unknown().optional().transform(fromFormString).pipe(z.string().trim().max(20)),
+  defaultPaymentTermDays: z
+    .unknown()
+    .optional()
+    .transform(fromFormString)
+    .pipe(z.string().trim().max(8)),
 });
 
 export const clientUpdateSchema = z.object({

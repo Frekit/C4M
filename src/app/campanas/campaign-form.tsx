@@ -10,9 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CAMPAIGN_APPROVAL,
+  CAMPAIGN_APPROVAL_HINTS,
+  CAMPAIGN_APPROVAL_LABELS,
+  CAMPAIGN_ENGAGEMENT,
+  CAMPAIGN_ENGAGEMENT_HINTS,
+  CAMPAIGN_ENGAGEMENT_LABELS,
   SETTLEMENT_MODE,
   SETTLEMENT_MODE_HINTS,
   SETTLEMENT_MODE_LABELS,
+  type CampaignApproval,
+  type CampaignEngagement,
   type SettlementMode,
 } from "@/lib/domain/enums";
 
@@ -208,11 +216,100 @@ function CampaignFields({
           <Label htmlFor="description">Descripción (opcional)</Label>
           <Textarea id="description" name="description" rows={2} />
         </div>
+
+        <CampaignPolicyFields />
       </div>
 
       <Button type="submit" className="w-fit" disabled={pending}>
         {pending ? "Creando…" : "Crear campaña"}
       </Button>
     </form>
+  );
+}
+
+export function CampaignPolicyFields({
+  idPrefix = "",
+  engagementKind = CAMPAIGN_ENGAGEMENT.ALWAYS_ON,
+  approvalMode = CAMPAIGN_APPROVAL.INTERNAL,
+  budgetUsd = "",
+  paymentTermDays = 30,
+}: {
+  idPrefix?: string;
+  engagementKind?: CampaignEngagement;
+  approvalMode?: CampaignApproval;
+  budgetUsd?: string;
+  paymentTermDays?: number;
+}) {
+  const [kind, setKind] = useState<CampaignEngagement>(engagementKind);
+  const [approval, setApproval] = useState<CampaignApproval>(approvalMode);
+
+  return (
+    <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+      <div className="grid gap-2">
+        <Label htmlFor={`${idPrefix}engagementKind`}>Tipo de encargo</Label>
+        <select
+          id={`${idPrefix}engagementKind`}
+          name="engagementKind"
+          className={inputClass}
+          value={kind}
+          onChange={(event) =>
+            setKind(event.target.value as CampaignEngagement)
+          }
+        >
+          {Object.values(CAMPAIGN_ENGAGEMENT).map((value) => (
+            <option key={value} value={value}>
+              {CAMPAIGN_ENGAGEMENT_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          {CAMPAIGN_ENGAGEMENT_HINTS[kind]}
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor={`${idPrefix}approvalMode`}>Aprobación</Label>
+        <select
+          id={`${idPrefix}approvalMode`}
+          name="approvalMode"
+          className={inputClass}
+          value={approval}
+          onChange={(event) =>
+            setApproval(event.target.value as CampaignApproval)
+          }
+        >
+          {Object.values(CAMPAIGN_APPROVAL).map((value) => (
+            <option key={value} value={value}>
+              {CAMPAIGN_APPROVAL_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          {CAMPAIGN_APPROVAL_HINTS[approval]}
+        </p>
+      </div>
+      {kind === CAMPAIGN_ENGAGEMENT.BUDGET ? (
+        <div className="grid gap-2">
+          <Label htmlFor={`${idPrefix}budgetUsd`}>Presupuesto USD</Label>
+          <Input
+            id={`${idPrefix}budgetUsd`}
+            name="budgetUsd"
+            defaultValue={budgetUsd}
+            placeholder="50000"
+          />
+        </div>
+      ) : (
+        <input type="hidden" name="budgetUsd" value="" />
+      )}
+      <div className="grid gap-2">
+        <Label htmlFor={`${idPrefix}defaultPaymentTermDays`}>
+          Plazo de pago (días)
+        </Label>
+        <Input
+          id={`${idPrefix}defaultPaymentTermDays`}
+          name="defaultPaymentTermDays"
+          defaultValue={String(paymentTermDays)}
+        />
+      </div>
+    </div>
   );
 }

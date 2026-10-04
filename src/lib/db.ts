@@ -27,6 +27,19 @@ function hasClientModel(instance: PrismaClient | undefined) {
   );
 }
 
+function hasCampaignDeskModels(instance: PrismaClient | undefined) {
+  const client = instance as
+    | {
+        campaignProposal?: { findMany?: unknown };
+        rosterOption?: { findMany?: unknown };
+      }
+    | undefined;
+  return (
+    typeof client?.campaignProposal?.findMany === "function" &&
+    typeof client?.rosterOption?.findMany === "function"
+  );
+}
+
 function runtimeDeliverableFields(instance: PrismaClient) {
   const models = (
     instance as {

@@ -11,6 +11,7 @@ import {
   activateCampaignTalent,
   type CampaignRosterResult,
 } from "@/app/campanas/roster-actions";
+import { CatalogSelect } from "@/components/catalog-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,19 +23,27 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CatalogSelect } from "@/components/catalog-select";
-import type { CampaignRosterRow } from "@/lib/domain/campaign-roster";
+import type {
+  CampaignProposalRow,
+  CampaignRosterRow,
+} from "@/lib/domain/campaign-roster";
+import { canActivateLine, policyFromCampaign } from "@/lib/domain/campaign-desk";
 import {
+  CAMPAIGN_APPROVAL,
   CAMPAIGN_TALENT_STATUS,
   CAMPAIGN_TALENT_STATUS_LABELS,
+  type CampaignApproval,
+  type CampaignEngagement,
   type CampaignTalentStatus,
 } from "@/lib/domain/enums";
 import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 import { labelForSlug } from "@/lib/domain/roster-catalog";
 
+import { AddToProposalForm } from "./proposal-panel";
+
 function toastResult(state: CampaignRosterResult | null) {
   if (!state) return;
-  if (state.ok) toast.success("Roster actualizado.");
+  if (state.ok) toast.success("Mesa actualizada.");
   else if (state.error) toast.error(state.error);
 }
 
@@ -80,7 +89,7 @@ function AddTalentForm({
   );
 }
 
-function PricesForm({ talentId }: { talentId: string }) {
+function QuoteForm({ row }: { row: CampaignRosterRow }) {
   const [state, formAction, pending] = useActionState<
     CampaignRosterResult | null,
     FormData
@@ -88,23 +97,53 @@ function PricesForm({ talentId }: { talentId: string }) {
 
   useEffect(() => toastResult(state), [state]);
 
+  const defaultCost =
+    row.costMinorPerContent ?? row.creator.defaultCostMinor;
+  const defaultCurrency =
+    row.costCurrency ?? row.creator.defaultCostCurrency ?? "EUR";
+
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="talentId" value={talentId} />
+      <input type="hidden" name="talentId" value={row.id} />
+      <div className="grid gap-1">
+        <Label className="text-xs">Piezas</Label>
+        <Input
+          name="deliverableCount"
+          defaultValue={row.deliverableCount ?? ""}
+          placeholder="3"
+          className="w-16"
+        />
+      </div>
       <div className="grid gap-1">
         <Label className="text-xs">Venta USD</Label>
-        <Input name="saleUsd" placeholder="250" className="w-24" />
+        <Input
+          name="saleUsd"
+          defaultValue={
+            row.salePriceCentsPerContent != null
+              ? String(row.salePriceCentsPerContent / 100)
+              : ""
+          }
+          placeholder="250"
+          className="w-24"
+        />
       </div>
       <div className="grid gap-1">
         <Label className="text-xs">Coste</Label>
-        <Input name="cost" placeholder="80" className="w-24" />
+        <Input
+          name="cost"
+          defaultValue={
+            defaultCost != null ? String(defaultCost / 100) : ""
+          }
+          placeholder="80"
+          className="w-20"
+        />
       </div>
       <div className="grid gap-1">
         <Label className="text-xs">Moneda</Label>
-        <Input name="currency" defaultValue="EUR" className="w-20" />
+        <Input name="currency" defaultValue={defaultCurrency} className="w-20" />
       </div>
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
-        {pending ? "…" : "Guardar y proponer"}
+        {pending ? "…" : "Guardar línea"}
       </Button>
     </form>
   );
@@ -115,19 +154,35 @@ export function CampaignRosterPanel({
   canWrite,
   rows,
   catalog,
+  approvalMode,
+  engagementKind,
+  budgetSaleCents,
+  drafts,
 }: {
   campaignId: string;
   canWrite: boolean;
   rows: CampaignRosterRow[];
   catalog: RosterCatalog;
+  approvalMode: CampaignApproval;
+  engagementKind: CampaignEngagement;
+  budgetSaleCents: number | null;
+  drafts: CampaignProposalRow[];
 }) {
+  const policy = policyFromCampaign({
+    engagementKind,
+    approvalMode,
+    budgetSaleCents,
+  });
+  const clientApproves = approvalMode === CAMPAIGN_APPROVAL.CLIENT_APPROVES;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Roster de la campaña</CardTitle>
+        <CardTitle>Mesa de la campaña</CardTitle>
         <CardDescription>
-          Primero el Instagram. Si hay precios, se lo pasáis al cliente. Si
-          valida, se activa. Si el perfil está en otra campaña, sale aquí.
+          Pueden entrar sin precio. Para activar (o mandar al cliente) hacen
+          falta piezas + venta + coste. El mismo Instagram puede tener otra
+          pasada más adelante.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
@@ -141,107 +196,117 @@ export function CampaignRosterPanel({
           </p>
         ) : (
           <ul className="grid gap-4">
-            {rows.map((row) => (
-              <li key={row.id} className="grid gap-2 rounded-lg border p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <Link
-                      href={`/creators/${row.creator.id}`}
-                      className="font-medium underline underline-offset-4"
-                    >
-                      @{row.creator.handle}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {[
-                        labelForSlug(catalog.countries, row.creator.country),
-                        labelForSlug(
-                          catalog.profileTypes,
-                          row.creator.profileType
-                        ),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || "Sin país ni tipo"}
-                      {row.saleLabel
-                        ? ` · venta ${row.saleLabel}`
-                        : " · sin precio"}
-                      {row.costLabel ? ` · coste ${row.costLabel}` : ""}
-                    </p>
+            {rows.map((row) => {
+              const activate = canActivateLine(row, policy, rows);
+              return (
+                <li key={row.id} className="grid gap-2 rounded-lg border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <Link
+                        href={`/creators/${row.creator.id}`}
+                        className="font-medium underline underline-offset-4"
+                      >
+                        @{row.creator.handle}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          labelForSlug(catalog.countries, row.creator.country),
+                          labelForSlug(
+                            catalog.profileTypes,
+                            row.creator.profileType
+                          ),
+                          row.deliverableCount
+                            ? `${row.deliverableCount} piezas`
+                            : null,
+                          row.saleLabel ? `venta ${row.saleLabel}` : null,
+                          row.costLabel ? `coste ${row.costLabel}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Sin país, tipo ni precios"}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {
+                        CAMPAIGN_TALENT_STATUS_LABELS[
+                          row.status as CampaignTalentStatus
+                        ]
+                      }
+                    </Badge>
                   </div>
-                  <Badge variant="outline">
-                    {
-                      CAMPAIGN_TALENT_STATUS_LABELS[
-                        row.status as CampaignTalentStatus
-                      ]
-                    }
-                  </Badge>
-                </div>
 
-                {row.others.length > 0 ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    También está en{" "}
-                    {row.others
-                      .map(
-                        (item) =>
-                          `${item.campaignName} (${CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]})`
-                      )
-                      .join(", ")}
-                    .
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No aparece en otra campaña.
-                  </p>
-                )}
+                  {row.others.length > 0 ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      También está en{" "}
+                      {row.others
+                        .map(
+                          (item) =>
+                            `${item.campaignName} (${CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]})`
+                        )
+                        .join(", ")}
+                      .
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No aparece en otra campaña.
+                    </p>
+                  )}
 
-                {canWrite ? (
-                  <div className="grid gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      {(
-                        [
-                          CAMPAIGN_TALENT_STATUS.ROSTER,
-                          CAMPAIGN_TALENT_STATUS.PROPOSED,
-                          CAMPAIGN_TALENT_STATUS.APPROVED,
-                          CAMPAIGN_TALENT_STATUS.REJECTED,
-                        ] as const
-                      ).map((status) => (
-                        <form key={status} action={setCampaignTalentStatus}>
+                  {canWrite && row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE ? (
+                    <div className="grid gap-3">
+                      <QuoteForm row={row} />
+                      {clientApproves ? (
+                        <div className="flex flex-wrap gap-2">
+                          {(
+                            [
+                              CAMPAIGN_TALENT_STATUS.APPROVED,
+                              CAMPAIGN_TALENT_STATUS.REJECTED,
+                            ] as const
+                          ).map((status) => (
+                            <form key={status} action={setCampaignTalentStatus}>
+                              <input
+                                type="hidden"
+                                name="talentId"
+                                value={row.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="status"
+                                value={status}
+                              />
+                              <Button
+                                type="submit"
+                                size="sm"
+                                variant={
+                                  row.status === status ? "default" : "ghost"
+                                }
+                              >
+                                {CAMPAIGN_TALENT_STATUS_LABELS[status]}
+                              </Button>
+                            </form>
+                          ))}
+                        </div>
+                      ) : null}
+                      {row.status === CAMPAIGN_TALENT_STATUS.READY ||
+                      row.status === CAMPAIGN_TALENT_STATUS.ROSTER ? (
+                        <AddToProposalForm talentId={row.id} drafts={drafts} />
+                      ) : null}
+                      {activate.ok ? (
+                        <form action={activateCampaignTalent}>
                           <input type="hidden" name="talentId" value={row.id} />
-                          <input type="hidden" name="status" value={status} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant={row.status === status ? "default" : "ghost"}
-                          >
-                            {CAMPAIGN_TALENT_STATUS_LABELS[status]}
+                          <Button type="submit" size="sm">
+                            Activar contrato
                           </Button>
                         </form>
-                      ))}
+                      ) : row.status !== CAMPAIGN_TALENT_STATUS.REJECTED ? (
+                        <p className="text-xs text-muted-foreground">
+                          {activate.error}
+                        </p>
+                      ) : null}
                     </div>
-                    <PricesForm talentId={row.id} />
-                    {row.status === CAMPAIGN_TALENT_STATUS.APPROVED ||
-                    row.status === CAMPAIGN_TALENT_STATUS.PROPOSED ? (
-                      <form
-                        action={activateCampaignTalent}
-                        className="flex flex-wrap items-end gap-2"
-                      >
-                        <input type="hidden" name="talentId" value={row.id} />
-                        <div className="grid gap-1">
-                          <Label className="text-xs">Piezas</Label>
-                          <Input
-                            name="deliverableCount"
-                            defaultValue="1"
-                            className="w-20"
-                          />
-                        </div>
-                        <Button type="submit" size="sm">
-                          Activar en campaña
-                        </Button>
-                      </form>
-                    ) : null}
-                  </div>
-                ) : null}
-              </li>
-            ))}
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

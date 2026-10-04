@@ -87,7 +87,8 @@ export default async function CreatorsPage({
           <CardHeader>
             <CardTitle>Añadir al roster</CardTitle>
             <CardDescription>
-              Sin contrato ni precio. Eso se asigna después, en la campaña.
+              Sin contrato. La tarifa es opcional: los que aún no la tienen
+              también entran. La venta al cliente se pone en la campaña.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -124,6 +125,18 @@ export default async function CreatorsPage({
             defaultValue={filters.tipo}
             emptyLabel="Todos"
           />
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Tarifa
+          <select
+            name="tarifa"
+            defaultValue={filters.tarifa ?? ""}
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          >
+            <option value="">Todas</option>
+            <option value="con">Con tarifa</option>
+            <option value="sin">Sin tarifa</option>
+          </select>
         </label>
         <Button type="submit" size="sm">
           Buscar
@@ -193,6 +206,15 @@ export default async function CreatorsPage({
                             {creator.displayName}
                           </p>
                         ) : null}
+                        {creator.rateLabel ? (
+                          <p className="text-xs text-muted-foreground">
+                            Tarifa {creator.rateLabel}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Sin tarifa
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm">
                         {labelForSlug(catalog.countries, creator.country) ?? "—"}
