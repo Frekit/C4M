@@ -66,9 +66,29 @@ model Creator {
   contracts        Contract[]
   payees           PayeeProfile[]
   campaignTalents  CampaignTalent[]
+  costQuotes       CreatorCostQuote[]
 
   @@index([country])
   @@index([profileType])
+}
+
+// Precio de coste de un paquete de Instagram: 1 reel, 3 reels, 1 story, 1 carrusel.
+// Es lo que le pagamos al creador, no la venta al cliente.
+model CreatorCostQuote {
+  id        String   @id @default(cuid())
+  creatorId String
+  platform  String   @default("INSTAGRAM")
+  format    String
+  quantity  Int
+  costMinor Int
+  currency  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, platform, format, quantity])
+  @@index([creatorId])
 }
 
 // Listas cerradas del roster. El Excel se mapea por slug o alias

@@ -40,8 +40,10 @@ import {
   settlementPolicyOf,
 } from "@/lib/domain/settlement";
 import { formatDate } from "@/lib/format";
+import { sortCostQuotes } from "@/lib/domain/creator-cost-quote";
 import { formatMoney, fromMinorUnits } from "@/lib/money";
 
+import { CreatorCostQuotes } from "./cost-quote-form";
 import { CreatorRateForm } from "./rate-form";
 
 export const metadata: Metadata = {
@@ -68,6 +70,7 @@ export default async function CreatorPage({
         orderBy: { createdAt: "asc" },
       },
       payees: { orderBy: { createdAt: "desc" }, take: 1 },
+      costQuotes: true,
     },
   });
 
@@ -216,11 +219,10 @@ export default async function CreatorPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Tarifa del creador</CardTitle>
+          <CardTitle>Tarifa suelta</CardTitle>
           <CardDescription>
-            Lo que le pagamos por contenido, en su moneda. Se puede poner aquí
-            o al dar de alta el perfil. La venta al cliente va en la línea de
-            la campaña, no en esta ficha.
+            Un importe sin formato, por si todavía no sabes si es reel, story
+            o carrusel. La venta al cliente va en la campaña.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -242,6 +244,24 @@ export default async function CreatorPage({
           ) : (
             <p className="text-sm">{rateLabel ?? "Sin tarifa"}</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Coste por formato</CardTitle>
+          <CardDescription>
+            Solo precio de coste, en Instagram. Un reel no cuesta lo mismo que
+            tres reels, ni que una story o un carrusel. Cada fila es el coste
+            del paquete entero, no la venta al cliente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreatorCostQuotes
+            creatorId={creator.id}
+            canWrite={canSetRate}
+            quotes={sortCostQuotes(creator.costQuotes)}
+          />
         </CardContent>
       </Card>
 

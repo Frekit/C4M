@@ -9,6 +9,11 @@ import {
   otherCampaigns,
   type CreatorCampaignPresence,
 } from "@/lib/domain/campaign-talent";
+import {
+  costPackageLabel,
+  isIgCostFormat,
+  sortCostQuotes,
+} from "@/lib/domain/creator-cost-quote";
 import { formatMoney } from "@/lib/money";
 
 export type CampaignRosterRow = {
@@ -30,6 +35,7 @@ export type CampaignRosterRow = {
     instagramUrl: string;
     defaultCostMinor: number | null;
     defaultCostCurrency: string | null;
+    costQuotes: { label: string; amountLabel: string }[];
   };
   others: CreatorCampaignPresence[];
 };
@@ -58,6 +64,14 @@ export async function loadCampaignRoster(
           instagramUrl: true,
           defaultCostMinor: true,
           defaultCostCurrency: true,
+          costQuotes: {
+            select: {
+              format: true,
+              quantity: true,
+              costMinor: true,
+              currency: true,
+            },
+          },
           campaignTalents: {
             select: {
               campaignId: true,
@@ -127,6 +141,15 @@ export async function loadCampaignRoster(
         instagramUrl: row.creator.instagramUrl,
         defaultCostMinor: row.creator.defaultCostMinor,
         defaultCostCurrency: row.creator.defaultCostCurrency,
+        costQuotes: sortCostQuotes(row.creator.costQuotes).flatMap((quote) => {
+          if (!isIgCostFormat(quote.format)) return [];
+          return [
+            {
+              label: costPackageLabel(quote.format, quote.quantity),
+              amountLabel: formatMoney(quote.costMinor, quote.currency),
+            },
+          ];
+        }),
       },
       others: otherCampaigns(presence, campaignId),
     };

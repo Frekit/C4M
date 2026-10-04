@@ -99,7 +99,9 @@ export default async function WorkflowPage() {
         <CardContent className="grid gap-2 text-sm">
           <p>
             El Excel trae Instagram, país, tipo y, si la tienes, la tarifa
-            del creador. La venta y las piezas son de la línea en campaña. El
+            del creador. En la ficha, el coste de Instagram se parte por
+            formato: 1 reel, 3 reels, story o carrusel. La venta y las piezas
+            son de la línea en campaña. El
             encargo puede ser always-on, un sobre de 50K o un paquete; la
             oleada no cierra la campaña. Si el cliente no aprueba perfiles, se
             activa en cuanto la línea está lista.

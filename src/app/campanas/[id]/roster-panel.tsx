@@ -317,6 +317,14 @@ export function CampaignRosterPanel({
                           .filter(Boolean)
                           .join(" · ") || "Sin país, tipo ni precios"}
                       </p>
+                      {row.creator.costQuotes.length > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Coste IG:{" "}
+                          {row.creator.costQuotes
+                            .map((quote) => `${quote.label} ${quote.amountLabel}`)
+                            .join(" · ")}
+                        </p>
+                      ) : null}
                     </div>
                     <Badge variant="outline">
                       {
