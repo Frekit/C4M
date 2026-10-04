@@ -69,15 +69,32 @@ function detectDelimiter(line: string) {
   return ",";
 }
 
-function splitCsvLine(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
+function splitCsvRecords(raw: string, delimiter: string): { cells: string[]; line: number }[] {
+  const records: { cells: string[]; line: number }[] = [];
+  let cells: string[] = [];
   let current = "";
   let quoted = false;
+  let line = 1;
+  let recordLine = 1;
 
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
+  const pushCell = () => {
+    cells.push(current.trim());
+    current = "";
+  };
+
+  const pushRecord = () => {
+    pushCell();
+    if (cells.some((cell) => cell.length > 0)) {
+      records.push({ cells, line: recordLine });
+    }
+    cells = [];
+    recordLine = line;
+  };
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
     if (char === '"') {
-      if (quoted && line[index + 1] === '"') {
+      if (quoted && raw[index + 1] === '"') {
         current += '"';
         index += 1;
       } else {
@@ -86,14 +103,29 @@ function splitCsvLine(line: string, delimiter: string): string[] {
       continue;
     }
     if (char === delimiter && !quoted) {
-      cells.push(current.trim());
-      current = "";
+      pushCell();
+      continue;
+    }
+    if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && raw[index + 1] === "\n") index += 1;
+      line += 1;
+      pushRecord();
+      continue;
+    }
+    if (char === "\n" || char === "\r") {
+      if (char === "\r" && raw[index + 1] === "\n") index += 1;
+      line += 1;
+      current += "\n";
       continue;
     }
     current += char;
   }
-  cells.push(current.trim());
-  return cells;
+
+  if (quoted || current.length > 0 || cells.length > 0) {
+    pushRecord();
+  }
+
+  return records;
 }
 
 function firstMatchingIndex(headers: string[], aliases: string[]) {
@@ -109,23 +141,25 @@ export function parseRosterTable(raw: string): {
   rows: RosterImportRow[];
   errors: RosterImportIssue[];
 } {
-  const lines = stripBom(raw)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const text = stripBom(raw);
+  const firstLine = text.split(/\r?\n/).find((line) => line.trim()) ?? "";
+  if (!firstLine) {
+    return { rows: [], errors: [{ line: 0, message: "El archivo está vacío." }] };
+  }
 
-  if (lines.length === 0) {
+  const delimiter = detectDelimiter(firstLine);
+  const records = splitCsvRecords(text, delimiter);
+
+  if (records.length === 0) {
     return { rows: [], errors: [{ line: 0, message: "El archivo está vacío." }] };
   }
 
   let headerIndex = 0;
   let headers: string[] = [];
-  let delimiter = ",";
   let instagramCol = -1;
 
-  for (let index = 0; index < Math.min(lines.length, 8); index += 1) {
-    delimiter = detectDelimiter(lines[index] ?? "");
-    headers = splitCsvLine(lines[index] ?? "", delimiter).map(normalizeHeader);
+  for (let index = 0; index < Math.min(records.length, 8); index += 1) {
+    headers = (records[index]?.cells ?? []).map(normalizeHeader);
     instagramCol = firstMatchingIndex(headers, INSTAGRAM_HEADERS);
     if (instagramCol >= 0) {
       headerIndex = index;
@@ -152,29 +186,28 @@ export function parseRosterTable(raw: string): {
   const errors: RosterImportIssue[] = [];
   const seen = new Set<string>();
 
-  for (let lineNumber = headerIndex + 2; lineNumber <= lines.length; lineNumber += 1) {
-    const cells = splitCsvLine(lines[lineNumber - 1] ?? "", delimiter);
-    const handle = extractInstagramHandle(cells[instagramCol] ?? "");
+  for (const record of records.slice(headerIndex + 1)) {
+    const handle = extractInstagramHandle(record.cells[instagramCol] ?? "");
     if (!handle) {
       errors.push({
-        line: lineNumber,
+        line: record.line,
         message: "Instagram no válido.",
       });
       continue;
     }
     if (seen.has(handle)) {
       errors.push({
-        line: lineNumber,
+        line: record.line,
         message: `@${handle} está repetido en el archivo.`,
       });
       continue;
     }
     seen.add(handle);
     rows.push({
-      line: lineNumber,
+      line: record.line,
       handle,
-      country: countryCol >= 0 ? cleanCell(cells[countryCol] ?? "") : null,
-      profileType: typeCol >= 0 ? cleanCell(cells[typeCol] ?? "") : null,
+      country: countryCol >= 0 ? cleanCell(record.cells[countryCol] ?? "") : null,
+      profileType: typeCol >= 0 ? cleanCell(record.cells[typeCol] ?? "") : null,
     });
   }
 

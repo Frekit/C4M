@@ -27,7 +27,12 @@ import type {
   CampaignProposalRow,
   CampaignRosterRow,
 } from "@/lib/domain/campaign-roster";
-import { canActivateLine, policyFromCampaign } from "@/lib/domain/campaign-desk";
+import {
+  canActivateLine,
+  canMarkClientDecision,
+  policyFromCampaign,
+  quoteIsFrozen,
+} from "@/lib/domain/campaign-desk";
 import {
   CAMPAIGN_APPROVAL,
   CAMPAIGN_TALENT_STATUS,
@@ -251,41 +256,9 @@ export function CampaignRosterPanel({
                     </p>
                   )}
 
-                  {canWrite && row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE ? (
+                  {canWrite && !quoteIsFrozen(row.status) ? (
                     <div className="grid gap-3">
                       <QuoteForm row={row} />
-                      {clientApproves ? (
-                        <div className="flex flex-wrap gap-2">
-                          {(
-                            [
-                              CAMPAIGN_TALENT_STATUS.APPROVED,
-                              CAMPAIGN_TALENT_STATUS.REJECTED,
-                            ] as const
-                          ).map((status) => (
-                            <form key={status} action={setCampaignTalentStatus}>
-                              <input
-                                type="hidden"
-                                name="talentId"
-                                value={row.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="status"
-                                value={status}
-                              />
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant={
-                                  row.status === status ? "default" : "ghost"
-                                }
-                              >
-                                {CAMPAIGN_TALENT_STATUS_LABELS[status]}
-                              </Button>
-                            </form>
-                          ))}
-                        </div>
-                      ) : null}
                       {row.status === CAMPAIGN_TALENT_STATUS.READY ||
                       row.status === CAMPAIGN_TALENT_STATUS.ROSTER ? (
                         <AddToProposalForm talentId={row.id} drafts={drafts} />
@@ -297,11 +270,66 @@ export function CampaignRosterPanel({
                             Activar contrato
                           </Button>
                         </form>
-                      ) : row.status !== CAMPAIGN_TALENT_STATUS.REJECTED ? (
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {activate.error}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {canWrite &&
+                  clientApproves &&
+                  canMarkClientDecision(approvalMode, row.status) ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          CAMPAIGN_TALENT_STATUS.APPROVED,
+                          CAMPAIGN_TALENT_STATUS.REJECTED,
+                        ] as const
+                      ).map((status) => (
+                        <form key={status} action={setCampaignTalentStatus}>
+                          <input
+                            type="hidden"
+                            name="talentId"
+                            value={row.id}
+                          />
+                          <input type="hidden" name="status" value={status} />
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant={
+                              row.status === status ? "default" : "ghost"
+                            }
+                          >
+                            {CAMPAIGN_TALENT_STATUS_LABELS[status]}
+                          </Button>
+                        </form>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {canWrite &&
+                  quoteIsFrozen(row.status) &&
+                  row.status !== CAMPAIGN_TALENT_STATUS.REJECTED ? (
+                    <div className="grid gap-3">
+                      {row.status === CAMPAIGN_TALENT_STATUS.APPROVED &&
+                      activate.ok ? (
+                        <form action={activateCampaignTalent}>
+                          <input type="hidden" name="talentId" value={row.id} />
+                          <Button type="submit" size="sm">
+                            Activar contrato
+                          </Button>
+                        </form>
+                      ) : !activate.ok &&
+                        row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE ? (
                         <p className="text-xs text-muted-foreground">
                           {activate.error}
                         </p>
                       ) : null}
+                      <p className="text-xs text-muted-foreground">
+                        Cotización fijada. Para cambiarla, abre otra línea.
+                      </p>
                     </div>
                   ) : null}
                 </li>

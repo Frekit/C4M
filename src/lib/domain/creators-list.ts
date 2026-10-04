@@ -7,6 +7,11 @@ import {
 } from "@/lib/domain/enums";
 import { parsePage, queryHref } from "@/lib/domain/paging";
 import { formatMoney } from "@/lib/money";
+import {
+  loadRosterCatalog,
+  remapCreatorCatalogValues,
+  storedValuesForFilter,
+} from "@/lib/domain/roster-catalog";
 
 export type CreatorListFilters = {
   q?: string;
@@ -35,6 +40,8 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
   const country = filters.pais?.trim() ?? "";
   const profileType = filters.tipo?.trim() ?? "";
   const tarifa = filters.tarifa?.trim() ?? "";
+  const catalog = await loadRosterCatalog();
+  await remapCreatorCatalogValues(catalog);
   const where = {
     ...(query
       ? {
@@ -46,8 +53,16 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
           ],
         }
       : {}),
-    ...(country ? { country } : {}),
-    ...(profileType ? { profileType } : {}),
+    ...(country
+      ? { country: { in: storedValuesForFilter(catalog.countries, country) } }
+      : {}),
+    ...(profileType
+      ? {
+          profileType: {
+            in: storedValuesForFilter(catalog.profileTypes, profileType),
+          },
+        }
+      : {}),
     ...(tarifa === "con" ? { defaultCostMinor: { not: null } } : {}),
     ...(tarifa === "sin" ? { defaultCostMinor: null } : {}),
   };

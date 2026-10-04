@@ -3,9 +3,13 @@ import { test } from "node:test";
 
 import {
   canActivateLine,
+  canMarkClientDecision,
   canSendLineInWave,
   committedSaleCents,
+  isClientDecisionStatus,
   lineQuoteComplete,
+  quoteIsFrozen,
+  requireBudgetSaleCents,
   statusAfterSavingQuote,
 } from "@/lib/domain/campaign-desk";
 import {
@@ -98,4 +102,41 @@ test("a una oleada solo entra una línea lista", () => {
     canSendLineInWave({ ...ready, deliverableCount: null }),
     false
   );
+});
+
+test("un presupuesto sin importe no se puede activar", () => {
+  const policy = {
+    approvalMode: CAMPAIGN_APPROVAL.INTERNAL,
+    engagementKind: CAMPAIGN_ENGAGEMENT.BUDGET,
+    budgetSaleCents: null,
+  };
+  assert.equal(canActivateLine(ready, policy, []).ok, false);
+  assert.equal(requireBudgetSaleCents(CAMPAIGN_ENGAGEMENT.BUDGET, "").ok, false);
+  assert.equal(requireBudgetSaleCents(CAMPAIGN_ENGAGEMENT.BUDGET, "50").ok, true);
+});
+
+test("la cotización se congela al enviar, aprobar o activar", () => {
+  assert.equal(quoteIsFrozen(CAMPAIGN_TALENT_STATUS.READY), false);
+  assert.equal(quoteIsFrozen(CAMPAIGN_TALENT_STATUS.PROPOSED), true);
+  assert.equal(quoteIsFrozen(CAMPAIGN_TALENT_STATUS.APPROVED), true);
+  assert.equal(quoteIsFrozen(CAMPAIGN_TALENT_STATUS.ACTIVE), true);
+});
+
+test("el ok de cliente solo vale sobre una oleada enviada", () => {
+  assert.equal(
+    canMarkClientDecision(
+      CAMPAIGN_APPROVAL.CLIENT_APPROVES,
+      CAMPAIGN_TALENT_STATUS.READY
+    ),
+    false
+  );
+  assert.equal(
+    canMarkClientDecision(
+      CAMPAIGN_APPROVAL.CLIENT_APPROVES,
+      CAMPAIGN_TALENT_STATUS.PROPOSED
+    ),
+    true
+  );
+  assert.equal(isClientDecisionStatus(CAMPAIGN_TALENT_STATUS.ACTIVE), false);
+  assert.equal(isClientDecisionStatus(CAMPAIGN_TALENT_STATUS.APPROVED), true);
 });

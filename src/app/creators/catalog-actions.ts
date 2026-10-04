@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
   ROSTER_OPTION_KIND,
+  collidingCatalogKey,
+  loadRosterCatalogAdmin,
   normalizeCatalogKey,
   type RosterOptionKind,
 } from "@/lib/domain/roster-catalog";
@@ -55,6 +57,18 @@ export async function createRosterOption(
   }
 
   const aliases = parseAliasList(formData.get("aliases"));
+  const catalog = await loadRosterCatalogAdmin();
+  const peers =
+    kind === ROSTER_OPTION_KIND.COUNTRY
+      ? catalog.countries
+      : catalog.profileTypes;
+  const clash = collidingCatalogKey(peers, [slug, label, ...aliases]);
+  if (clash) {
+    return {
+      ok: false,
+      error: `«${clash}» ya identifica otra opción del catálogo.`,
+    };
+  }
   const last = await prisma.rosterOption.findFirst({
     where: { kind },
     orderBy: { sortOrder: "desc" },
@@ -107,6 +121,19 @@ export async function addRosterOptionAliases(
     }
   } catch {
     current = [];
+  }
+
+  const catalog = await loadRosterCatalogAdmin();
+  const peers =
+    option.kind === ROSTER_OPTION_KIND.COUNTRY
+      ? catalog.countries
+      : catalog.profileTypes;
+  const clash = collidingCatalogKey(peers, extra, option.id);
+  if (clash) {
+    return {
+      ok: false,
+      error: `«${clash}» ya identifica otra opción del catálogo.`,
+    };
   }
 
   const aliases = [...new Set([...current, ...extra])];

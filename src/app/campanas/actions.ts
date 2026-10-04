@@ -14,8 +14,8 @@ import {
   SIGNATURE_FILTER_BATCH,
 } from "@/lib/domain/enums";
 import {
-  parseBudgetUsd,
   parsePaymentTermDays,
+  requireBudgetSaleCents,
 } from "@/lib/domain/campaign-desk";
 import { processMailQueue } from "@/lib/domain/mail-queue";
 import { queueUnsignedContracts } from "@/lib/domain/signature-send";
@@ -126,6 +126,10 @@ export async function createCampaign(
   const engagementKind =
     data.engagementKind || CAMPAIGN_ENGAGEMENT.ALWAYS_ON;
   const approvalMode = data.approvalMode || CAMPAIGN_APPROVAL.INTERNAL;
+  const budget = requireBudgetSaleCents(engagementKind, data.budgetUsd);
+  if (!budget.ok) {
+    return { ok: false, fieldErrors: { budgetUsd: budget.error } };
+  }
   const campaign = await prisma.campaign.create({
     data: {
       name: data.name,
@@ -135,10 +139,7 @@ export async function createCampaign(
       endsAt: data.endsAt,
       engagementKind,
       approvalMode,
-      budgetSaleCents:
-        engagementKind === CAMPAIGN_ENGAGEMENT.BUDGET
-          ? parseBudgetUsd(data.budgetUsd)
-          : null,
+      budgetSaleCents: budget.cents,
       defaultPaymentTermDays: parsePaymentTermDays(data.defaultPaymentTermDays),
       createdBy: user.email,
     },
@@ -178,15 +179,20 @@ export async function updateCampaignPolicy(
     ? String(formData.get("approvalMode"))
     : CAMPAIGN_APPROVAL.INTERNAL;
 
+  const budget = requireBudgetSaleCents(
+    engagementKind,
+    String(formData.get("budgetUsd") ?? "")
+  );
+  if (!budget.ok) {
+    return { ok: false, fieldErrors: { budgetUsd: budget.error } };
+  }
+
   await prisma.campaign.update({
     where: { id: campaignId },
     data: {
       engagementKind,
       approvalMode,
-      budgetSaleCents:
-        engagementKind === CAMPAIGN_ENGAGEMENT.BUDGET
-          ? parseBudgetUsd(String(formData.get("budgetUsd") ?? ""))
-          : null,
+      budgetSaleCents: budget.cents,
       defaultPaymentTermDays: parsePaymentTermDays(
         String(formData.get("defaultPaymentTermDays") ?? "")
       ),

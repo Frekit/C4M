@@ -137,6 +137,12 @@ export function canActivateLine(
   }
 
   if (policy.engagementKind === CAMPAIGN_ENGAGEMENT.BUDGET) {
+    if (policy.budgetSaleCents == null || policy.budgetSaleCents <= 0) {
+      return {
+        ok: false,
+        error: "Esta campaña de presupuesto no tiene tope. Pon el importe.",
+      };
+    }
     const others = siblings.filter((item) => item !== line);
     const remaining = budgetRemainingCents(policy, others);
     if (remaining != null && lineSaleCents(line) > remaining) {
@@ -167,6 +173,37 @@ export function canMarkClientDecision(
     status === CAMPAIGN_TALENT_STATUS.PROPOSED ||
     status === CAMPAIGN_TALENT_STATUS.APPROVED
   );
+}
+
+const FROZEN_QUOTE_STATUSES = new Set<string>([
+  CAMPAIGN_TALENT_STATUS.PROPOSED,
+  CAMPAIGN_TALENT_STATUS.APPROVED,
+  CAMPAIGN_TALENT_STATUS.ACTIVE,
+]);
+
+export function quoteIsFrozen(status: string) {
+  return FROZEN_QUOTE_STATUSES.has(status);
+}
+
+export function isClientDecisionStatus(status: string) {
+  return (
+    status === CAMPAIGN_TALENT_STATUS.APPROVED ||
+    status === CAMPAIGN_TALENT_STATUS.REJECTED
+  );
+}
+
+export function requireBudgetSaleCents(
+  engagementKind: string,
+  raw: string | null | undefined
+): { ok: true; cents: number | null } | { ok: false; error: string } {
+  if (engagementKind !== CAMPAIGN_ENGAGEMENT.BUDGET) {
+    return { ok: true, cents: null };
+  }
+  const cents = parseBudgetUsd(raw);
+  if (cents == null) {
+    return { ok: false, error: "Pon el presupuesto en USD." };
+  }
+  return { ok: true, cents };
 }
 
 export function parseBudgetUsd(raw: string | null | undefined) {

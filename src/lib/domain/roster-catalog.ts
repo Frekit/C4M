@@ -45,14 +45,46 @@ function parseAliases(raw: string): string[] {
   }
 }
 
+export function optionKeys(option: Pick<RosterCatalogOption, "slug" | "label" | "aliases">) {
+  return [
+    ...new Set(
+      [option.slug, option.label, ...option.aliases]
+        .map((item) => normalizeCatalogKey(item))
+        .filter(Boolean)
+    ),
+  ];
+}
+
 export function optionMatches(option: RosterCatalogOption, raw: string) {
   const key = normalizeCatalogKey(raw);
   if (!key) return false;
-  return (
-    option.slug === key ||
-    normalizeCatalogKey(option.label) === key ||
-    option.aliases.includes(key)
+  return optionKeys(option).includes(key);
+}
+
+export function collidingCatalogKey(
+  options: Array<Pick<RosterCatalogOption, "id" | "slug" | "label" | "aliases">>,
+  keys: string[],
+  exceptId?: string
+) {
+  const wanted = new Set(
+    keys.map((item) => normalizeCatalogKey(item)).filter(Boolean)
   );
+  for (const option of options) {
+    if (exceptId && option.id === exceptId) continue;
+    for (const key of optionKeys(option)) {
+      if (wanted.has(key)) return key;
+    }
+  }
+  return null;
+}
+
+export function storedValuesForFilter(
+  options: RosterCatalogOption[],
+  slug: string
+) {
+  const option = options.find((item) => item.slug === slug);
+  if (!option) return [slug];
+  return [...new Set([option.slug, option.label, ...option.aliases, slug])];
 }
 
 export function resolveCatalogOption(
@@ -212,16 +244,16 @@ export function resolveRosterFields(
   };
 }
 
-export async function remapCreatorCatalogValues() {
-  const catalog = await loadRosterCatalog();
+export async function remapCreatorCatalogValues(catalog?: RosterCatalog) {
+  const resolved = catalog ?? (await loadRosterCatalog());
   const creators = await prisma.creator.findMany({
     select: { id: true, country: true, profileType: true },
   });
 
   for (const creator of creators) {
-    const country = resolveCatalogOption(catalog.countries, creator.country);
+    const country = resolveCatalogOption(resolved.countries, creator.country);
     const profileType = resolveCatalogOption(
-      catalog.profileTypes,
+      resolved.profileTypes,
       creator.profileType
     );
     const nextCountry =

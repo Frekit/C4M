@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isSupportedCurrency } from "@/lib/currencies";
+import { parseBudgetUsd } from "@/lib/domain/campaign-desk";
 import {
   CAMPAIGN_APPROVAL,
   CAMPAIGN_ENGAGEMENT,
@@ -366,6 +367,15 @@ export const campaignSchema = z.object({
     .optional()
     .transform(fromFormString)
     .pipe(z.string().trim().max(8)),
+}).superRefine((data, ctx) => {
+  if (data.engagementKind !== CAMPAIGN_ENGAGEMENT.BUDGET) return;
+  if (parseBudgetUsd(data.budgetUsd) == null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["budgetUsd"],
+      message: "Pon el presupuesto en USD.",
+    });
+  }
 });
 
 export const clientUpdateSchema = z.object({

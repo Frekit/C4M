@@ -4,9 +4,11 @@ import { test } from "node:test";
 import { mergeCreatorPresence } from "@/lib/domain/campaign-talent";
 import { CAMPAIGN_TALENT_STATUS } from "@/lib/domain/enums";
 import {
+  collidingCatalogKey,
   normalizeCatalogKey,
   resolveCatalogOption,
   resolveRosterFields,
+  storedValuesForFilter,
   type RosterCatalogOption,
 } from "@/lib/domain/roster-catalog";
 import { parseRosterTable } from "@/lib/domain/roster-import";
@@ -76,6 +78,26 @@ test("el catálogo cierra país y tipo aunque el Excel lo escriba distinto", () 
     { country: "Wakanda", profileType: "Micro" }
   );
   assert.equal(unknown.ok, false);
+});
+
+test("una celda entrecomillada en varias líneas sigue siendo una fila", () => {
+  const parsed = parseRosterTable(`instagram,pais,tipo
+@ana.garcia,"España
+peninsular",Micro
+`);
+  assert.equal(parsed.errors.length, 0);
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0]?.handle, "ana.garcia");
+  assert.equal(parsed.rows[0]?.country, "España\npeninsular");
+  assert.equal(parsed.rows[0]?.profileType, "Micro");
+});
+
+test("un alias no puede pisar otra opción del mismo tipo", () => {
+  const spain = option("espana", "España", ["es", "spain"]);
+  const mexico = option("mexico", "México", ["mx"]);
+  assert.equal(collidingCatalogKey([spain, mexico], ["es"]), "es");
+  assert.equal(collidingCatalogKey([spain, mexico], ["col"], spain.id), null);
+  assert.ok(storedValuesForFilter([spain], "espana").includes("España"));
 });
 
 test("la visibilidad junta roster y campañas con piezas", () => {

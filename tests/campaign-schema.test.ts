@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { SETTLEMENT_MODE } from "@/lib/domain/enums";
+import { CAMPAIGN_ENGAGEMENT, SETTLEMENT_MODE } from "@/lib/domain/enums";
 import { campaignSchema } from "@/lib/domain/validation";
 
 const manyChatId = "client_manychat_001";
@@ -61,4 +61,23 @@ test("nuevo cliente con liquidación pack es válido", () => {
     assert.equal(result.data.newRequiresPlatformSubmit, false);
     assert.equal(result.data.startsAt?.toISOString(), "2026-03-01T00:00:00.000Z");
   }
+});
+
+test("una campaña de presupuesto exige el importe", () => {
+  const base = {
+    name: "Q4 50K",
+    clientId: manyChatId,
+    newClientName: "",
+    newSettlementMode: "",
+    newRequiresPlatformSubmit: null,
+    description: "",
+    startsAt: "",
+    endsAt: "",
+    engagementKind: CAMPAIGN_ENGAGEMENT.BUDGET,
+  };
+  const missing = campaignSchema.safeParse({ ...base, budgetUsd: "" });
+  assert.equal(missing.success, false);
+
+  const ok = campaignSchema.safeParse({ ...base, budgetUsd: "50000" });
+  assert.equal(ok.success, true);
 });

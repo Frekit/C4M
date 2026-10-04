@@ -2,18 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 
-import { upsertRosterCreator } from "@/app/creators/roster-actions";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
   OPEN_TALENT_STATUSES,
   canActivateLine,
+  canMarkClientDecision,
   canSendLineInWave,
+  isClientDecisionStatus,
   lineQuoteComplete,
   policyFromCampaign,
+  quoteIsFrozen,
   statusAfterSavingQuote,
 } from "@/lib/domain/campaign-desk";
+import { upsertRosterCreator } from "@/lib/domain/roster-upsert";
 import { campaignForClient } from "@/lib/domain/client-campaign";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
 import { createContract, markParentRenewed } from "@/lib/domain/contracts";
@@ -24,7 +27,6 @@ import {
   CONTRACT_STATUS,
   PROPOSAL_STATUS,
 } from "@/lib/domain/enums";
-import { isCampaignTalentStatus } from "@/lib/domain/campaign-talent";
 import { resolveFxRate } from "@/lib/domain/fx";
 import { isSupportedCurrency } from "@/lib/currencies";
 import { parseAmountToMinorUnits } from "@/lib/money";
@@ -114,8 +116,8 @@ export async function setCampaignTalentStatus(formData: FormData) {
   const id = String(formData.get("talentId") ?? "");
   const status = String(formData.get("status") ?? "");
 
-  if (!id || !isCampaignTalentStatus(status)) {
-    throw new Error("Estado no válido.");
+  if (!id || !isClientDecisionStatus(status)) {
+    throw new Error("Solo se puede aprobar o rechazar desde aquí.");
   }
 
   const current = await prisma.campaignTalent.findUnique({
@@ -125,12 +127,11 @@ export async function setCampaignTalentStatus(formData: FormData) {
   if (!current) throw new Error("Esa línea no existe.");
 
   const policy = policyFromCampaign(current.campaign);
-  if (
-    (status === CAMPAIGN_TALENT_STATUS.APPROVED ||
-      status === CAMPAIGN_TALENT_STATUS.REJECTED) &&
-    policy.approvalMode !== CAMPAIGN_APPROVAL.CLIENT_APPROVES
-  ) {
+  if (policy.approvalMode !== CAMPAIGN_APPROVAL.CLIENT_APPROVES) {
     throw new Error("Esta campaña es de uso interno: no hay ok de cliente.");
+  }
+  if (!canMarkClientDecision(policy.approvalMode, current.status)) {
+    throw new Error("Primero envía el perfil en una oleada.");
   }
 
   const row = await prisma.campaignTalent.update({
@@ -192,6 +193,12 @@ export async function saveCampaignTalentPrices(
     include: { creator: true },
   });
   if (!existing) return { ok: false, error: "Esa línea no existe." };
+  if (quoteIsFrozen(existing.status)) {
+    return {
+      ok: false,
+      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
+    };
+  }
 
   const quote = {
     status: existing.status,
@@ -208,10 +215,7 @@ export async function saveCampaignTalentPrices(
       costMinorPerContent,
       costCurrency: quote.costCurrency,
       deliverableCount,
-      status:
-        existing.status === CAMPAIGN_TALENT_STATUS.ACTIVE
-          ? existing.status
-          : statusAfterSavingQuote(lineQuoteComplete(quote)),
+      status: statusAfterSavingQuote(lineQuoteComplete(quote)),
     },
   });
 
@@ -244,7 +248,7 @@ export async function activateCampaignTalent(formData: FormData) {
   const user = await requirePermission("campaigns:manage", "/campanas");
   const id = String(formData.get("talentId") ?? "");
 
-  const row = await prisma.campaignTalent.findUnique({
+  const preview = await prisma.campaignTalent.findUnique({
     where: { id },
     include: {
       campaign: true,
@@ -252,97 +256,126 @@ export async function activateCampaignTalent(formData: FormData) {
     },
   });
 
-  if (!row) throw new Error("Ese perfil no está en la campaña.");
-  if (!row.campaign.clientId) {
+  if (!preview) throw new Error("Ese perfil no está en la campaña.");
+  if (preview.status === CAMPAIGN_TALENT_STATUS.ACTIVE) {
+    return;
+  }
+  if (!preview.campaign.clientId) {
     throw new Error("La campaña no tiene cliente. Asígnalo antes de activar.");
   }
 
-  const siblings = await prisma.campaignTalent.findMany({
-    where: { campaignId: row.campaignId, id: { not: row.id } },
-  });
-  const policy = policyFromCampaign(row.campaign);
-  const gate = canActivateLine(row, policy, siblings);
-  if (!gate.ok) throw new Error(gate.error);
-
-  const deliverableCount = row.deliverableCount ?? 1;
-  const matched = await campaignForClient(row.campaignId, row.campaign.clientId);
+  const matched = await campaignForClient(
+    preview.campaignId,
+    preview.campaign.clientId
+  );
   if (!matched.ok) throw new Error(matched.error);
 
-  const fx = await resolveFxRate(row.costCurrency ?? "EUR");
+  const fx = await resolveFxRate(preview.costCurrency ?? "EUR");
   if (fx.unitsPerUsd <= 0) {
-    throw new Error(`No hay tipo de cambio para ${row.costCurrency}.`);
+    throw new Error(`No hay tipo de cambio para ${preview.costCurrency}.`);
   }
 
-  const parent = await prisma.contract.findFirst({
-    where: {
-      creatorId: row.creatorId,
-      clientId: row.campaign.clientId,
-      status: { not: CONTRACT_STATUS.CANCELLED },
-    },
-    orderBy: { createdAt: "desc" },
+  const activated = await prisma.$transaction(async (tx) => {
+    const row = await tx.campaignTalent.findUnique({
+      where: { id },
+      include: { campaign: true, creator: true },
+    });
+    if (!row) throw new Error("Ese perfil no está en la campaña.");
+    if (row.status === CAMPAIGN_TALENT_STATUS.ACTIVE) {
+      return null;
+    }
+    if (!row.campaign.clientId) {
+      throw new Error("La campaña no tiene cliente. Asígnalo antes de activar.");
+    }
+
+    const siblings = await tx.campaignTalent.findMany({
+      where: { campaignId: row.campaignId, id: { not: row.id } },
+    });
+    const policy = policyFromCampaign(row.campaign);
+    const gate = canActivateLine(row, policy, siblings);
+    if (!gate.ok) throw new Error(gate.error);
+
+    const claimed = await tx.campaignTalent.updateMany({
+      where: { id, status: row.status },
+      data: { status: CAMPAIGN_TALENT_STATUS.ACTIVE },
+    });
+    if (claimed.count !== 1) {
+      throw new Error("Esa línea ya no se puede activar.");
+    }
+
+    const parent = await tx.contract.findFirst({
+      where: {
+        creatorId: row.creatorId,
+        clientId: row.campaign.clientId,
+        status: { not: CONTRACT_STATUS.CANCELLED },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const sameCost =
+      parent &&
+      parent.costMinorPerContent === row.costMinorPerContent &&
+      parent.costCurrency === row.costCurrency &&
+      parent.salePriceCentsPerContent === row.salePriceCentsPerContent;
+
+    const kind = !parent
+      ? CONTRACT_KIND.ORIGINAL
+      : sameCost
+        ? CONTRACT_KIND.ANNEX
+        : CONTRACT_KIND.RENEWAL;
+
+    const contract = await createContract(
+      {
+        creatorId: row.creatorId,
+        kind,
+        parent,
+        clientId: row.campaign.clientId,
+        campaignId: matched.campaignId,
+        economics: {
+          deliverableCount: row.deliverableCount ?? 1,
+          salePriceCentsPerContent: row.salePriceCentsPerContent ?? 0,
+          costCurrency: row.costCurrency ?? "EUR",
+          costMinorPerContent: row.costMinorPerContent ?? 0,
+          costUsdCentsPerContent: costPerContentUsdCents(
+            row.costMinorPerContent ?? 0,
+            row.costCurrency ?? "EUR",
+            fx.unitsPerUsd
+          ),
+          fxUnitsPerUsd: fx.unitsPerUsd,
+          fxRateAt: fx.rateAt,
+          fxSource: fx.source,
+          paymentTermDays: policy.defaultPaymentTermDays,
+        },
+        createdBy: user.email,
+      },
+      tx
+    );
+
+    if (parent) {
+      await markParentRenewed(parent.id, kind, tx);
+    }
+
+    return { row, contract, kind };
   });
 
-  const sameCost =
-    parent &&
-    parent.costMinorPerContent === row.costMinorPerContent &&
-    parent.costCurrency === row.costCurrency &&
-    parent.salePriceCentsPerContent === row.salePriceCentsPerContent;
-
-  const kind = !parent
-    ? CONTRACT_KIND.ORIGINAL
-    : sameCost
-      ? CONTRACT_KIND.ANNEX
-      : CONTRACT_KIND.RENEWAL;
-
-  const contract = await createContract({
-    creatorId: row.creatorId,
-    kind,
-    parent,
-    clientId: row.campaign.clientId,
-    campaignId: matched.campaignId,
-    economics: {
-      deliverableCount,
-      salePriceCentsPerContent: row.salePriceCentsPerContent ?? 0,
-      costCurrency: row.costCurrency ?? "EUR",
-      costMinorPerContent: row.costMinorPerContent ?? 0,
-      costUsdCentsPerContent: costPerContentUsdCents(
-        row.costMinorPerContent ?? 0,
-        row.costCurrency ?? "EUR",
-        fx.unitsPerUsd
-      ),
-      fxUnitsPerUsd: fx.unitsPerUsd,
-      fxRateAt: fx.rateAt,
-      fxSource: fx.source,
-      paymentTermDays: policy.defaultPaymentTermDays,
-    },
-    createdBy: user.email,
-  });
-
-  if (parent) {
-    await markParentRenewed(parent.id, kind);
-  }
-
-  await prisma.campaignTalent.update({
-    where: { id },
-    data: { status: CAMPAIGN_TALENT_STATUS.ACTIVE },
-  });
+  if (!activated) return;
 
   await recordAudit({
     entityType: "Contract",
-    entityId: contract.id,
+    entityId: activated.contract.id,
     action: "CREATED",
     actor: user,
     metadata: {
       from: "campaign-talent",
-      kind,
-      campaignId: row.campaignId,
-      handle: row.creator.handle,
+      kind: activated.kind,
+      campaignId: activated.row.campaignId,
+      handle: activated.row.creator.handle,
     },
   });
 
   revalidatePath("/contratos");
   revalidatePath("/contenidos");
-  revalidateCampaign(row.campaignId, row.creatorId);
+  revalidateCampaign(activated.row.campaignId, activated.row.creatorId);
 }
 
 export async function createCampaignProposal(
@@ -395,6 +428,14 @@ export async function addTalentToProposal(formData: FormData) {
   if (!canSendLineInWave(talent)) {
     throw new Error("La línea tiene que estar lista (piezas y precios).");
   }
+  if (talent.proposalId && talent.proposalId !== proposalId) {
+    const currentWave = await prisma.campaignProposal.findUnique({
+      where: { id: talent.proposalId },
+    });
+    if (currentWave && currentWave.status !== PROPOSAL_STATUS.DRAFT) {
+      throw new Error("Ese perfil ya está en una oleada enviada.");
+    }
+  }
 
   await prisma.campaignTalent.update({
     where: { id: talentId },
@@ -426,6 +467,10 @@ export async function sendCampaignProposal(formData: FormData) {
   if (proposal.talents.length === 0) {
     throw new Error("Mete al menos un perfil listo.");
   }
+  const incomplete = proposal.talents.find((talent) => !canSendLineInWave(talent));
+  if (incomplete) {
+    throw new Error("Hay perfiles sin piezas o precios. Complétalos antes de enviar.");
+  }
 
   const policy = policyFromCampaign(proposal.campaign);
   if (policy.approvalMode !== CAMPAIGN_APPROVAL.CLIENT_APPROVES) {
@@ -438,7 +483,12 @@ export async function sendCampaignProposal(formData: FormData) {
       data: { status: PROPOSAL_STATUS.SENT, sentAt: new Date() },
     }),
     prisma.campaignTalent.updateMany({
-      where: { proposalId },
+      where: {
+        proposalId,
+        status: {
+          in: [CAMPAIGN_TALENT_STATUS.READY, CAMPAIGN_TALENT_STATUS.ROSTER],
+        },
+      },
       data: { status: CAMPAIGN_TALENT_STATUS.PROPOSED },
     }),
   ]);

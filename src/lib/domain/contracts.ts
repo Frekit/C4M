@@ -5,6 +5,8 @@ import type {
   SignatureRequest,
 } from "@prisma/client";
 
+import type { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/db";
 import {
   CONTRACT_KIND,
@@ -130,25 +132,33 @@ export type ContractEconomicsInput = {
   notes?: string | null;
 };
 
-export async function createContract(input: {
-  creatorId: string;
-  kind: ContractKind;
-  parent?: Contract | null;
-  economics: ContractEconomicsInput;
-  createdBy: string;
-  clientId?: string | null;
-  campaignId?: string | null;
-}) {
-  const code = await nextContractCode({
-    kind: input.kind,
-    parentCode: input.parent?.code ?? null,
-  });
+type Db = typeof prisma | Prisma.TransactionClient;
+
+export async function createContract(
+  input: {
+    creatorId: string;
+    kind: ContractKind;
+    parent?: Contract | null;
+    economics: ContractEconomicsInput;
+    createdBy: string;
+    clientId?: string | null;
+    campaignId?: string | null;
+  },
+  db: Db = prisma
+) {
+  const code = await nextContractCode(
+    {
+      kind: input.kind,
+      parentCode: input.parent?.code ?? null,
+    },
+    db
+  );
 
   const rootId = input.parent
     ? (input.parent.rootId ?? input.parent.id)
     : null;
 
-  return prisma.contract.create({
+  return db.contract.create({
     data: {
       code,
       creatorId: input.creatorId,
@@ -248,17 +258,21 @@ export async function syncContractCompletion(contractId: string) {
 }
 
 // Al nacer un anexo o una renovación, el contrato padre queda marcado.
-export async function markParentRenewed(parentId: string, kind: ContractKind) {
+export async function markParentRenewed(
+  parentId: string,
+  kind: ContractKind,
+  db: Db = prisma
+) {
   if (kind !== CONTRACT_KIND.RENEWAL) return;
 
-  const parent = await prisma.contract.findUnique({ where: { id: parentId } });
+  const parent = await db.contract.findUnique({ where: { id: parentId } });
   if (!parent) return;
 
   if (
     parent.status === CONTRACT_STATUS.COMPLETED ||
     parent.status === CONTRACT_STATUS.SIGNED
   ) {
-    await prisma.contract.update({
+    await db.contract.update({
       where: { id: parentId },
       data: { status: CONTRACT_STATUS.RENEWED },
     });
