@@ -44,6 +44,12 @@ import {
 import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 import { labelForSlug } from "@/lib/domain/roster-labels";
 import { CURRENCIES } from "@/lib/currencies";
+import {
+  IG_COST_FORMAT,
+  IG_COST_FORMAT_LABELS,
+  costPackageLabel,
+  isIgCostFormat,
+} from "@/lib/domain/creator-cost-quote";
 import { formatMoney, fromMinorUnits } from "@/lib/money";
 
 import { AddToProposalForm } from "./proposal-panel";
@@ -141,19 +147,38 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
   >(saveCampaignTalentPrices, null);
 
   useEffect(() => toastResult(state), [state]);
+  const [format, setFormat] = useState(row.contentFormat ?? "");
 
-  const defaultCost =
-    row.costMinorPerContent ?? row.creator.defaultCostMinor;
+  const packaged = Boolean(format);
+  const defaultCost = packaged
+    ? row.packageCostMinor
+    : (row.costMinorPerContent ?? row.creator.defaultCostMinor);
   const defaultCurrency =
     row.costCurrency ?? row.creator.defaultCostCurrency ?? "EUR";
 
   return (
     <form
-      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.costMinorPerContent ?? ""}-${row.costCurrency ?? ""}`}
+      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.packageCostMinor ?? ""}-${row.costMinorPerContent ?? ""}-${row.contentFormat ?? ""}-${row.costCurrency ?? ""}`}
       action={formAction}
       className="flex flex-wrap items-end gap-2"
     >
       <input type="hidden" name="talentId" value={row.id} />
+      <div className="grid gap-1">
+        <Label className="text-xs">Formato</Label>
+        <select
+          name="contentFormat"
+          value={format}
+          onChange={(event) => setFormat(event.target.value)}
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          <option value="">Sin formato</option>
+          {Object.values(IG_COST_FORMAT).map((value) => (
+            <option key={value} value={value}>
+              {IG_COST_FORMAT_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="grid gap-1">
         <Label className="text-xs">Piezas</Label>
         <Input
@@ -177,7 +202,9 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
         />
       </div>
       <div className="grid gap-1">
-        <Label className="text-xs">Coste</Label>
+        <Label className="text-xs">
+          {packaged || row.contentFormat ? "Coste del paquete" : "Coste / pieza"}
+        </Label>
         <Input
           name="cost"
           defaultValue={
@@ -209,6 +236,12 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending ? "…" : "Guardar línea"}
       </Button>
+      {format ? (
+        <p className="w-full text-xs text-muted-foreground">
+          Paquete a medida: el coste es el total cerrado, no la tarifa básica
+          multiplicada por las piezas.
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -301,11 +334,17 @@ export function CampaignRosterPanel({
                             catalog.profileTypes,
                             row.creator.profileType
                           ),
+                          row.contentFormat &&
+                          isIgCostFormat(row.contentFormat) &&
                           row.deliverableCount
-                            ? `${row.deliverableCount} piezas`
-                            : null,
+                            ? costPackageLabel(row.contentFormat, row.deliverableCount)
+                            : row.deliverableCount
+                              ? `${row.deliverableCount} piezas`
+                              : null,
                           saleText,
-                          row.costLabel
+                          row.packageCostMinor != null && row.costLabel
+                            ? `paquete ${row.costLabel}`
+                            : row.costLabel
                             ? `coste ${row.costLabel}`
                             : row.creator.defaultCostMinor != null
                               ? `tarifa ${formatMoney(
@@ -319,7 +358,7 @@ export function CampaignRosterPanel({
                       </p>
                       {row.creator.costQuotes.length > 0 ? (
                         <p className="text-xs text-muted-foreground">
-                          Coste IG:{" "}
+                          Tarifas básicas:{" "}
                           {row.creator.costQuotes
                             .map((quote) => `${quote.label} ${quote.amountLabel}`)
                             .join(" · ")}

@@ -294,6 +294,10 @@ model CampaignTalent {
   costMinorPerContent      Int?
   costCurrency             String?
   deliverableCount         Int?
+  // Negociación de esta campaña. Si hay formato, packageCostMinor es el coste
+  // del paquete entero (8 reels), no el precio por pieza.
+  contentFormat    String?
+  packageCostMinor Int?
   notes                    String?
   proposalId               String?
 

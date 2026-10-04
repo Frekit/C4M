@@ -25,6 +25,8 @@ export type CampaignRosterRow = {
   costMinorPerContent: number | null;
   costCurrency: string | null;
   deliverableCount: number | null;
+  contentFormat: string | null;
+  packageCostMinor: number | null;
   proposalId: string | null;
   contract: { id: string; code: string } | null;
   creator: {
@@ -119,13 +121,17 @@ export async function loadCampaignRoster(
           ? formatMoney(row.salePriceCentsPerContent, "USD")
           : null,
       costLabel:
-        row.costMinorPerContent != null && row.costCurrency
-          ? formatMoney(row.costMinorPerContent, row.costCurrency)
-          : null,
+        row.packageCostMinor != null && row.costCurrency
+          ? formatMoney(row.packageCostMinor, row.costCurrency)
+          : row.costMinorPerContent != null && row.costCurrency
+            ? formatMoney(row.costMinorPerContent, row.costCurrency)
+            : null,
       salePriceCentsPerContent: row.salePriceCentsPerContent,
       costMinorPerContent: row.costMinorPerContent,
       costCurrency: row.costCurrency,
       deliverableCount: row.deliverableCount,
+      contentFormat: row.contentFormat,
+      packageCostMinor: row.packageCostMinor,
       proposalId: row.proposalId,
       contract: row.creator.contracts[0]
         ? {

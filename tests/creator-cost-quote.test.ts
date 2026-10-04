@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   costPackageLabel,
   parseCostQuoteInput,
+  perContentFromPackage,
   sortCostQuotes,
 } from "../src/lib/domain/creator-cost-quote";
 
@@ -38,6 +39,16 @@ test("el coste es el del paquete y ordena reel, story, carrusel", () => {
     sorted.map((item) => `${item.format}:${item.quantity}`),
     ["REEL:1", "REEL:3", "STORY:1", "CAROUSEL:1"]
   );
+});
+
+test("8 reels a 1.000 € parten exacto; un total que no cuadra no entra", () => {
+  const even = perContentFromPackage(100000, 8);
+  assert.equal(even.ok, true);
+  if (!even.ok) return;
+  assert.equal(even.perContentMinor, 12500);
+
+  const odd = perContentFromPackage(99900, 8);
+  assert.equal(odd.ok, false);
 });
 
 test("un formato desconocido o un coste vacío no entra", () => {

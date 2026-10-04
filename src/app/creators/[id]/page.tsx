@@ -249,11 +249,12 @@ export default async function CreatorPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Coste por formato</CardTitle>
+          <CardTitle>Tarifas básicas</CardTitle>
           <CardDescription>
-            Solo precio de coste, en Instagram. Un reel no cuesta lo mismo que
-            tres reels, ni que una story o un carrusel. Cada fila es el coste
-            del paquete entero, no la venta al cliente.
+            Precio de coste de referencia, en Instagram. Un reel no cuesta lo
+            mismo que tres reels, ni que una story o un carrusel. En una
+            campaña el paquete puede ser otro: 8 reels a un precio cerrado no
+            tiene que salir de estas tarifas.
           </CardDescription>
         </CardHeader>
         <CardContent>

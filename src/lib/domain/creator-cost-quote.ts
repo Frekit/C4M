@@ -54,6 +54,23 @@ export function sortCostQuotes<
   });
 }
 
+export function perContentFromPackage(totalMinor: number, quantity: number) {
+  if (!Number.isInteger(totalMinor) || totalMinor <= 0) {
+    return { ok: false as const, error: "Revisa el coste del paquete." };
+  }
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return { ok: false as const, error: "Pon cuántos contenidos lleva el paquete." };
+  }
+  if (totalMinor % quantity !== 0) {
+    return {
+      ok: false as const,
+      error:
+        "Ese paquete no parte en un coste exacto por pieza. Ajusta el total o la cantidad.",
+    };
+  }
+  return { ok: true as const, perContentMinor: totalMinor / quantity };
+}
+
 export function parseCostQuoteInput(input: {
   format: string;
   quantity: string;

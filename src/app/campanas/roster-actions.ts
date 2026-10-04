@@ -29,6 +29,10 @@ import {
 } from "@/lib/domain/enums";
 import { resolveFxRate } from "@/lib/domain/fx";
 import { isSupportedCurrency } from "@/lib/currencies";
+import {
+  isIgCostFormat,
+  perContentFromPackage,
+} from "@/lib/domain/creator-cost-quote";
 import { parseAmountToMinorUnits } from "@/lib/money";
 import { extractInstagramHandle } from "@/lib/domain/validation";
 import {
@@ -178,12 +182,20 @@ export async function saveCampaignTalentPrices(
     return { ok: false, error: `Moneda ${currency} no soportada.` };
   }
 
+  const formatRaw = String(formData.get("contentFormat") ?? "").trim();
+  const contentFormat = formatRaw
+    ? isIgCostFormat(formatRaw)
+      ? formatRaw
+      : null
+    : null;
+  if (formatRaw && !contentFormat) {
+    return { ok: false, error: "Elige reel, story o carrusel." };
+  }
+
   const salePriceCentsPerContent = saleUsd
     ? parseAmountToMinorUnits(saleUsd, "USD")
     : null;
-  const costMinorPerContent = cost
-    ? parseAmountToMinorUnits(cost, currency)
-    : null;
+  const costAmount = cost ? parseAmountToMinorUnits(cost, currency) : null;
   const deliverableCount = piecesRaw
     ? Number.parseInt(piecesRaw, 10)
     : null;
@@ -191,11 +203,26 @@ export async function saveCampaignTalentPrices(
   if (saleUsd && salePriceCentsPerContent === null) {
     return { ok: false, error: "Revisa el precio de venta (USD)." };
   }
-  if (cost && costMinorPerContent === null) {
+  if (cost && costAmount === null) {
     return { ok: false, error: "Revisa el coste del creator." };
   }
   if (piecesRaw && (!deliverableCount || deliverableCount < 1)) {
     return { ok: false, error: "Las piezas tienen que ser ≥ 1." };
+  }
+
+  let packageCostMinor: number | null = null;
+  let costMinorPerContent = costAmount;
+  if (contentFormat) {
+    if (!deliverableCount) {
+      return { ok: false, error: "Pon cuántos contenidos lleva el paquete." };
+    }
+    if (costAmount === null) {
+      return { ok: false, error: "Pon el coste del paquete." };
+    }
+    const split = perContentFromPackage(costAmount, deliverableCount);
+    if (!split.ok) return { ok: false, error: split.error };
+    packageCostMinor = costAmount;
+    costMinorPerContent = split.perContentMinor;
   }
 
   const existing = await prisma.campaignTalent.findUnique({
@@ -230,6 +257,8 @@ export async function saveCampaignTalentPrices(
       costMinorPerContent,
       costCurrency: quote.costCurrency,
       deliverableCount,
+      contentFormat,
+      packageCostMinor,
       status: statusAfterSavingQuote(lineQuoteComplete(quote)),
     },
   });
@@ -244,6 +273,7 @@ export async function saveCampaignTalentPrices(
 
   if (
     costMinorPerContent != null &&
+    !contentFormat &&
     !existing.creator.defaultCostMinor
   ) {
     await prisma.creator.update({
