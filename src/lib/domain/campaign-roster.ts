@@ -21,6 +21,7 @@ export type CampaignRosterRow = {
   costCurrency: string | null;
   deliverableCount: number | null;
   proposalId: string | null;
+  contract: { id: string; code: string } | null;
   creator: {
     id: string;
     handle: string;
@@ -65,7 +66,12 @@ export async function loadCampaignRoster(
             },
           },
           contracts: {
+            where: { deliverables: { some: { campaignId } } },
+            orderBy: { createdAt: "desc" },
+            take: 1,
             select: {
+              id: true,
+              code: true,
               deliverables: {
                 where: { campaignId: { not: null } },
                 select: {
@@ -107,6 +113,12 @@ export async function loadCampaignRoster(
       costCurrency: row.costCurrency,
       deliverableCount: row.deliverableCount,
       proposalId: row.proposalId,
+      contract: row.creator.contracts[0]
+        ? {
+            id: row.creator.contracts[0].id,
+            code: row.creator.contracts[0].code,
+          }
+        : null,
       creator: {
         id: row.creator.id,
         handle: row.creator.handle,

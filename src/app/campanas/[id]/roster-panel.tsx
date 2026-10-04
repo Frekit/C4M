@@ -48,6 +48,31 @@ import { formatMoney, fromMinorUnits } from "@/lib/money";
 
 import { AddToProposalForm } from "./proposal-panel";
 
+function draftTitleFor(
+  proposalId: string | null,
+  drafts: CampaignProposalRow[]
+) {
+  if (!proposalId) return null;
+  return drafts.find((proposal) => proposal.id === proposalId)?.title ?? null;
+}
+
+function waitingCopy(
+  status: string,
+  inDraft: string | null,
+  clientApproves: boolean
+) {
+  if (status === CAMPAIGN_TALENT_STATUS.REJECTED) {
+    return "Descartado. Corrige la línea y mételo en otra oleada si vuelve a entrar.";
+  }
+  if (inDraft) {
+    return `Ya está en «${inDraft}», sin enviar. Márcala enviada cuando el lote esté cerrado.`;
+  }
+  if (clientApproves && status === CAMPAIGN_TALENT_STATUS.READY) {
+    return "Lista para una oleada. El cliente la ve cuando la marques enviada.";
+  }
+  return null;
+}
+
 function toastResult(state: CampaignRosterResult | null) {
   if (!state) return;
   if (state.ok) toast.success("Mesa actualizada.");
@@ -123,7 +148,11 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
     row.costCurrency ?? row.creator.defaultCostCurrency ?? "EUR";
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2">
+    <form
+      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.costMinorPerContent ?? ""}-${row.costCurrency ?? ""}`}
+      action={formAction}
+      className="flex flex-wrap items-end gap-2"
+    >
       <input type="hidden" name="talentId" value={row.id} />
       <div className="grid gap-1">
         <Label className="text-xs">Piezas</Label>
@@ -135,7 +164,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
         />
       </div>
       <div className="grid gap-1">
-        <Label className="text-xs">Venta USD</Label>
+        <Label className="text-xs">Venta USD / pieza</Label>
         <Input
           name="saleUsd"
           defaultValue={
@@ -235,6 +264,16 @@ export function CampaignRosterPanel({
           <ul className="grid gap-4">
             {rows.map((row) => {
               const activate = canActivateLine(row, policy, rows);
+              const inDraft = draftTitleFor(row.proposalId, drafts);
+              const saleText =
+                row.saleLabel && row.salePriceCentsPerContent != null
+                  ? row.deliverableCount && row.deliverableCount > 1
+                    ? `venta ${row.saleLabel}/pieza · ${formatMoney(
+                        row.salePriceCentsPerContent * row.deliverableCount,
+                        "USD"
+                      )} la línea`
+                    : `venta ${row.saleLabel}/pieza`
+                  : null;
               return (
                 <li key={row.id} className="grid gap-2 rounded-lg border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -245,6 +284,16 @@ export function CampaignRosterPanel({
                       >
                         @{row.creator.handle}
                       </Link>
+                      {row.contract ? (
+                        <p className="text-xs">
+                          <Link
+                            href={`/contratos/${row.contract.id}`}
+                            className="underline underline-offset-4"
+                          >
+                            Contrato {row.contract.code}
+                          </Link>
+                        </p>
+                      ) : null}
                       <p className="text-xs text-muted-foreground">
                         {[
                           labelForSlug(catalog.countries, row.creator.country),
@@ -255,7 +304,7 @@ export function CampaignRosterPanel({
                           row.deliverableCount
                             ? `${row.deliverableCount} piezas`
                             : null,
-                          row.saleLabel ? `venta ${row.saleLabel}` : null,
+                          saleText,
                           row.costLabel
                             ? `coste ${row.costLabel}`
                             : row.creator.defaultCostMinor != null
@@ -300,7 +349,12 @@ export function CampaignRosterPanel({
                       <QuoteForm row={row} />
                       {row.status === CAMPAIGN_TALENT_STATUS.READY ||
                       row.status === CAMPAIGN_TALENT_STATUS.ROSTER ? (
-                        <AddToProposalForm talentId={row.id} drafts={drafts} />
+                        inDraft ? null : (
+                          <AddToProposalForm
+                            talentId={row.id}
+                            drafts={drafts}
+                          />
+                        )
                       ) : null}
                       {activate.ok && hasClient ? (
                         <form action={activateCampaignTalent}>
@@ -311,9 +365,10 @@ export function CampaignRosterPanel({
                         </form>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          {activate.ok
-                            ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
-                            : activate.error}
+                          {waitingCopy(row.status, inDraft, clientApproves) ??
+                            (activate.ok
+                              ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
+                              : activate.error)}
                         </p>
                       )}
                     </div>
