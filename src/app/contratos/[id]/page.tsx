@@ -222,7 +222,11 @@ export default async function ContractPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Progress value={view.progress.ratio * 100} className="h-1.5" />
+            <Progress
+              value={view.progress.ratio * 100}
+              aria-label="Contenidos entregados"
+              className="h-1.5"
+            />
           </CardContent>
         </Card>
         <Card>

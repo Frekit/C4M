@@ -168,6 +168,7 @@ export default async function CampaignsPage() {
                     </div>
                     <Progress
                       value={total > 0 ? (published / total) * 100 : 0}
+                      aria-label="Contenidos publicados"
                       className="h-1.5"
                     />
                   </div>

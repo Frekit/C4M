@@ -425,6 +425,7 @@ export default async function CreatorPage({
             <CardContent className="grid gap-3">
               <Progress
                 value={groupProgress.ratio * 100}
+                aria-label="Contenidos publicados de la cadena"
                 className="h-1.5"
               />
               <ContractChain chain={group.contracts} />

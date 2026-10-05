@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { getCompany } from "@/lib/company";
 import { prisma } from "@/lib/db";
 import {
@@ -142,7 +141,7 @@ export default async function SignPage({
                   )}
                 </dd>
               </div>
-              <Separator className="my-1" />
+              <div className="border-t" />
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Importe total</dt>
                 <dd className="text-base font-medium">

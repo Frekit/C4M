@@ -87,6 +87,7 @@ export function PackQueue({ groups }: { groups: PackQueueGroup[] }) {
             <CardContent className="grid gap-3">
               <Progress
                 value={group.total > 0 ? (group.published / group.total) * 100 : 0}
+                aria-label="Piezas publicadas del pack"
                 className="h-1.5"
               />
               <ul className="grid gap-1 text-sm">

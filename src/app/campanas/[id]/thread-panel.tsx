@@ -154,7 +154,11 @@ export function CampaignThread({
         ) : null}
       </section>
 
-      <section className="grid max-h-[32rem] gap-3 overflow-y-auto rounded-xl border bg-card p-4">
+      <section
+        tabIndex={0}
+        aria-label="Hilo de la campaña"
+        className="grid max-h-[32rem] gap-3 overflow-y-auto rounded-xl border bg-card p-4"
+      >
         <Tabs defaultValue="equipo">
           <TabsList>
             <TabsTrigger value="equipo">Equipo</TabsTrigger>

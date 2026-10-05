@@ -303,7 +303,11 @@ export default async function WorkflowPage() {
         <h2 className="font-heading text-lg font-medium">
           Quién toca cada tramo
         </h2>
-        <div className="overflow-x-auto rounded-xl border">
+        <div
+          tabIndex={0}
+          aria-label="Quién toca cada tramo"
+          className="overflow-x-auto rounded-xl border"
+        >
           <table className="w-full min-w-[36rem] text-left text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>

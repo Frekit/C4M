@@ -43,9 +43,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <a
+          href="#contenido"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+        >
+          Saltar al contenido
+        </a>
         <EnvironmentBanner />
         <AppNav user={user} />
-        <div className="flex flex-1 flex-col">{children}</div>
+        <div id="contenido" tabIndex={-1} className="flex flex-1 flex-col outline-none">
+          {children}
+        </div>
         <Toaster position="top-right" />
       </body>
     </html>
