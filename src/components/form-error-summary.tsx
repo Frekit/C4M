@@ -20,16 +20,26 @@ export function FormErrorSummary({
 }) {
   const entries = Object.entries(fieldErrors ?? {});
   const summaryRef = useRef<HTMLDivElement>(null);
-  const firstField = entries[0]?.[0] ?? "";
+  const idKey = entries.map(([field]) => field).join("\u0000");
   const signature = `${error ?? ""}|${entries.map(([field, message]) => `${field}:${message}`).join("|")}`;
 
   useEffect(() => {
-    if (!error && !firstField) return;
-    const field = firstField ? document.getElementById(firstField) : null;
-    const target = field instanceof HTMLElement ? field : summaryRef.current;
+    const ids = idKey ? idKey.split("\u0000") : [];
+    if (!error && ids.length === 0) return;
+    const fields = ids
+      .map((field) => document.getElementById(field))
+      .filter((field): field is HTMLElement => field instanceof HTMLElement)
+      .sort((a, b) => {
+        if (a === b) return 0;
+        const position = a.compareDocumentPosition(b);
+        if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+        if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+        return 0;
+      });
+    const target = fields[0] ?? summaryRef.current;
     target?.focus();
     target?.scrollIntoView({ block: "center" });
-  }, [error, firstField, signature]);
+  }, [error, idKey, signature]);
 
   if (!error && entries.length === 0) {
     return null;
