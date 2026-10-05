@@ -1,3 +1,5 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
+
 import { prisma } from "@/lib/db";
 import {
   MAIL_JOB_KIND,
@@ -14,15 +16,20 @@ export type MailQueueReport = {
   remaining: number;
 };
 
-export async function enqueueSignatureMail(input: {
-  toEmail: string;
-  contractId: string;
-  signatureRequestId: string;
-  subject: string;
-  text: string;
-  html: string;
-}) {
-  return prisma.mailJob.create({
+type MailDb = Prisma.TransactionClient | PrismaClient;
+
+export async function enqueueSignatureMail(
+  input: {
+    toEmail: string;
+    contractId: string;
+    signatureRequestId: string;
+    subject: string;
+    text: string;
+    html: string;
+  },
+  db: MailDb = prisma
+) {
+  return db.mailJob.create({
     data: {
       kind: MAIL_JOB_KIND.SIGNATURE,
       toEmail: input.toEmail,

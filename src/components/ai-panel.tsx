@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -9,8 +10,17 @@ import { ApprovalCard, type ApprovalItem } from "@/components/approval-card";
 import { useShell } from "@/components/shell-context";
 import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/use-hotkeys";
+import type { AiSetup } from "@/lib/agent/config";
 
 const DEMO = process.env.NEXT_PUBLIC_AI_PANEL === "demo";
+
+const LiveAiPanel = dynamic(
+  () => import("@/components/ai-live-panel").then((mod) => mod.LiveAiPanel),
+  {
+    ssr: false,
+    loading: () => <p className="p-3 text-copy-14 text-muted-foreground">Cargando el asistente…</p>,
+  }
+);
 
 const DEMO_ITEMS: ApprovalItem[] = [
   {
@@ -52,7 +62,76 @@ function routeChip(pathname: string) {
   return "Esta pantalla";
 }
 
-export function AiPanel({ onClose }: { onClose: () => void }) {
+function UnconfiguredPanel({
+  onClose,
+  setup,
+}: {
+  onClose: () => void;
+  setup: AiSetup;
+}) {
+  const pathname = usePathname();
+  const missing =
+    setup === "missing-secret"
+      ? "Falta TOOL_APPROVAL_SECRET (32 bytes o más)."
+      : setup === "missing-model"
+        ? "Falta C4M_AI_MODEL (un id proveedor/modelo de AI Gateway)."
+        : "Falta AI_GATEWAY_API_KEY.";
+
+  return (
+    <section aria-label="Asistente" className="flex h-full min-h-0 flex-col bg-card">
+      <header className="flex h-[52px] shrink-0 items-center gap-2 border-b px-3">
+        <SparklesIcon className="size-4 text-ai" />
+        <p className="text-label-13">Asistente</p>
+        <span className="inline-flex max-w-[46%] items-center truncate rounded-full border border-border bg-card px-2 py-0.5 text-label-12 text-muted-foreground">
+          {routeChip(pathname)}
+        </span>
+        <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={onClose} aria-label="Cerrar asistente">
+          <XIcon />
+        </Button>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <div role="status" className="rounded-xl border border-border bg-muted px-3 py-3">
+          <p className="text-label-13">IA no configurada</p>
+          <p className="mt-1 text-copy-14 text-muted-foreground">
+            {missing} El resto de la app sigue igual. Con NEXT_PUBLIC_AI_PANEL=demo se enseña el ejemplo, sin modelo ni escrituras.
+          </p>
+        </div>
+      </div>
+      <form className="border-t p-3" onSubmit={(event) => event.preventDefault()}>
+        <label className="sr-only" htmlFor="ai-composer">
+          Mensaje para el asistente
+        </label>
+        <textarea
+          id="ai-composer"
+          rows={2}
+          disabled
+          placeholder="La IA no está configurada"
+          className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-copy-14 outline-none disabled:opacity-60"
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-copy-12 text-fg-subtle">El asistente propone; tú decides.</p>
+          <Button type="submit" size="sm" disabled>
+            Enviar
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+export function AiPanel({
+  onClose,
+  setup,
+}: {
+  onClose: () => void;
+  setup: AiSetup;
+}) {
+  if (DEMO) return <DemoAiPanel onClose={onClose} />;
+  if (setup !== "ready") return <UnconfiguredPanel onClose={onClose} setup={setup} />;
+  return <LiveAiPanel onClose={onClose} />;
+}
+
+function DemoAiPanel({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const shell = useShell();
   const [draft, setDraft] = useState(shell.aiSeed ?? "");

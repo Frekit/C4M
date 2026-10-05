@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
-import { CREATOR_SEARCH_LIMIT } from "@/lib/domain/enums";
+import { searchRoster } from "@/lib/domain/roster-search";
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -15,17 +14,11 @@ export async function GET(request: NextRequest) {
     return Response.json({ items: [] });
   }
 
-  const items = await prisma.creator.findMany({
-    where: {
-      OR: [
-        { handle: { contains: query } },
-        { displayName: { contains: query } },
-      ],
-    },
-    orderBy: { handle: "asc" },
-    take: CREATOR_SEARCH_LIMIT,
-    select: { id: true, handle: true, displayName: true },
-  });
+  const items = (await searchRoster(query)).map((item) => ({
+    id: item.id,
+    handle: item.handle,
+    displayName: item.displayName,
+  }));
 
   return Response.json({ items });
 }

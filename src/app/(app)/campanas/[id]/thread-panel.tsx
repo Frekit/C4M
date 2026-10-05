@@ -4,18 +4,14 @@ import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  applyAssistantDraft,
-  askAssistant,
-  dismissAssistantDraft,
   ensureClientTalkLink,
   postAgencyMessage,
   type CampaignTalkResult,
 } from "@/app/(app)/campanas/curation-actions";
-import type { CampaignRosterResult } from "@/app/(app)/campanas/roster-actions";
+import { useShell } from "@/components/shell-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { handlesFromDraft } from "@/lib/domain/campaign-briefing";
 
 export type TalkMessage = {
   id: string;
@@ -30,27 +26,10 @@ function isClientVisible(message: TalkMessage) {
   return message.visibility === "SHARED" || message.authorKind === "CLIENT";
 }
 
-function toastTalk(state: CampaignTalkResult | CampaignRosterResult | null, ok: string) {
+function toastTalk(state: CampaignTalkResult | null, ok: string) {
   if (!state) return;
   if (state.ok) toast.success(ok);
   else if (state.error) toast.error(state.error);
-}
-
-function openDraft(messages: TalkMessage[]) {
-  let draft: TalkMessage | null = null;
-  for (const message of messages) {
-    if (
-      message.authorKind === "ASSISTANT" &&
-      handlesFromDraft(message.body).length > 0
-    ) {
-      draft = message;
-      continue;
-    }
-    if (draft && message.createdAt >= draft.createdAt && message.id !== draft.id) {
-      draft = null;
-    }
-  }
-  return draft;
 }
 
 export function CampaignThread({
@@ -80,10 +59,7 @@ export function CampaignThread({
   budgetLabel: string | null;
   talkUrl: string | null;
 }) {
-  const [askState, askAction, askPending] = useActionState<
-    CampaignTalkResult | null,
-    FormData
-  >(askAssistant, null);
+  const shell = useShell();
   const [noteState, noteAction, notePending] = useActionState<
     CampaignTalkResult | null,
     FormData
@@ -92,24 +68,10 @@ export function CampaignThread({
     CampaignTalkResult | null,
     FormData
   >(ensureClientTalkLink, null);
-  const [applyState, applyAction, applyPending] = useActionState<
-    CampaignRosterResult | null,
-    FormData
-  >(applyAssistantDraft, null);
-  const [dismissState, dismissAction, dismissPending] = useActionState<
-    CampaignTalkResult | null,
-    FormData
-  >(dismissAssistantDraft, null);
-  const [askEpoch, setAskEpoch] = useState(0);
   const [noteEpoch, setNoteEpoch] = useState(0);
   const [visibleToClient, setVisibleToClient] = useState(false);
-  const [seenAsk, setSeenAsk] = useState(askState);
   const [seenNote, setSeenNote] = useState(noteState);
 
-  if (askState !== seenAsk) {
-    setSeenAsk(askState);
-    if (askState?.ok) setAskEpoch((epoch) => epoch + 1);
-  }
   if (noteState !== seenNote) {
     setSeenNote(noteState);
     if (noteState?.ok) {
@@ -119,21 +81,14 @@ export function CampaignThread({
   }
 
   useEffect(() => {
-    toastTalk(askState, "La mesa respondió.");
-  }, [askState]);
-  useEffect(() => {
     toastTalk(noteState, "Nota en el hilo.");
   }, [noteState]);
   useEffect(() => toastTalk(linkState, "Enlace listo."), [linkState]);
-  useEffect(() => toastTalk(applyState, "Borrador en la mesa."), [applyState]);
-  useEffect(() => toastTalk(dismissState, "Borrador dejado."), [dismissState]);
 
   const shownLink =
     talkUrl ?? (linkState?.token ? `/hablar/${linkState.token}` : null);
   const teamMessages = messages.filter((message) => !isClientVisible(message));
   const clientMessages = messages.filter((message) => isClientVisible(message));
-  const draft = openDraft(teamMessages);
-
   return (
     <aside className="grid gap-3 lg:sticky lg:top-4">
       <section className="rounded-xl border bg-card p-4">
@@ -179,46 +134,19 @@ export function CampaignThread({
         </Tabs>
       </section>
 
-      {draft && canWrite ? (
-        <div className="grid gap-2 rounded-xl border border-dashed bg-card p-3">
-          <p className="text-sm">Hay un borrador sin aplicar.</p>
-          <div className="flex flex-wrap gap-2">
-            <form action={applyAction}>
-              <input type="hidden" name="campaignId" value={campaignId} />
-              <input type="hidden" name="messageId" value={draft.id} />
-              <Button type="submit" size="sm" disabled={applyPending}>
-                {applyPending ? "Aplicando…" : "Aplicar borrador"}
-              </Button>
-            </form>
-            <form action={dismissAction}>
-              <input type="hidden" name="campaignId" value={campaignId} />
-              <Button
-                type="submit"
-                size="sm"
-                variant="ghost"
-                disabled={dismissPending}
-              >
-                Descartar borrador
-              </Button>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
       {canWrite ? (
-        <form key={`pregunta-${askEpoch}`} action={askAction} className="grid gap-2">
-          <input type="hidden" name="campaignId" value={campaignId} />
-          <Textarea
-            name="question"
-            rows={3}
-            placeholder="Pide un plan o pregunta qué hay en la mesa."
-          />
-          <div>
-            <Button type="submit" size="sm" disabled={askPending}>
-              {askPending ? "Leyendo la mesa…" : "Preguntar a la mesa"}
-            </Button>
-          </div>
-        </form>
+        <div className="grid gap-2 rounded-xl border bg-card p-3">
+          <p className="text-sm">
+            Los cambios los propone el asistente y tú los aceptas uno a uno.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => shell.askAssistant(`Sobre esta campaña`)}
+          >
+            Preguntar al asistente
+          </Button>
+        </div>
       ) : null}
 
       {canWrite ? (

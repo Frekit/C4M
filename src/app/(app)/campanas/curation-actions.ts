@@ -6,19 +6,10 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
-  assembleBriefing,
-  handlesFromDraft,
-  renderCampaignBriefing,
-  type BriefingPacket,
-} from "@/lib/domain/campaign-briefing";
-import {
   OPEN_TALENT_STATUSES,
   quoteIsFrozen,
 } from "@/lib/domain/campaign-desk";
-import { loadCampaignResults } from "@/lib/domain/campaign-results";
-import { loadCampaignSheet } from "@/lib/domain/campaign-sheet";
 import {
-  placeCreatorOnCampaign,
   revalidateCampaign,
   type CampaignRosterResult,
 } from "./roster-actions";
@@ -33,26 +24,6 @@ function clip(value: FormDataEntryValue | null, max: number) {
   const text = String(value ?? "").trim();
   if (!text) return null;
   return text.slice(0, max);
-}
-
-async function briefingPacket(campaignId: string): Promise<BriefingPacket | null> {
-  const [sheet, results] = await Promise.all([
-    loadCampaignSheet(campaignId),
-    loadCampaignResults(campaignId),
-  ]);
-  if (!sheet) return null;
-  return assembleBriefing({
-    campaignName: sheet.campaign.name,
-    clientName: sheet.campaign.client?.name ?? null,
-    objective: sheet.campaign.briefObjective,
-    audience: sheet.campaign.briefAudience,
-    networks: sheet.campaign.briefNetworks,
-    formats: sheet.campaign.briefFormats,
-    notes: sheet.campaign.briefNotes,
-    rows: sheet.rows,
-    pulse: sheet.pulse,
-    results,
-  });
 }
 
 export async function setCampaignCuration(
@@ -221,119 +192,6 @@ export async function postAgencyMessage(
       authorLabel: user.name || user.email,
       body,
       visibility: visibleToClient ? "SHARED" : "INTERNAL",
-    },
-  });
-  revalidateCampaign(campaignId);
-  return { ok: true };
-}
-
-export async function askAssistant(
-  _prev: CampaignTalkResult | null,
-  formData: FormData
-): Promise<CampaignTalkResult> {
-  const user = await requirePermission("campaigns:manage", "/campanas");
-  const campaignId = String(formData.get("campaignId") ?? "");
-  const question = clip(formData.get("question"), 2000);
-  if (!question) return { ok: false, error: "Escribe qué quieres saber." };
-  const packet = await briefingPacket(campaignId);
-  if (!packet) return { ok: false, error: "Esa campaña no existe." };
-
-  const answer = renderCampaignBriefing(packet, question);
-  const askedAt = new Date();
-  await prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      authorKind: "AGENCY",
-      authorLabel: user.name || user.email,
-      body: question,
-      visibility: "INTERNAL",
-      createdAt: askedAt,
-    },
-  });
-  await prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      authorKind: "ASSISTANT",
-      authorLabel: "Mesa",
-      body: answer,
-      visibility: "INTERNAL",
-      createdAt: new Date(askedAt.getTime() + 1),
-    },
-  });
-  revalidateCampaign(campaignId);
-  return { ok: true };
-}
-
-export async function applyAssistantDraft(
-  _prev: CampaignRosterResult | null,
-  formData: FormData
-): Promise<CampaignRosterResult> {
-  const user = await requirePermission("campaigns:manage", "/campanas");
-  const campaignId = String(formData.get("campaignId") ?? "");
-  const messageId = String(formData.get("messageId") ?? "");
-  const message = await prisma.campaignMessage.findFirst({
-    where: { id: messageId, campaignId, authorKind: "ASSISTANT" },
-    select: { body: true },
-  });
-  if (!message) return { ok: false, error: "No encuentro ese borrador." };
-  const handles = handlesFromDraft(message.body);
-  if (handles.length === 0) {
-    return { ok: false, error: "Ese mensaje no trae perfiles." };
-  }
-
-  let added = 0;
-  let skipped = 0;
-  for (const handle of handles) {
-    const creator = await prisma.creator.findFirst({
-      where: { handle },
-      select: { id: true },
-    });
-    if (!creator) {
-      skipped += 1;
-      continue;
-    }
-    const placed = await placeCreatorOnCampaign(campaignId, creator.id, user.email);
-    if (placed) added += 1;
-    else skipped += 1;
-  }
-
-  await prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      authorKind: "AGENCY",
-      authorLabel: user.name || user.email,
-      body:
-        added > 0
-          ? `Aplico el borrador: ${added} en la mesa${skipped ? `, ${skipped} ya estaban o no valían` : ""}.`
-          : "El borrador no mete a nadie nuevo.",
-      visibility: "INTERNAL",
-    },
-  });
-  revalidateCampaign(campaignId);
-  if (added === 0) {
-    return { ok: false, error: "Esos perfiles ya están en la mesa o no existen.", added, skipped };
-  }
-  return { ok: true, added, skipped };
-}
-
-export async function dismissAssistantDraft(
-  _prev: CampaignTalkResult | null,
-  formData: FormData
-): Promise<CampaignTalkResult> {
-  const user = await requirePermission("campaigns:manage", "/campanas");
-  const campaignId = String(formData.get("campaignId") ?? "");
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    select: { id: true },
-  });
-  if (!campaign) return { ok: false, error: "Esa campaña no existe." };
-  await prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      authorKind: "AGENCY",
-      authorLabel: user.name || user.email,
-      body: "Dejo el borrador. No meto esos perfiles.",
-      visibility: "INTERNAL",
     },
   });
   revalidateCampaign(campaignId);

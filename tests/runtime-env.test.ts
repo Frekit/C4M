@@ -63,6 +63,23 @@ test("pre y prod rechazan local y SQLite", () => {
   });
   assert.equal(prod.ok, false);
   assert.ok(prod.issues.some((issue) => /HTTPS/.test(issue.message)));
+
+  const missingUrl = inspectRuntimeEnv({
+    APP_ENV: "prod",
+    AUTH_MODE: "auth0",
+    ...auth0,
+    DATABASE_URL: "postgresql://contratos:contratos@localhost:5432/contratos",
+  });
+  assert.equal(missingUrl.ok, false);
+  assert.ok(missingUrl.issues.some((issue) => /APP_BASE_URL es obligatorio/.test(issue.message)));
+  assert.throws(() =>
+    assertRuntimeEnv({
+      APP_ENV: "prod",
+      AUTH_MODE: "auth0",
+      ...auth0,
+      DATABASE_URL: "postgresql://contratos:contratos@localhost:5432/contratos",
+    })
+  );
 });
 
 test("pre válido con Auth0, Postgres y APP_BASE_URL", () => {

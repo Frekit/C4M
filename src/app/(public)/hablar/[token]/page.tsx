@@ -3,6 +3,7 @@ import { PageShell } from "@/components/page-shell";
 import { notFound } from "next/navigation";
 
 import { BriefRead } from "@/app/(app)/campanas/[id]/brief-form";
+import { clientThreadWhere } from "@/lib/agent/messages";
 import { prisma } from "@/lib/db";
 import { assembleBriefing, renderClientStatus } from "@/lib/domain/campaign-briefing";
 import { loadCampaignResults } from "@/lib/domain/campaign-results";
@@ -30,10 +31,7 @@ export default async function ClientTalkPage({
     loadCampaignSheet(campaign.id),
     loadCampaignResults(campaign.id),
     prisma.campaignMessage.findMany({
-      where: {
-        campaignId: campaign.id,
-        OR: [{ visibility: "SHARED" }, { authorKind: "CLIENT" }],
-      },
+      where: clientThreadWhere(campaign.id),
       orderBy: { createdAt: "asc" },
       select: { id: true, authorKind: true, authorLabel: true, body: true },
     }),

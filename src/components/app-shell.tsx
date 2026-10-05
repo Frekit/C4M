@@ -53,6 +53,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { can } from "@/lib/auth/permissions";
+import type { AiSetup } from "@/lib/agent/config";
 import type { AppUser } from "@/lib/auth/types";
 import { getLogoutHref } from "@/lib/auth/urls";
 import { ROLE_LABELS, ROLES } from "@/lib/domain/enums";
@@ -429,11 +430,13 @@ function ShellFrame({
   user,
   urgentCount,
   campaigns,
+  aiSetup,
   children,
 }: {
   user: AppUser;
   urgentCount: number;
   campaigns: ShellCampaign[];
+  aiSetup: AiSetup;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -525,6 +528,7 @@ function ShellFrame({
         user={user}
         urgentCount={urgentCount}
         campaigns={campaigns}
+        aiSetup={aiSetup}
         aiOpen={aiOpen}
         setAiOpen={setAiOpen}
         hideTabBar={hideTabBar}
@@ -543,6 +547,7 @@ function ShellBody({
   user,
   urgentCount,
   campaigns,
+  aiSetup,
   aiOpen,
   setAiOpen,
   hideTabBar,
@@ -553,6 +558,7 @@ function ShellBody({
   user: AppUser;
   urgentCount: number;
   campaigns: ShellCampaign[];
+  aiSetup: AiSetup;
   aiOpen: boolean;
   setAiOpen: (open: boolean) => void;
   hideTabBar: boolean;
@@ -627,7 +633,7 @@ function ShellBody({
           </div>
           {aiOpen ? (
             <div className="min-h-0 border-l border-border max-[760px]:fixed max-[760px]:inset-0 max-[760px]:z-40 max-[760px]:border-0 max-[760px]:bg-background">
-              <AiPanel onClose={() => setAiOpen(false)} />
+              <AiPanel setup={aiSetup} onClose={() => setAiOpen(false)} />
             </div>
           ) : null}
         </div>
@@ -704,11 +710,13 @@ export function AppShell({
   user,
   urgentCount,
   campaigns,
+  aiSetup,
   children,
 }: {
   user: AppUser;
   urgentCount: number;
   campaigns: ShellCampaign[];
+  aiSetup: AiSetup;
   children: React.ReactNode;
 }) {
   return (
@@ -722,7 +730,7 @@ export function AppShell({
       }
     >
       <SidebarViewportSync />
-      <ShellFrame user={user} urgentCount={urgentCount} campaigns={campaigns}>
+      <ShellFrame user={user} urgentCount={urgentCount} campaigns={campaigns} aiSetup={aiSetup}>
         {children}
       </ShellFrame>
     </SidebarProvider>

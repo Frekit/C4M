@@ -7,34 +7,20 @@ import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
   OPEN_TALENT_STATUSES,
-  canActivateLine,
-  canMarkClientDecision,
   canSendLineInWave,
-  isClientDecisionStatus,
-  lineQuoteComplete,
   policyFromCampaign,
-  quoteIsFrozen,
-  statusAfterSavingQuote,
 } from "@/lib/domain/campaign-desk";
 import { upsertRosterCreator } from "@/lib/domain/roster-upsert";
-import { campaignForClient } from "@/lib/domain/client-campaign";
-import { costPerContentUsdCents } from "@/lib/domain/contract-math";
-import { createContract, markParentRenewed } from "@/lib/domain/contracts";
+import {
+  activateTalentLine,
+  applyClientTalentStatus,
+  applyTalentQuote,
+} from "@/lib/domain/talent-commands";
 import {
   CAMPAIGN_APPROVAL,
   CAMPAIGN_TALENT_STATUS,
-  CONTRACT_KIND,
-  CONTRACT_STATUS,
   PROPOSAL_STATUS,
 } from "@/lib/domain/enums";
-import { resolveFxRate } from "@/lib/domain/fx";
-import { isSupportedCurrency } from "@/lib/currencies";
-import {
-  isCostFormat,
-  isCostPlatform,
-  perContentFromPackage,
-} from "@/lib/domain/creator-cost-quote";
-import { parseAmountToMinorUnits } from "@/lib/money";
 import { handlesFromPaste, TALENT_PASTE_MAX } from "@/lib/domain/talent-paste";
 
 export type CampaignRosterResult = {
@@ -207,51 +193,16 @@ export async function pasteTalentToCampaign(
 
 export async function setCampaignTalentStatus(formData: FormData) {
   const user = await requirePermission("campaigns:manage", "/campanas");
-  const id = String(formData.get("talentId") ?? "");
-  const status = String(formData.get("status") ?? "");
-
-  if (!id || !isClientDecisionStatus(status)) {
-    throw new Error("Solo se puede aprobar o rechazar desde aquí.");
-  }
-
-  const current = await prisma.campaignTalent.findUnique({
-    where: { id },
-    include: { campaign: true },
+  const result = await applyClientTalentStatus(user, {
+    talentId: String(formData.get("talentId") ?? ""),
+    status: String(formData.get("status") ?? ""),
   });
-  if (!current) throw new Error("Esa línea no existe.");
-
-  const policy = policyFromCampaign(current.campaign);
-  if (policy.approvalMode !== CAMPAIGN_APPROVAL.CLIENT_APPROVES) {
-    throw new Error("Esta campaña es de uso interno: no hay ok de cliente.");
+  if (!result.ok) {
+    throw new Error(result.error ?? "No se ha podido cambiar el estado.");
   }
-  if (!canMarkClientDecision(policy.approvalMode, current.status)) {
-    throw new Error("Primero envía el perfil en una oleada.");
+  if (result.campaignId) {
+    revalidateCampaign(result.campaignId, result.creatorId);
   }
-
-  const changed = await prisma.campaignTalent.updateMany({
-    where: {
-      id,
-      status: {
-        in: [CAMPAIGN_TALENT_STATUS.PROPOSED, CAMPAIGN_TALENT_STATUS.APPROVED],
-      },
-    },
-    data: { status },
-  });
-  if (changed.count !== 1) {
-    throw new Error("Esa línea ya no admite un ok de cliente.");
-  }
-
-  const row = await prisma.campaignTalent.findUniqueOrThrow({ where: { id } });
-
-  await recordAudit({
-    entityType: "CampaignTalent",
-    entityId: id,
-    action: "STATUS_CHANGED",
-    actor: user,
-    metadata: { status, campaignId: row.campaignId },
-  });
-
-  revalidateCampaign(row.campaignId, row.creatorId);
 }
 
 export async function saveCampaignTalentPrices(
@@ -259,254 +210,33 @@ export async function saveCampaignTalentPrices(
   formData: FormData
 ): Promise<CampaignRosterResult> {
   const user = await requirePermission("campaigns:manage", "/campanas");
-  const id = String(formData.get("talentId") ?? "");
-  const saleUsd = String(formData.get("saleUsd") ?? "").trim();
-  const cost = String(formData.get("cost") ?? "").trim();
-  const piecesRaw = String(formData.get("deliverableCount") ?? "").trim();
-  const currency = String(formData.get("currency") ?? "EUR")
-    .trim()
-    .toUpperCase();
-
-  if (!id) return { ok: false, error: "Falta el perfil." };
-  if (!isSupportedCurrency(currency)) {
-    return { ok: false, error: `Moneda ${currency} no soportada.` };
-  }
-
-  const platformRaw = String(formData.get("contentPlatform") ?? "")
-    .trim()
-    .toUpperCase();
-  const formatRaw = String(formData.get("contentFormat") ?? "").trim();
-  const contentPlatform =
-    formatRaw && isCostPlatform(platformRaw) ? platformRaw : null;
-  const contentFormat =
-    contentPlatform && isCostFormat(contentPlatform, formatRaw) ? formatRaw : null;
-  if (formatRaw && !contentFormat) {
-    return { ok: false, error: "Ese formato no existe en esa red." };
-  }
-
-  const salePriceCentsPerContent = saleUsd
-    ? parseAmountToMinorUnits(saleUsd, "USD")
-    : null;
-  const costAmount = cost ? parseAmountToMinorUnits(cost, currency) : null;
-  const deliverableCount = piecesRaw
-    ? Number.parseInt(piecesRaw, 10)
-    : null;
-
-  if (saleUsd && salePriceCentsPerContent === null) {
-    return { ok: false, error: "Revisa el precio de venta (USD)." };
-  }
-  if (cost && costAmount === null) {
-    return { ok: false, error: "Revisa el coste del creator." };
-  }
-  if (piecesRaw && (!deliverableCount || deliverableCount < 1)) {
-    return { ok: false, error: "Las piezas tienen que ser ≥ 1." };
-  }
-
-  let packageCostMinor: number | null = null;
-  let costMinorPerContent = costAmount;
-  if (contentFormat) {
-    if (!deliverableCount) {
-      return { ok: false, error: "Pon cuántos contenidos lleva el paquete." };
-    }
-    if (costAmount === null) {
-      return { ok: false, error: "Pon el coste del paquete." };
-    }
-    const split = perContentFromPackage(costAmount, deliverableCount);
-    if (!split.ok) return { ok: false, error: split.error };
-    packageCostMinor = costAmount;
-    costMinorPerContent = split.perContentMinor;
-  }
-
-  const existing = await prisma.campaignTalent.findUnique({
-    where: { id },
+  const result = await applyTalentQuote(user, {
+    talentId: String(formData.get("talentId") ?? ""),
+    saleUsd: String(formData.get("saleUsd") ?? ""),
+    cost: String(formData.get("cost") ?? ""),
+    currency: String(formData.get("currency") ?? "EUR"),
+    deliverableCount: String(formData.get("deliverableCount") ?? ""),
+    contentPlatform: String(formData.get("contentPlatform") ?? ""),
+    contentFormat: String(formData.get("contentFormat") ?? ""),
   });
-  if (!existing) return { ok: false, error: "Esa línea no existe." };
-  if (quoteIsFrozen(existing.status)) {
-    return {
-      ok: false,
-      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
-    };
+  if (result.ok && result.campaignId) {
+    revalidateCampaign(result.campaignId, result.creatorId);
   }
-
-  const quote = {
-    status: existing.status,
-    salePriceCentsPerContent,
-    costMinorPerContent,
-    costCurrency: costMinorPerContent !== null ? currency : null,
-    deliverableCount,
-  };
-
-  const changed = await prisma.campaignTalent.updateMany({
-    where: {
-      id,
-      status: {
-        in: [CAMPAIGN_TALENT_STATUS.ROSTER, CAMPAIGN_TALENT_STATUS.READY],
-      },
-    },
-    data: {
-      salePriceCentsPerContent,
-      costMinorPerContent,
-      costCurrency: quote.costCurrency,
-      deliverableCount,
-      contentPlatform,
-      contentFormat,
-      packageCostMinor,
-      status: statusAfterSavingQuote(lineQuoteComplete(quote)),
-    },
-  });
-  if (changed.count !== 1) {
-    return {
-      ok: false,
-      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
-    };
-  }
-
-  const row = await prisma.campaignTalent.findUniqueOrThrow({ where: { id } });
-
-  await recordAudit({
-    entityType: "CampaignTalent",
-    entityId: id,
-    action: "QUOTE_SET",
-    actor: user,
-    metadata: { campaignId: row.campaignId },
-  });
-
-  revalidateCampaign(row.campaignId, row.creatorId);
-  return { ok: true };
+  return { ok: result.ok, error: result.error };
 }
 
 export async function activateCampaignTalent(formData: FormData) {
   const user = await requirePermission("campaigns:manage", "/campanas");
-  const id = String(formData.get("talentId") ?? "");
-
-  const preview = await prisma.campaignTalent.findUnique({
-    where: { id },
-    include: {
-      campaign: true,
-      creator: true,
-    },
-  });
-
-  if (!preview) throw new Error("Ese perfil no está en la campaña.");
-  if (preview.status === CAMPAIGN_TALENT_STATUS.ACTIVE) {
-    return;
-  }
-  if (!preview.campaign.clientId) {
-    throw new Error("La campaña no tiene cliente. Asígnalo antes de activar.");
-  }
-
-  const matched = await campaignForClient(
-    preview.campaignId,
-    preview.campaign.clientId
+  const result = await activateTalentLine(
+    user,
+    String(formData.get("talentId") ?? "")
   );
-  if (!matched.ok) throw new Error(matched.error);
-
-  const activated = await prisma.$transaction(async (tx) => {
-    const row = await tx.campaignTalent.findUnique({
-      where: { id },
-      include: { campaign: true, creator: true },
-    });
-    if (!row) throw new Error("Ese perfil no está en la campaña.");
-    if (row.status === CAMPAIGN_TALENT_STATUS.ACTIVE) {
-      return null;
-    }
-    if (!row.campaign.clientId) {
-      throw new Error("La campaña no tiene cliente. Asígnalo antes de activar.");
-    }
-
-    const siblings = await tx.campaignTalent.findMany({
-      where: { campaignId: row.campaignId, id: { not: row.id } },
-    });
-    const policy = policyFromCampaign(row.campaign);
-    const gate = canActivateLine(row, policy, siblings);
-    if (!gate.ok) throw new Error(gate.error);
-
-    const claimed = await tx.campaignTalent.updateMany({
-      where: { id, status: row.status },
-      data: { status: CAMPAIGN_TALENT_STATUS.ACTIVE },
-    });
-    if (claimed.count !== 1) {
-      throw new Error("Esa línea ya no se puede activar.");
-    }
-
-    const fx = await resolveFxRate(row.costCurrency ?? "EUR");
-    if (fx.unitsPerUsd <= 0) {
-      throw new Error(`No hay tipo de cambio para ${row.costCurrency}.`);
-    }
-
-    const parent = await tx.contract.findFirst({
-      where: {
-        creatorId: row.creatorId,
-        clientId: row.campaign.clientId,
-        status: { not: CONTRACT_STATUS.CANCELLED },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const sameCost =
-      parent &&
-      parent.costMinorPerContent === row.costMinorPerContent &&
-      parent.costCurrency === row.costCurrency &&
-      parent.salePriceCentsPerContent === row.salePriceCentsPerContent;
-
-    const kind = !parent
-      ? CONTRACT_KIND.ORIGINAL
-      : sameCost
-        ? CONTRACT_KIND.ANNEX
-        : CONTRACT_KIND.RENEWAL;
-
-    const contract = await createContract(
-      {
-        creatorId: row.creatorId,
-        kind,
-        parent,
-        clientId: row.campaign.clientId,
-        campaignId: matched.campaignId,
-        economics: {
-          deliverableCount: row.deliverableCount ?? 1,
-          salePriceCentsPerContent: row.salePriceCentsPerContent ?? 0,
-          costCurrency: row.costCurrency ?? "EUR",
-          costMinorPerContent: row.costMinorPerContent ?? 0,
-          costUsdCentsPerContent: costPerContentUsdCents(
-            row.costMinorPerContent ?? 0,
-            row.costCurrency ?? "EUR",
-            fx.unitsPerUsd
-          ),
-          fxUnitsPerUsd: fx.unitsPerUsd,
-          fxRateAt: fx.rateAt,
-          fxSource: fx.source,
-          paymentTermDays: policy.defaultPaymentTermDays,
-        },
-        createdBy: user.email,
-      },
-      tx
-    );
-
-    if (parent) {
-      await markParentRenewed(parent.id, kind, tx);
-    }
-
-    return { row, contract, kind };
-  });
-
-  if (!activated) return;
-
-  await recordAudit({
-    entityType: "Contract",
-    entityId: activated.contract.id,
-    action: "CREATED",
-    actor: user,
-    metadata: {
-      from: "campaign-talent",
-      kind: activated.kind,
-      campaignId: activated.row.campaignId,
-      handle: activated.row.creator.handle,
-    },
-  });
+  if (!result.ok) throw new Error(result.error ?? "No se ha podido activar.");
+  if (result.unchanged || !result.campaignId) return;
 
   revalidatePath("/contratos");
   revalidatePath("/contenidos");
-  revalidateCampaign(activated.row.campaignId, activated.row.creatorId);
+  revalidateCampaign(result.campaignId, result.creatorId);
 }
 
 export async function createCampaignProposal(

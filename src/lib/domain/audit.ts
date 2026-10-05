@@ -4,15 +4,20 @@ import { prisma } from "@/lib/db";
 import type { AppUser } from "@/lib/auth/types";
 
 export async function requestContext() {
-  const list = await headers();
+  try {
+    const list = await headers();
 
-  return {
-    ip:
-      list.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      list.get("x-real-ip") ??
-      null,
-    userAgent: list.get("user-agent"),
-  };
+    return {
+      ip:
+        list.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        list.get("x-real-ip") ??
+        null,
+      userAgent: list.get("user-agent"),
+    };
+  } catch {
+    // Fuera de una petición (tests, tareas) no hay cabeceras que guardar.
+    return { ip: null, userAgent: null };
+  }
 }
 
 export async function recordAudit(input: {
