@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { clientAuthorLabel } from "@/lib/domain/client-author-label";
 
 export function ClientThreadForm({
   token,
@@ -60,7 +61,7 @@ export function ClientThreadForm({
                 {message.authorKind === "ASSISTANT"
                   ? "Mesa"
                   : message.authorKind === "CLIENT"
-                    ? message.authorLabel
+                    ? clientAuthorLabel(message.authorLabel)
                     : "Agencia"}
               </p>
               <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
