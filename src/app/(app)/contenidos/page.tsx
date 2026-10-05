@@ -56,7 +56,7 @@ export default async function ContentsPage({
           <h1 className="text-heading-24">
             Contenidos
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="max-[760px]:min-h-[60px] text-sm text-muted-foreground">
             Todos los contenidos contratados: fecha, publicación, subida al cliente y pago.
           </p>
         </div>
@@ -69,25 +69,25 @@ export default async function ContentsPage({
         </Button>
       </div>
 
-      <nav className="flex gap-2 overflow-x-auto text-label-13" aria-label="Vistas">
-        <Button variant={filters.vista === "necesitan" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=necesitan" />}>
+      <nav className="flex h-8 flex-nowrap gap-2 overflow-x-auto text-label-13" aria-label="Vistas">
+        <Button className="shrink-0" variant={filters.vista === "necesitan" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=necesitan" />}>
           Necesitan algo
         </Button>
-        <Button variant={filters.retrasados === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?retrasados=1" />}>
+        <Button className="shrink-0" variant={filters.retrasados === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?retrasados=1" />}>
           Fecha pasada {data.lateCount}
         </Button>
-        <Button variant={filters.sinEnlace === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?sinEnlace=1" />}>
+        <Button className="shrink-0" variant={filters.sinEnlace === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?sinEnlace=1" />}>
           Sin enlace
         </Button>
-        <Button variant={filters.vista === "pagar" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=pagar" />}>
+        <Button className="shrink-0" variant={filters.vista === "pagar" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=pagar" />}>
           Listos para pagar
         </Button>
-        <Button variant={!data.hasFilters ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos" />}>
+        <Button className="shrink-0" variant={!data.hasFilters ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos" />}>
           Todos
         </Button>
       </nav>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex h-5 flex-nowrap items-center gap-2 overflow-x-auto">
         {DELIVERABLE_STATUS_ORDER.map((status) => (
           <Badge key={status} variant="outline">
             {DELIVERABLE_STATUS_LABELS[status]}: {data.counts[status] ?? 0}
@@ -107,7 +107,7 @@ export default async function ContentsPage({
         <CardHeader>
           <FilterIcon className="size-4 text-muted-foreground" />
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>
+          <CardDescription className="max-[760px]:min-h-[60px]">
             El rango de fechas mira la fecha del contenido. Las colas de
             incidencia (sin enlace, error, sin firmar) recortan el universo.
           </CardDescription>

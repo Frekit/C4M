@@ -20,6 +20,7 @@ export function DataTable<T>({
   onSelectedChange,
   empty,
   card,
+  showCards = true,
 }: {
   data: T[];
   columns: ColumnDef<T, unknown>[];
@@ -29,6 +30,7 @@ export function DataTable<T>({
   onSelectedChange: (ids: string[]) => void;
   empty?: React.ReactNode;
   card?: (row: T) => React.ReactNode;
+  showCards?: boolean;
 }) {
   const [focus, setFocus] = useState(0);
   const [anchor, setAnchor] = useState(0);
@@ -156,7 +158,7 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      <ul className="grid gap-2 min-[761px]:hidden">
+      {showCards ? <ul className="grid gap-2 min-[761px]:hidden">
         {rows.map((row) => (
           <li key={row.id} className="min-h-[60px]">
             <button
@@ -168,7 +170,7 @@ export function DataTable<T>({
             </button>
           </li>
         ))}
-      </ul>
+      </ul> : null}
     </>
   );
 }
