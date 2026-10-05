@@ -2,7 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { CAMPAIGN_STATUS } from "@/lib/domain/enums";
-import { loadOpsAlerts } from "@/lib/domain/ops-alerts";
+import { loadActionCenter } from "@/lib/domain/action-center";
 
 export default async function AppLayout({
   children,
@@ -19,8 +19,9 @@ export default async function AppLayout({
     );
   }
 
-  const [alerts, campaigns] = await Promise.all([
-    loadOpsAlerts(),
+  const firstName = user.name.split(" ")[0] || user.name;
+  const [center, campaigns] = await Promise.all([
+    loadActionCenter(firstName),
     prisma.campaign.findMany({
       where: { status: CAMPAIGN_STATUS.ACTIVE },
       orderBy: { updatedAt: "desc" },
@@ -29,11 +30,7 @@ export default async function AppLayout({
     }),
   ]);
 
-  const urgentCount =
-    alerts.expiredCount +
-    alerts.unsignedPublishedCount +
-    alerts.missingLinkCount +
-    alerts.platformErrorCount;
+  const urgentCount = center.urgentCount;
 
   return (
     <AppShell user={user} urgentCount={urgentCount} campaigns={campaigns}>
