@@ -195,7 +195,7 @@ export function CampaignThread({
       ) : null}
 
       {canWrite ? (
-        <form key={askEpoch} action={askAction} className="grid gap-2">
+        <form key={`pregunta-${askEpoch}`} action={askAction} className="grid gap-2">
           <input type="hidden" name="campaignId" value={campaignId} />
           <Textarea
             name="question"
@@ -211,7 +211,7 @@ export function CampaignThread({
       ) : null}
 
       {canWrite ? (
-        <form key={noteEpoch} action={noteAction} className="grid gap-2">
+        <form key={`nota-${noteEpoch}`} action={noteAction} className="grid gap-2">
           <input type="hidden" name="campaignId" value={campaignId} />
           <Textarea name="body" rows={2} placeholder="Nota para el equipo o el cliente" />
           <div>

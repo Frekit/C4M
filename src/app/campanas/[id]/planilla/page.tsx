@@ -237,13 +237,15 @@ export default async function CampaignSheetPage({
             </span>
           ) : null}
           {networksMentioned(data.campaign.briefNetworks).map((network) => (
-            <Link
-              key={network}
-              href={`/campanas/${id}/planilla?red=${network}`}
-              className="ml-2 underline underline-offset-4"
-            >
-              Ver {COST_PLATFORM_LABELS[network]}
-            </Link>
+            <span key={network}>
+              <span className="text-muted-foreground"> · </span>
+              <Link
+                href={`/campanas/${id}/planilla?red=${network}`}
+                className="underline underline-offset-4"
+              >
+                Filtrar {COST_PLATFORM_LABELS[network]}
+              </Link>
+            </span>
           ))}
         </p>
       ) : (
