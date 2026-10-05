@@ -3,10 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  CalendarX2Icon,
+  ChevronRightIcon,
+  CircleXIcon,
+  FileClockIcon,
+  Link2OffIcon,
+  MessageSquareIcon,
+  SparklesIcon,
+  WalletIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { moveDeliverableDates } from "@/app/(app)/centro-actions";
 import { useShell } from "@/components/shell-context";
+import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import type { ActionCard, ActionCenter, ActionKind } from "@/lib/domain/action-center";
 import { useHotkeys } from "@/hooks/use-hotkeys";
@@ -146,15 +157,15 @@ export function ActionCenterBoard({ data }: { data: ActionCenter }) {
       <div className="grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-eyebrow-11 text-fg-subtle">{data.eyebrow}</p>
-            <h1 className="text-display-30">
-              {data.greeting}, {data.firstName}.
+            <p className="text-eyebrow-11 mb-1.5 text-fg-subtle">{data.eyebrow}</p>
+            <h1 className="max-w-[640px] text-display-30">
+              {data.greeting}, {data.firstName}.{" "}
+              <span className="text-muted-foreground">
+                {visible.length === 0
+                  ? "No hay nada que necesite tu decisión."
+                  : `Hay ${counts.todo} ${counts.todo === 1 ? "cosa que espera" : "cosas que esperan"} una decisión tuya.`}
+              </span>
             </h1>
-            <p className="text-copy-14 text-muted-foreground">
-              {visible.length === 0
-                ? "No hay nada que necesite tu decisión."
-                : `Hay ${counts.todo} ${counts.todo === 1 ? "cosa que espera" : "cosas que esperan"} una decisión tuya.`}
-            </p>
           </div>
           <div role="group" aria-label="Filtrar decisiones" className="flex flex-wrap gap-1">
             {FILTERS.map((item) => (
@@ -180,13 +191,22 @@ export function ActionCenterBoard({ data }: { data: ActionCenter }) {
         <div className="grid overflow-hidden rounded-xl border border-border sm:grid-cols-2 xl:grid-cols-4">
           <Kpi label="Contratos en firma" value={String(data.kpis.signing)} hint={data.kpis.signingHint} />
           <Kpi label="Contenidos esta semana" value={String(data.kpis.thisWeek)} hint={data.kpis.thisWeekHint} />
-          <Kpi label="Fecha pasada" value={String(data.kpis.late)} hint={data.kpis.late > 0 ? "Te toca a ti" : "Al día"} danger={data.kpis.late > 0} />
+          <Kpi
+            label="Fecha pasada sin publicar"
+            value={String(data.kpis.late)}
+            hint={
+              data.cards.find((card) => card.id.startsWith("late-"))?.campaignName ??
+              (data.kpis.late > 0 ? "Te toca a ti" : "Al día")
+            }
+            danger={data.kpis.late > 0}
+          />
           <Kpi label="Listo para pagar" value={data.kpis.payoutLabel} hint="Vencido y sin pagar" />
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <h2 className="text-heading-16">Necesita tu decisión</h2>
-          <p className="hidden text-copy-12 text-fg-subtle sm:block">J/K moverte · E resolver</p>
+          {visible.some((card) => card.options) ? <StatusPill tone="warning">Urgente</StatusPill> : null}
+          <p className="ml-auto hidden text-copy-12 text-fg-subtle sm:block">J / K para moverte · E para resolver</p>
         </div>
 
         {visible.length === 0 ? (
@@ -206,13 +226,15 @@ export function ActionCenterBoard({ data }: { data: ActionCenter }) {
                 <article
                   tabIndex={0}
                   className={cn(
-                    "rounded-xl border bg-card p-4 shadow-(--e1)",
+                    "overflow-hidden rounded-xl border bg-card shadow-(--e1)",
                     index === focus && "ring-2 ring-ring",
                     card.options && "border-warning-dot/45 shadow-(--e2)"
                   )}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex flex-wrap items-start gap-3 p-3.5">
+                    <CardGlyph card={card} />
+                    <div className="min-w-0 flex-1">
+                      {card.meta ? <p className="text-copy-12 text-fg-subtle">{card.meta}</p> : null}
                       <h3 className="text-heading-14">
                         {card.href ? (
                           <Link href={card.href} className="hover:underline">
@@ -222,47 +244,77 @@ export function ActionCenterBoard({ data }: { data: ActionCenter }) {
                           card.title
                         )}
                       </h3>
-                      <p className="mt-1 text-copy-13 text-muted-foreground">{card.body}</p>
-                      {card.meta ? <p className="text-copy-12 text-fg-subtle">{card.meta}</p> : null}
+                      {card.body ? (
+                        <p className="mt-0.5 text-copy-13 text-muted-foreground">{card.body}</p>
+                      ) : null}
                       {card.handles.length > 0 ? (
-                        <p className="mt-2 flex flex-wrap gap-1.5 text-copy-12 text-fg-subtle">
-                          {card.handles.slice(0, 4).map((handle) => (
-                            <span key={handle} className="inline-flex items-center gap-1">
-                              <span className="grid size-6 place-items-center rounded-full bg-muted text-[10px]">
+                        <p className="mt-1.5 flex items-center gap-2 text-copy-13 text-muted-foreground">
+                          <span className="flex">
+                            {card.handles.slice(0, 3).map((handle, handleIndex) => (
+                              <span
+                                key={handle}
+                                className={cn(
+                                  "grid size-5 place-items-center rounded-full border-2 border-card bg-muted text-[8px] text-foreground",
+                                  handleIndex > 0 && "-ml-1.5"
+                                )}
+                              >
                                 {handleInitials(handle)}
                               </span>
-                              @{handle}
-                            </span>
-                          ))}
+                            ))}
+                          </span>
+                          {card.handles
+                            .slice(0, 3)
+                            .map((handle) => `@${handle}`)
+                            .join(", ")}
                         </p>
                       ) : null}
                     </div>
                     {!card.options && card.primary ? (
-                      <div className="flex flex-wrap gap-2 max-[760px]:w-full">
+                      <div className="flex flex-wrap gap-2 max-[760px]:w-full max-[760px]:pl-11">
                         {card.secondary ? (
-                          <Button variant="outline" size="sm" nativeButton={false} render={<Link href={card.secondary.href} />}>
+                          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={card.secondary.href} />}>
                             {card.secondary.label}
                           </Button>
                         ) : null}
-                        <Button size="sm" nativeButton={false} render={<Link href={card.primary.href} />}>
+                        <Button
+                          size="sm"
+                          variant={card.kind === "pago" || card.kind === "contenido" ? "outline" : "default"}
+                          nativeButton={false}
+                          render={<Link href={card.primary.href} />}
+                        >
                           {card.primary.label}
                         </Button>
                       </div>
                     ) : null}
                   </div>
                   {card.options ? (
-                    <div className="mt-3 grid gap-1.5">
+                    <div className="grid gap-0.5 border-t border-border p-1.5">
                       {card.options.map((option) => (
                         <button
                           key={option.key}
                           type="button"
                           onClick={() => void runOption(card, option.key)}
-                          className="flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"
+                          className="flex items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-muted"
                         >
-                          <kbd className="grid size-[22px] place-items-center rounded-[4px] border border-border font-mono text-[11px]">
+                          <kbd
+                            className={cn(
+                              "grid size-[22px] shrink-0 place-items-center rounded-md border border-border bg-card font-mono text-[11px] text-muted-foreground",
+                              option.kind === "assistant" && "border-transparent bg-ai-muted text-ai"
+                            )}
+                          >
                             {option.key}
                           </kbd>
-                          <span className="text-copy-13">{option.label}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-label-13">{option.label}</span>
+                            {option.hint ? (
+                              <span className="block text-copy-12 text-muted-foreground">{option.hint}</span>
+                            ) : null}
+                          </span>
+                          {option.kind === "assistant" ? (
+                            <SparklesIcon className="size-4 text-ai" aria-hidden />
+                          ) : (
+                            <ChevronRightIcon className="size-4 text-fg-subtle" aria-hidden />
+                          )}
                         </button>
                       ))}
                       {confirmId === card.id ? (
@@ -308,42 +360,91 @@ export function ActionCenterBoard({ data }: { data: ActionCenter }) {
           Resueltas en este navegador: {resolved.size}
         </p>
       </div>
-      <aside className="grid gap-4">
-        <section className="rounded-xl border bg-card p-4">
-          <h2 className="text-heading-14">Esta semana</h2>
+      <aside className="grid gap-4 min-[761px]:max-[1023px]:grid-cols-2">
+        <section className="overflow-hidden rounded-xl border bg-card shadow-(--e1)">
+          <div className="flex items-center px-4 pt-3.5">
+            <h2 className="text-heading-14">Esta semana</h2>
+            <Link href="/contenidos" className="ml-auto text-label-12 text-fg-subtle">
+              Calendario
+            </Link>
+          </div>
           {data.week.length === 0 ? (
-            <p className="mt-2 text-copy-13 text-muted-foreground">Nada programado en los próximos 7 días.</p>
+            <p className="px-4 py-3 text-copy-13 text-muted-foreground">Nada programado en los próximos 7 días.</p>
           ) : (
-            <ul className="mt-2 grid gap-2">
-              {data.week.map((item) => (
-                <li key={item.id}>
-                  <Link href={item.href} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2 text-copy-13">
-                    <span className="text-fg-subtle uppercase">{item.day}</span>
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                </li>
-              ))}
+            <ul className="px-4 pb-2">
+              {data.week.slice(0, 6).map((item) => {
+                const match = item.day.match(/^(\p{L}+).*?(\d+)/u);
+                const name = (match?.[1] ?? item.day).slice(0, 3).toUpperCase();
+                const num = match?.[2] ?? "";
+                return (
+                  <li key={item.id} className="border-b border-border last:border-0">
+                    <Link
+                      href={item.href}
+                      className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-2.5 py-2"
+                    >
+                      <span className="rounded-md border border-border py-0.5 text-center text-[11px] leading-[14px] text-fg-subtle">
+                        {name}
+                        <b className="block text-[15px] leading-[18px] font-semibold text-foreground">{num}</b>
+                      </span>
+                      <span className="truncate text-label-13">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
-        <section className="rounded-xl border bg-card p-4">
-          <h2 className="text-heading-14">Actividad</h2>
+        <section className="overflow-hidden rounded-xl border bg-card shadow-(--e1)">
+          <h2 className="px-4 pt-3.5 text-heading-14">Actividad</h2>
           {data.activity.length === 0 ? (
-            <p className="mt-2 text-copy-13 text-muted-foreground">Todavía no hay movimientos.</p>
+            <p className="px-4 py-3 text-copy-13 text-muted-foreground">Todavía no hay movimientos.</p>
           ) : (
-            <ul className="mt-2 grid gap-2">
+            <ul className="px-4 py-2">
               {data.activity.map((item) => (
-                <li key={item.id} className="text-copy-13">
-                  {item.label}
+                <li key={item.id} className="flex items-start gap-2.5 py-1.5 text-copy-13 text-muted-foreground">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[10px] text-foreground">
+                    {handleInitials(item.label.split(/[\s@]/)[0] || "C4")}
+                  </span>
+                  <span>{item.label}</span>
                 </li>
               ))}
             </ul>
           )}
-          <Link href="/auditoria" className="mt-3 inline-block text-label-13 text-brand">
+          <Link href="/auditoria" className="inline-block px-4 pb-3 text-label-13 text-brand">
             Ver historial
           </Link>
         </section>
       </aside>
+    </div>
+  );
+}
+
+function CardGlyph({ card }: { card: ActionCard }) {
+  const Icon = card.id.startsWith("late-")
+    ? CalendarX2Icon
+    : card.kind === "firma"
+      ? FileClockIcon
+      : card.kind === "pago"
+        ? WalletIcon
+        : card.kind === "mensaje"
+          ? MessageSquareIcon
+          : card.id.startsWith("platform-")
+            ? CircleXIcon
+            : Link2OffIcon;
+  const tone = card.id.startsWith("late-")
+    ? "bg-warning-muted text-warning"
+    : card.tone === "danger"
+      ? "bg-danger-muted text-danger"
+      : card.kind === "pago"
+        ? "bg-success-muted text-success"
+        : card.kind === "firma"
+          ? "bg-brand-muted text-brand"
+          : card.tone === "warning"
+            ? "bg-warning-muted text-warning"
+            : "bg-info-muted text-info";
+  return (
+    <div className={cn("grid size-8 shrink-0 place-items-center rounded-md", tone)}>
+      <Icon className="size-4" aria-hidden />
     </div>
   );
 }

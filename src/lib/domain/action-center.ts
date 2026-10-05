@@ -372,15 +372,16 @@ export const loadActionCenter = cache(async function loadActionCenter(
       : null;
     const lateNoun =
       items.length === 1 ? "contenido tenía fecha" : "contenidos tenían fecha";
+    const lateTitle = when
+      ? `${items.length} ${lateNoun} el ${when} y siguen sin publicar`
+      : `${items.length} ${lateNoun} y siguen sin publicar`;
     cards.push({
       id: `late-${key}`,
       tone: "danger",
       kind: "contenido",
-      title: campaign?.name ?? "Sin campaña",
-      body: when
-        ? `${items.length} ${lateNoun} el ${when} y siguen sin publicar`
-        : `${items.length} ${lateNoun} y siguen sin publicar`,
-      meta: campaign?.client?.name,
+      title: lateTitle,
+      body: "",
+      meta: [campaign?.name, campaign?.client?.name].filter(Boolean).join(" · "),
       campaignId: campaign?.id,
       campaignName: campaign?.name,
       href: campaign ? `/campanas/${campaign.id}` : "/contenidos",
@@ -390,7 +391,7 @@ export const loadActionCenter = cache(async function loadActionCenter(
         {
           key: "A",
           label: `Mover la fecha al ${thursdayLabel}`,
-          hint: "Pide confirmación antes de guardar",
+          hint: "Cambia la fecha prevista. El pago se recalcula desde la publicación.",
           kind: "move-date",
           deliverableIds: items.map((item) => item.id),
           dateValue: thursdayValue,
@@ -399,12 +400,14 @@ export const loadActionCenter = cache(async function loadActionCenter(
         {
           key: "B",
           label: "Ya están publicados: añadir los enlaces",
+          hint: "Pega el enlace de cada publicación y se marcan como publicados.",
           kind: "href",
           href: "/contenidos?sinEnlace=1",
         },
         {
           key: "C",
           label: "Pedir otra cosa al asistente…",
+          hint: "Abre el panel con estos contenidos como contexto.",
           kind: "assistant",
         },
       ],
