@@ -8,16 +8,15 @@ import { toast } from "sonner";
 import { moveDeliverableDates } from "@/app/(app)/centro-actions";
 import { useShell } from "@/components/shell-context";
 import { Button } from "@/components/ui/button";
-import {
-  handleInitials,
-  type ActionCard,
-  type ActionCenter,
-  type ActionKind,
-} from "@/lib/domain/action-center";
+import type { ActionCard, ActionCenter, ActionKind } from "@/lib/domain/action-center";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { cn } from "@/lib/utils";
 
 const RESOLVED_KEY = "c4m-resolved-actions";
+
+function handleInitials(handle: string) {
+  return handle.replace(/^@/, "").slice(0, 2).toUpperCase();
+}
 
 const FILTERS: { id: "todo" | ActionKind; label: string }[] = [
   { id: "todo", label: "Todo" },

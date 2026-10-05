@@ -102,10 +102,6 @@ function nextThursday(start: Date) {
   return addDays(start, delta);
 }
 
-function initials(handle: string) {
-  return handle.replace(/^@/, "").slice(0, 2).toUpperCase();
-}
-
 function dayLabel(date: Date) {
   return new Intl.DateTimeFormat("es-ES", {
     weekday: "short",
@@ -592,7 +588,3 @@ export const loadActionCenter = cache(async function loadActionCenter(
     })),
   };
 });
-
-export function handleInitials(handle: string) {
-  return initials(handle);
-}
