@@ -17,18 +17,22 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
   >(addRosterCreator, null);
 
   const [formEpoch, setFormEpoch] = useState(0);
+  const [seenState, setSeenState] = useState(state);
+
+  if (state !== seenState) {
+    setSeenState(state);
+    if (state?.ok) setFormEpoch((epoch) => epoch + 1);
+  }
 
   useEffect(() => {
     if (state?.ok && (state.created ?? 0) > 0) {
       toast.success("Perfil añadido al roster.");
-      setFormEpoch((epoch) => epoch + 1);
     } else if (state?.ok) {
       toast.message(
         state.updated
           ? "Ese Instagram ya estaba. Actualicé país, tipo o la mediana de views."
           : "Ese Instagram ya estaba. No había nada nuevo que guardar."
       );
-      setFormEpoch((epoch) => epoch + 1);
     }
     if (state && !state.ok && state.error) toast.error(state.error);
   }, [state]);

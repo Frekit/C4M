@@ -110,16 +110,20 @@ function CostQuoteForm({ creatorId }: { creatorId: string }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [epoch, setEpoch] = useState(0);
+  const [seenState, setSeenState] = useState(state);
+
+  if (state !== seenState) {
+    setSeenState(state);
+    if (state?.ok) {
+      setAmount("");
+      setEpoch((value) => value + 1);
+    }
+  }
 
   useEffect(() => {
     if (!state) return;
-    if (state.ok) {
-      toast.success("Coste de formato guardado.");
-      setAmount("");
-      setEpoch((value) => value + 1);
-    } else if (state.error) {
-      toast.error(state.error);
-    }
+    if (state.ok) toast.success("Coste de formato guardado.");
+    else if (state.error) toast.error(state.error);
   }, [state]);
 
   return (

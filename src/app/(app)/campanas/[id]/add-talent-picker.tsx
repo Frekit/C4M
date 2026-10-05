@@ -49,17 +49,27 @@ export function AddTalentPicker({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pasteEpoch, setPasteEpoch] = useState(0);
+  const [seenPick, setSeenPick] = useState(pickState);
+  const [seenPaste, setSeenPaste] = useState(pasteState);
+
+  if (pickState !== seenPick) {
+    setSeenPick(pickState);
+    if (pickState?.ok) setSelected(new Set());
+  }
+
+  if (pasteState !== seenPaste) {
+    setSeenPaste(pasteState);
+    if (pasteState?.ok) setPasteEpoch((epoch) => epoch + 1);
+  }
 
   useEffect(() => {
     if (!pickState) return;
     resultToast(pickState);
-    if (pickState.ok) setSelected(new Set());
   }, [pickState]);
 
   useEffect(() => {
     if (!pasteState) return;
     resultToast(pasteState);
-    if (pasteState.ok) setPasteEpoch((epoch) => epoch + 1);
   }, [pasteState]);
 
   const filtered = useMemo(() => {

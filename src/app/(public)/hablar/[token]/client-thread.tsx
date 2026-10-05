@@ -29,13 +29,17 @@ export function ClientThreadForm({
     null
   );
   const [epoch, setEpoch] = useState(0);
+  const [seenState, setSeenState] = useState(state);
+
+  if (state !== seenState) {
+    setSeenState(state);
+    if (state?.ok) setEpoch((value) => value + 1);
+  }
 
   useEffect(() => {
     if (!state) return;
-    if (state.ok) {
-      toast.success("Mensaje enviado.");
-      setEpoch((value) => value + 1);
-    } else if (state.error) toast.error(state.error);
+    if (state.ok) toast.success("Mensaje enviado.");
+    else if (state.error) toast.error(state.error);
   }, [state]);
 
   return (
