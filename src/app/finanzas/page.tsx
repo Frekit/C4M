@@ -53,8 +53,7 @@ export default async function FinanzasPage({
         </h1>
         <p className="text-sm text-muted-foreground">
           Trabaja por campaña y por lote de {FINANCE_PAGE_SIZE}. Copia o
-          descarga URLs de la página y marca En plataforma; el formulario no
-          traga 2.000 ids de golpe.
+          descarga las URLs de la página y márcalas en plataforma.
         </p>
       </div>
 

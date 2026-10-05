@@ -297,16 +297,17 @@ export default async function DashboardPage() {
             <CalendarClockIcon className="size-4 text-muted-foreground" />
             <CardTitle>Próximos pagos</CardTitle>
             <CardDescription>
-              Higgsfield: cuando Finanzas los marca submitted. Packs: cuando
-              ese perfil cierra la campaña. La fecha sale de la publicación +
-              plazo (en packs, de la última pieza).
+              Higgsfield: cuando Finanzas los marca en plataforma. Packs:
+              cuando ese perfil cierra la campaña. La fecha sale de la
+              publicación más el plazo (en packs, de la última pieza).
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {upcomingPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Todavía no hay pagos a perfiles. En plataforma hace falta el
-                submitted; en packs, que el perfil termine la campaña.
+                Todavía no hay pagos a perfiles. En plataforma hace falta
+                marcarlos como enviados; en packs, que el perfil termine la
+                campaña.
               </p>
             ) : (
               upcomingPayments.map((item) => {

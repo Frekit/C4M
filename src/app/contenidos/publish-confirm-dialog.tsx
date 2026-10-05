@@ -53,7 +53,7 @@ export function PublishConfirmDialog({
                 : `El pack va ${pack.published + 1}/${pack.total}: hasta completarlo no se cobra al cliente ni se paga a este perfil.`
               : unsigned
                 ? `La fecha de pago (${formatMoney(costMinor, costCurrency)}) se calcula igual. Pagar al perfil no empieza aquí.`
-                : `Esto registra que el post ya está en redes, con el enlace que has puesto, y calcula la fecha de pago (${formatMoney(costMinor, costCurrency)}). Pagar al perfil no empieza aquí: si el cliente tiene plataforma, Finanzas lo marca como submitted al subirlo.`}
+                : `Esto registra que el post ya está en redes, con el enlace que has puesto, y calcula la fecha de pago (${formatMoney(costMinor, costCurrency)}). Pagar al perfil no empieza aquí: si el cliente tiene plataforma, Finanzas lo marca en plataforma al subirlo.`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

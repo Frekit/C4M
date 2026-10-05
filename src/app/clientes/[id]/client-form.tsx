@@ -88,7 +88,7 @@ export function ClientForm({
       <NativeCheckboxField
         name="requiresPlatformSubmit"
         title="Hay que subir los posts a una plataforma del cliente"
-        description="Higgsfield sí. Many Chat no. Si lo quitas, los publicados pasan a la cola de pago sin submitted."
+        description="Higgsfield sí. Many Chat no. Si lo quitas, los publicados pasan a la cola de pago sin pasar por la plataforma."
         defaultChecked={client.requiresPlatformSubmit}
       />
 

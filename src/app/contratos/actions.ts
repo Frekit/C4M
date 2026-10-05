@@ -124,7 +124,7 @@ export async function sendToSignature(
         ? "El correo ha salido. Si no llega, copia el enlace y mándalo tú."
         : mail.failed > 0
           ? "El correo no ha salido. Copia el enlace y mándalo tú."
-          : "No hay RESEND_API_KEY: copia el enlace y mándalo tú.",
+          : "El correo no está configurado: copia el enlace y mándalo tú.",
   };
 }
 

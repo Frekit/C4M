@@ -32,7 +32,7 @@ export function PlatformErrorQueue({
     <div className="grid gap-4">
       <p className="text-sm text-muted-foreground">
         Error al subir: siguen publicados en redes. Cuando lo revises, vuélvelos
-        a la cola o márcalos submitted.
+        a la cola o márcalos en plataforma.
       </p>
       {groups.map((group) => (
         <ErrorGroupCard key={group.key} group={group} />

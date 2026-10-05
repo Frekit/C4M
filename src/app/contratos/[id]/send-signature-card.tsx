@@ -44,8 +44,8 @@ export function SendSignatureCard({
         <SendIcon className="size-4 text-muted-foreground" />
         <CardTitle>Enviar a firma</CardTitle>
         <CardDescription>
-          Se genera un enlace privado y, si hay RESEND_API_KEY, se manda al
-          correo. Si no, lo copias y lo envías tú.
+          Se genera un enlace privado. Si el correo está configurado, se
+          manda solo. Si no, lo copias y lo envías tú.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

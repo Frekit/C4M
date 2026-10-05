@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getCompany } from "@/lib/company";
 import { prisma } from "@/lib/db";
-import { ROLE_LABELS } from "@/lib/domain/enums";
+import { ROLE_LABELS, ROLES } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 import { envLabel, getRuntimeEnv } from "@/lib/runtime-env";
 import { isMailConfigured } from "@/lib/mail/send";
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
 
 export default async function StatusPage() {
   const user = await requireUser("/estado");
+  if (user.role !== ROLES.ADMIN) redirect("/");
   const canEditFx = can(user.role, "contracts:write");
 
   const authMode = getAuthMode();

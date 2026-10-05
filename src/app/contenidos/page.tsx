@@ -63,8 +63,8 @@ export default async function ContentsPage({
             Contenidos
           </h1>
           <p className="text-sm text-muted-foreground">
-            Busca el creator; no cargamos 2.000 opciones. Asignar campaña
-            puede aplicarse al filtro, no solo a esta página.
+            Busca por handle. Asignar campaña puede aplicarse al filtro, no
+            solo a esta página.
           </p>
         </div>
         <Button

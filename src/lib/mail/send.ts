@@ -77,7 +77,7 @@ export function mailStatusCopy(result: MailSendResult): string {
     return "El correo ha salido. Si no llega, copia el enlace y mándalo tú.";
   }
   if (result.status === "skipped") {
-    return "No hay RESEND_API_KEY: copia el enlace y mándalo tú.";
+    return "El correo no está configurado: copia el enlace y mándalo tú.";
   }
   return `El correo no ha salido (${result.error}). Copia el enlace y mándalo tú.`;
 }

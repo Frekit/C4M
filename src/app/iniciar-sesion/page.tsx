@@ -82,9 +82,8 @@ export default async function LoginPage({
           <InfoIcon />
           <AlertTitle>Auth0 está desactivado ahora mismo</AlertTitle>
           <AlertDescription>
-            La variable <code>AUTH_MODE</code> está en <code>local</code>. Cámbiala
-            a <code>auto</code> cuando el tenant tenga dadas de alta las URLs de
-            callback.
+            Ahora mismo se entra con el correo, sin el acceso externo. Cuando
+            ese acceso esté listo, el equipo entra por ahí.
           </AlertDescription>
         </Alert>
       ) : null}

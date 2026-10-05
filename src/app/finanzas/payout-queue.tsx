@@ -84,7 +84,7 @@ export function PayoutQueue({ groups }: { groups: PayoutGroup[] }) {
         <CardHeader>
           <CardTitle>Todavía no hay nada que pagar</CardTitle>
           <CardDescription>
-            Cuando haya submitted de plataforma o un pack cerrado, se arma aquí
+            Cuando haya piezas en plataforma o un pack cerrado, se arma aquí
             el lote de Zexel (email, importe y moneda). Al marcar el lote como
             pagado sale de la cola.
           </CardDescription>
