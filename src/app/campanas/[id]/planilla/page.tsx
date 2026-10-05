@@ -127,10 +127,10 @@ export default async function CampaignSheetPage({
             Elegir perfiles
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Todo el roster. Filtra, marca y mételos en la campaña. Si esta
-            marca ya dijo que no a alguien, se ve en la fila para no volver
-            a presentarlo. Quien ya está dentro se ve, pero no se vuelve a
-            marcar.
+            El roster ya está en la tabla. Filtra, marca y mételos: el handle
+            no se escribe. Si esta marca ya dijo que no a alguien, se ve en
+            la fila para no volver a presentarlo. Quien ya está dentro se ve,
+            pero no se vuelve a marcar.
           </p>
         </div>
         <Button

@@ -10,12 +10,10 @@ import {
 } from "@/app/campanas/curation-actions";
 import {
   addCreatorsToCampaign,
-  pasteTalentToCampaign,
   type CampaignRosterResult,
 } from "@/app/campanas/roster-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import type { CampaignSheetRow, SheetRateLine } from "@/lib/domain/campaign-sheet";
 
 const sectionLabel = "text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground";
@@ -289,10 +287,6 @@ export function CampaignSheet({
     CampaignRosterResult | null,
     FormData
   >(addCreatorsToCampaign, null);
-  const [pasteState, pasteAction, pastePending] = useActionState<
-    CampaignRosterResult | null,
-    FormData
-  >(pasteTalentToCampaign, null);
   const [curateState, curateAction, curatePending] = useActionState<
     CampaignRosterResult | null,
     FormData
@@ -303,19 +297,12 @@ export function CampaignSheet({
   >(removeFromCampaignDesk, null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
-  const [pasteEpoch, setPasteEpoch] = useState(0);
 
   useEffect(() => {
     if (!pickState) return;
     resultToast(pickState);
     if (pickState.ok) setSelected(new Set());
   }, [pickState]);
-
-  useEffect(() => {
-    if (!pasteState) return;
-    resultToast(pasteState);
-    if (pasteState.ok) setPasteEpoch((epoch) => epoch + 1);
-  }, [pasteState]);
 
   useEffect(() => {
     if (!curateState) return;
@@ -371,6 +358,35 @@ export function CampaignSheet({
           <input key={id} type="hidden" name="creatorId" value={id} />
         ))}
 
+        {canWrite ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2">
+            <p className="text-sm">
+              {selected.size === 0
+                ? "Marca en la tabla a quien entra. El handle no se escribe."
+                : `${selected.size} ${selected.size === 1 ? "listo" : "listos"} para entrar.`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleVisible}
+                disabled={selectableIds.length === 0}
+              >
+                {allSelected
+                  ? "Quitar selección"
+                  : `Seleccionar los ${selectableIds.length} que se ven`}
+              </Button>
+              <Button type="submit" disabled={pickPending || selected.size === 0}>
+                {pickPending
+                  ? "Metiendo…"
+                  : selected.size === 0
+                    ? "Meter en la campaña"
+                    : `Meter ${selected.size} en la campaña`}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="max-h-[calc(100vh-13rem)] overflow-auto rounded-lg border">
           <table className="w-max min-w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 z-20 bg-muted text-muted-foreground">
@@ -383,7 +399,7 @@ export function CampaignSheet({
                       disabled={selectableIds.length === 0}
                       onChange={toggleVisible}
                       aria-label="Seleccionar los que se pueden meter"
-                      className="size-4 accent-primary"
+                      className="size-5 accent-primary"
                     />
                   ) : null}
                 </th>
@@ -453,7 +469,7 @@ export function CampaignSheet({
                             disabled={!row.selectable}
                             onChange={() => toggle(row.id)}
                             aria-label={`Seleccionar @${row.handle}`}
-                            className="size-4 accent-primary disabled:opacity-40"
+                            className="size-5 accent-primary disabled:opacity-40"
                           />
                         ) : null}
                       </td>
@@ -556,29 +572,13 @@ export function CampaignSheet({
       />
       </div>
 
-      {canWrite ? (
-        <details className="rounded-lg border px-3 py-2">
-          <summary className="cursor-pointer text-sm text-muted-foreground">
-            No está en el roster
-          </summary>
-          <form key={pasteEpoch} action={pasteAction} className="mt-3 grid gap-2">
-            <input type="hidden" name="campaignId" value={campaignId} />
-            <Label htmlFor="handles">Pega los que todavía no tenemos</Label>
-            <textarea
-              id="handles"
-              name="handles"
-              rows={2}
-              placeholder={"@ana\nhttps://instagram.com/luis"}
-              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm dark:bg-input/30"
-            />
-            <div>
-              <Button type="submit" variant="outline" disabled={pastePending}>
-                {pastePending ? "Metiendo…" : "Meter esta lista"}
-              </Button>
-            </div>
-          </form>
-        </details>
-      ) : null}
+      <p className="text-sm text-muted-foreground">
+        Si no sale en la tabla, el alta es en{" "}
+        <Link href="/creators" className="underline underline-offset-4">
+          Creators
+        </Link>
+        . Aquí solo se marca quién entra en la campaña.
+      </p>
     </div>
   );
 }

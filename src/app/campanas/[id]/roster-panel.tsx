@@ -254,14 +254,15 @@ export function CampaignRosterPanel({
         <CardTitle>En la campaña</CardTitle>
         <CardDescription>
           Quien ya está dentro. Aquí se cierra el precio y se activa. Para
-          añadir a alguien se elige del roster, no se busca otra vez aquí.
+          sumar gente se marca el roster en Elegir perfiles.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
         {rows.length === 0 ? (
           <div className="grid gap-3">
             <p className="text-sm text-muted-foreground">
-              Todavía no hay nadie en esta campaña.
+              Todavía no hay nadie. Se marcan en Elegir perfiles, sin escribir
+              el handle.
             </p>
             <div>
               <Button
