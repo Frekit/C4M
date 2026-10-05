@@ -29,7 +29,8 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 
-import { setCampaignStatus, deleteCampaign } from "./actions";
+import { setCampaignStatus } from "./actions";
+import { DeleteCampaignMenu, NewCampaignDialog } from "./campaign-dialogs";
 import { CampaignForm } from "./campaign-form";
 
 export const metadata: Metadata = {
@@ -47,22 +48,27 @@ export default async function CampaignsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="space-y-1">
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
-          Campañas
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Agrupan contenidos de distintos creators bajo un cliente. Higgsfield
-          se liquida pieza a pieza; Many Chat, cuando el perfil termina el pack.
-          Pack vs plataforma se cambia en{" "}
-          <Link href="/clientes" className="underline underline-offset-4">
-            Clientes
-          </Link>
-          .
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="font-heading text-2xl font-medium tracking-tight">
+            Campañas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Agrupan contenidos de distintos creators bajo un cliente. Higgsfield
+            se liquida pieza a pieza; Many Chat, cuando el perfil termina el pack.
+            Pack vs plataforma se cambia en{" "}
+            <Link href="/clientes" className="underline underline-offset-4">
+              Clientes
+            </Link>
+            .
+          </p>
+        </div>
+        {canManage && summaries.length > 0 ? (
+          <NewCampaignDialog clients={clients} />
+        ) : null}
       </div>
 
-      {canManage ? (
+      {canManage && summaries.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Nueva campaña</CardTitle>
@@ -232,16 +238,10 @@ export default async function CampaignsPage() {
                         </form>
 
                         {total === 0 ? (
-                          <form action={deleteCampaign}>
-                            <input
-                              type="hidden"
-                              name="campaignId"
-                              value={campaign.id}
-                            />
-                            <Button type="submit" variant="ghost" size="sm">
-                              Borrar
-                            </Button>
-                          </form>
+                          <DeleteCampaignMenu
+                            campaignId={campaign.id}
+                            campaignName={campaign.name}
+                          />
                         ) : null}
                       </>
                     ) : null}

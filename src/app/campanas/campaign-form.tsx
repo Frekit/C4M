@@ -48,8 +48,10 @@ const inputClass =
 
 export function CampaignForm({
   clients,
+  onCreated,
 }: {
   clients: CampaignClientOption[];
+  onCreated?: () => void;
 }) {
   const [state, formAction, pending] = useActionState<
     CampaignActionResult | null,
@@ -64,8 +66,10 @@ export function CampaignForm({
   }
 
   useEffect(() => {
-    if (state?.ok) toast.success("Campaña creada");
-  }, [state]);
+    if (!state?.ok) return;
+    toast.success("Campaña creada");
+    onCreated?.();
+  }, [state, onCreated]);
 
   return (
     <CampaignFields
