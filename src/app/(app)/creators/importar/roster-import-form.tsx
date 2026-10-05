@@ -7,7 +7,7 @@ import { importRosterFile, type RosterWriteResult } from "@/app/(app)/creators/r
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ROSTER_CSV_EXAMPLE } from "@/lib/domain/roster-import";
+import { ROSTER_CSV_EXAMPLE } from "@/lib/domain/roster-csv-example";
 
 export function RosterImportForm() {
   const [state, formAction, pending] = useActionState<

@@ -25,6 +25,7 @@
     "@neon/config": "^1.7.1",
     "@neon/env": "^1.4.2",
     "@prisma/client": "^6.19.3",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
     "lucide-react": "^1.47.0",

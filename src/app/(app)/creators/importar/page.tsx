@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { requirePermission } from "@/lib/auth/session";
 import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
-import { ROSTER_CSV_HEADER } from "@/lib/domain/roster-import";
+import { ROSTER_CSV_HEADER } from "@/lib/domain/roster-csv-example";
 
 import { CreatorImportForm } from "./import-form";
 import { RosterImportForm } from "./roster-import-form";
