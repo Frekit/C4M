@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 import { notFound } from "next/navigation";
 
 import { BriefRead } from "@/app/(app)/campanas/[id]/brief-form";
@@ -54,7 +55,7 @@ export default async function ClientTalkPage({
   const status = renderClientStatus(packet);
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
+    <PageShell width="narrow" className="py-16">
       <header className="space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {sheet.campaign.client?.name ?? "Campaña"}
@@ -88,6 +89,6 @@ export default async function ClientTalkPage({
       </section>
 
       <ClientThreadForm token={token} messages={messages} />
-    </main>
+    </PageShell>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import type { Metadata } from "next";
 import { FilterIcon, LayoutListIcon } from "lucide-react";
 
@@ -12,13 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -34,7 +28,7 @@ import {
 import { formatMoney } from "@/lib/money";
 
 import { BulkCampaignBar } from "./bulk-campaign-bar";
-import { ContentRow } from "./content-row";
+import { ContentsBoard } from "./contents-board";
 import { ContentsPager } from "./pager";
 
 export const metadata: Metadata = {
@@ -56,15 +50,14 @@ export default async function ContentsPage({
   const data = await loadContentsPage(filters);
 
   return (
-    <main className="mx-auto flex w-full max-w-full flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
+    <PageShell width="full" className="gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             Contenidos
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Busca por handle. Asignar campaña puede aplicarse al filtro, no
-            solo a esta página.
+          <p className="max-[760px]:min-h-[60px] text-sm text-muted-foreground">
+            Todos los contenidos contratados: fecha, publicación, subida al cliente y pago.
           </p>
         </div>
         <Button
@@ -76,7 +69,25 @@ export default async function ContentsPage({
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <nav className="flex h-8 flex-nowrap gap-2 overflow-x-auto text-label-13" aria-label="Vistas">
+        <Button className="shrink-0" variant={filters.vista === "necesitan" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=necesitan" />}>
+          Necesitan algo
+        </Button>
+        <Button className="shrink-0" variant={filters.retrasados === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?retrasados=1" />}>
+          Fecha pasada {data.lateCount}
+        </Button>
+        <Button className="shrink-0" variant={filters.sinEnlace === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?sinEnlace=1" />}>
+          Sin enlace
+        </Button>
+        <Button className="shrink-0" variant={filters.vista === "pagar" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=pagar" />}>
+          Listos para pagar
+        </Button>
+        <Button className="shrink-0" variant={!data.hasFilters ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos" />}>
+          Todos
+        </Button>
+      </nav>
+
+      <div className="flex h-5 flex-nowrap items-center gap-2 overflow-x-auto">
         {DELIVERABLE_STATUS_ORDER.map((status) => (
           <Badge key={status} variant="outline">
             {DELIVERABLE_STATUS_LABELS[status]}: {data.counts[status] ?? 0}
@@ -96,7 +107,7 @@ export default async function ContentsPage({
         <CardHeader>
           <FilterIcon className="size-4 text-muted-foreground" />
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>
+          <CardDescription className="max-[760px]:min-h-[60px]">
             El rango de fechas mira la fecha del contenido. Las colas de
             incidencia (sin enlace, error, sin firmar) recortan el universo.
           </CardDescription>
@@ -235,15 +246,19 @@ export default async function ContentsPage({
         <Card>
           <CardHeader>
             <LayoutListIcon className="size-5 text-muted-foreground" />
-            <CardTitle>
-              {data.hasFilters
-                ? "Ningún contenido con esos filtros"
-                : "Todavía no hay contenidos"}
+            <CardTitle className="font-serif text-[22px] leading-7">
+              {filters.vista === "necesitan"
+                ? "Todo al día"
+                : data.hasFilters
+                  ? "Nada con estos filtros"
+                  : "Todavía no hay contenidos"}
             </CardTitle>
             <CardDescription>
-              {data.hasFilters
-                ? "Prueba a quitar algún filtro."
-                : "Los contenidos se crean solos al registrar un influencer con sus contenidos pactados."}
+              {filters.vista === "necesitan"
+                ? "Ningún contenido necesita nada ahora mismo."
+                : data.hasFilters
+                  ? "Prueba a quitar algún filtro."
+                  : "Los contenidos se crean solos al registrar un influencer con sus contenidos pactados."}
             </CardDescription>
           </CardHeader>
           {data.hasFilters ? (
@@ -253,7 +268,7 @@ export default async function ContentsPage({
                 nativeButton={false}
                 render={<Link href="/contenidos" />}
               >
-                Limpiar filtros
+                Quitar filtros
               </Button>
             </CardContent>
           ) : null}
@@ -281,31 +296,7 @@ export default async function ContentsPage({
       ) : (
         <Card>
           <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8" />
-                  <TableHead>Creator</TableHead>
-                  <TableHead className="min-w-40">Campaña</TableHead>
-                  <TableHead className="min-w-36">Estado</TableHead>
-                  <TableHead className="min-w-36">Fecha</TableHead>
-                  <TableHead className="min-w-48">Enlace</TableHead>
-                  <TableHead>Coste</TableHead>
-                  <TableHead>Pago previsto</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.rows.map((row) => (
-                  <ContentRow
-                    key={row.id}
-                    item={row}
-                    campaigns={data.campaignOptions}
-                    canEdit={canEdit}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <ContentsBoard rows={data.rows} canEdit={canEdit} />
             <ContentsPager
               page={data.page}
               pageSize={CONTENTS_PAGE_SIZE}
@@ -324,6 +315,6 @@ export default async function ContentsPage({
         pack, no se cobra ni se paga hasta completar todos los contenidos de
         ese perfil en la campaña.
       </p>
-    </main>
+    </PageShell>
   );
 }

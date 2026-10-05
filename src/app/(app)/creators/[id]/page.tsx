@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ExternalLinkIcon, PlusIcon } from "lucide-react";
@@ -179,10 +180,10 @@ export default async function CreatorPage({
       : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="default">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             @{creator.handle}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -440,6 +441,6 @@ export default async function CreatorPage({
         payee={creator.payees[0] ?? null}
         canSeeFullAccount={can(user.role, "payees:read_full")}
       />
-    </main>
+    </PageShell>
   );
 }

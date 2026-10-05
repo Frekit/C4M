@@ -16,16 +16,16 @@ const TONE_CLASS: Record<StatusTone, string> = {
   success: "bg-success-muted text-success",
   "success-muted": "border border-success/35 bg-background text-success",
   warning: "bg-warning-muted text-warning",
-  destructive: "bg-destructive/10 text-destructive",
+  destructive: "bg-danger-muted text-danger",
 };
 
 const DOT_CLASS: Record<StatusTone, string> = {
-  neutral: "bg-muted-foreground",
-  info: "bg-info",
-  success: "bg-success",
-  "success-muted": "bg-success",
-  warning: "bg-warning",
-  destructive: "bg-destructive",
+  neutral: "bg-fg-subtle",
+  info: "bg-info-dot",
+  success: "bg-success-dot",
+  "success-muted": "bg-success-dot",
+  warning: "bg-warning-dot",
+  destructive: "bg-danger-dot",
 };
 
 export function StatusPill({
@@ -40,7 +40,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-5 w-fit items-center gap-1.5 rounded-full px-2 text-xs font-medium",
+        "inline-flex h-[22px] w-fit items-center gap-1.5 rounded-full px-2 text-label-12",
         TONE_CLASS[tone],
         className
       )}

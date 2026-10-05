@@ -17,6 +17,7 @@ const TRACKING_PARAMS = new Set([
 
 export type DuplicatePostUrlTarget = {
   position: number;
+  title?: string | null;
   contract: {
     code: string;
     creator: { handle: string };
@@ -54,7 +55,8 @@ export function postUrlKey(raw: string | null | undefined): string | null {
 }
 
 export function duplicatePostUrlError(existing: DuplicatePostUrlTarget): string {
-  return `Ese enlace ya está en @${existing.contract.creator.handle} · ${existing.contract.code} · contenido nº ${existing.position}.`;
+  const title = existing.title?.trim() || `contenido nº ${existing.position}`;
+  return `Este enlace ya está en otro contenido: ${existing.contract.code} · ${title}.`;
 }
 
 function parseHttpUrl(value: string): URL | null {

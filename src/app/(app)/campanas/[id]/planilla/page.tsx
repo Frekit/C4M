@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { CatalogSelect } from "@/components/catalog-select";
+import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
@@ -91,7 +92,7 @@ export default async function CampaignSheetPage({
   );
 
   return (
-    <main className="flex w-full flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
+    <PageShell width="full" className="gap-4 py-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
@@ -261,6 +262,6 @@ export default async function CampaignSheetPage({
       </p>
 
       <CampaignSheet campaignId={id} rows={visible} canWrite={canWrite} />
-    </main>
+    </PageShell>
   );
 }

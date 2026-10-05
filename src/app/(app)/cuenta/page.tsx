@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +46,8 @@ export default async function AccountPage() {
   const permissions = permissionsFor(user.role);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="font-heading text-2xl font-medium tracking-tight">
+    <PageShell width="narrow">
+      <h1 className="text-heading-24">
         Mi cuenta
       </h1>
 
@@ -104,6 +105,6 @@ export default async function AccountPage() {
           </Button>
         </CardContent>
       </Card>
-    </main>
+    </PageShell>
   );
 }

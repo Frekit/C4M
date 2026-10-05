@@ -1,0 +1,119 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Componentes · C4M</title><link rel="stylesheet" href="base.css">
+<style>
+body{padding:40px}
+h1{margin-bottom:4px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px}
+.box.full{grid-column:1/-1}
+.box h2{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;gap:8px;align-items:center}
+.box h2 .t-eyebrow{margin-left:auto}
+.mx{border-collapse:separate;border-spacing:10px 10px;margin:-10px}
+.mx th{font-size:11.5px;font-weight:500;color:var(--fg-subtle);text-align:left}
+.mx .rh{font-family:var(--font-mono);font-size:12px;color:var(--fg-muted);padding-right:8px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.row > .field{width:200px}
+.cap{font-size:11.5px;color:var(--fg-subtle);margin-top:6px}
+.menu{border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--e2);padding:4px;width:240px;margin-top:4px}
+.mi{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:5px;font-size:13.5px}
+.mi.on{background:var(--surface-3)} .mi .ck{margin-left:auto}
+.mi.create{color:var(--fg-muted);border-top:1px solid var(--border);border-radius:0 0 5px 5px;margin-top:4px}
+.sbx{background:var(--surface-2);padding:10px;border-radius:var(--r-md);width:240px;display:grid;gap:2px}
+.toasts{display:grid;gap:10px}
+.toast.err{background:var(--surface);color:var(--fg);border:1px solid color-mix(in oklch,var(--danger) 30%,var(--border))}
+.toast.err .a{color:var(--danger)}
+.empty{text-align:center;padding:28px 20px;border:1px dashed var(--border-strong);border-radius:var(--r-lg)}
+.empty .ill{width:44px;height:44px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;margin:0 auto 12px;color:var(--fg-muted)}
+.empty h3{font-family:var(--font-serif);font-weight:500;font-size:22px;line-height:28px}
+.msg-u{margin-left:auto;max-width:80%;background:var(--surface-3);border-radius:14px 14px 4px 14px;padding:10px 12px;font-size:13.5px;width:fit-content}
+.think{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--fg-muted)}
+.dots{display:inline-flex;gap:3px}.dots i{width:5px;height:5px;border-radius:50%;background:var(--ai);opacity:.35}.dots i:nth-child(2){opacity:.65}.dots i:nth-child(3){opacity:1}
+.chg{display:grid;grid-template-columns:20px 1fr auto;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r-md);align-items:center;margin-bottom:8px;font-size:13px}
+.chg .n{width:20px;height:20px;border-radius:6px;border:1px solid var(--border);display:grid;place-items:center;font:500 11px var(--font-mono);color:var(--fg-muted)}
+.chg .what{font-size:12px;color:var(--fg-subtle);font-weight:500}
+.chg.ok{background:color-mix(in oklch,var(--success-muted) 45%,var(--surface))}
+.chg.no .det{text-decoration:line-through;color:var(--fg-subtle)}
+.chg.er{border-color:color-mix(in oklch,var(--danger) 35%,var(--border));background:color-mix(in oklch,var(--danger-muted) 50%,var(--surface))}
+.sug{height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-full);font-size:12.5px;color:var(--fg-muted);background:var(--surface)}
+.sug.hover{border-color:color-mix(in oklch,var(--ai) 40%,var(--border));color:var(--ai);background:var(--ai-muted)}
+.sug.focus{outline:2px solid var(--focus);outline-offset:2px}
+.sug.dis{opacity:.45}
+.swatches{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.sw{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;font-size:11px}
+.sw .c{height:44px}.sw .l{padding:6px 8px;font-family:var(--font-mono);color:var(--fg-muted);font-size:10.5px}
+</style></head>
+<body data-nobn="1">
+<div class="t-eyebrow">C4M · Sistema de diseño v1 · 5 oct 2026</div>
+<h1 class="t-h24">Componentes y estados</h1>
+<p class="muted">Referencia visual para el prototipo. Todos los colores salen de <span class="mono">tokens.css</span>; todos los pares de texto pasan WCAG AA.</p>
+<div class="g">
+ <section class="box full"><h2>Paleta semántica (claro)</h2><div class="swatches">
+  <div class="sw"><div class="c" style="background:var(--bg)"></div><div class="l">bg</div></div><div class="sw"><div class="c" style="background:var(--surface-2)"></div><div class="l">surface-2</div></div><div class="sw"><div class="c" style="background:var(--surface-3)"></div><div class="l">surface-3</div></div><div class="sw"><div class="c" style="background:var(--primary)"></div><div class="l">primary</div></div><div class="sw"><div class="c" style="background:var(--brand-ui)"></div><div class="l">brand-ui</div></div><div class="sw"><div class="c" style="background:var(--ai)"></div><div class="l">ai</div></div><div class="sw"><div class="c" style="background:var(--success-dot)"></div><div class="l">success-dot</div></div><div class="sw"><div class="c" style="background:var(--danger-dot)"></div><div class="l">danger-dot</div></div>
+ </div></section>
+ <section class="box full"><h2>Button <span class="t-eyebrow">altura 32 · sm 28 · lg 40 · radio 6</span></h2>{{BTN}}</section>
+ <section class="box"><h2>Input · estados</h2><div class="row">
+  <div class="field"><label class="label">Default</label><div class="input ph">Nombre del creador</div></div>
+  <div class="field"><label class="label">Hover</label><div class="input ph is-hover">Nombre del creador</div></div>
+  <div class="field"><label class="label">Focus</label><div class="input is-focus">Marta Molina<span style="width:1.5px;height:16px;background:var(--fg);margin-left:-6px"></span></div></div>
+  <div class="field"><label class="label">Error</label><div class="input is-error">martamoda@</div><div class="err"><i data-lucide="circle-alert" class="i s14"></i>Falta el dominio. Ej.: marta@correo.com</div></div>
+  <div class="field"><label class="label">Disabled</label><div class="input is-disabled">CTR-2026-001</div><div class="help">Se asigna al enviar.</div></div>
+  <div class="field"><label class="label">Loading</label><div class="input">@martamoda<span class="spin" style="margin-left:auto;color:var(--fg-subtle)"></span></div><div class="help">Buscando perfil…</div></div>
+ </div></section>
+ <section class="box"><h2>Select y Combobox</h2><div class="row">
+  <div><div class="field" style="width:240px"><label class="label">Estado</label><div class="input is-focus">Aprobado por cliente<i data-lucide="chevrons-up-down" class="i s14 subtle" style="margin-left:auto"></i></div></div>
+   <div class="menu" role="listbox"><div class="mi"><span class="pill neutral">Propuesto</span></div><div class="mi on"><span class="pill success">Aprobado por cliente</span><i data-lucide="check" class="i ck"></i></div><div class="mi"><span class="pill danger">Rechazado por cliente</span></div></div></div>
+  <div><div class="field" style="width:240px"><label class="label">Cliente</label><div class="input is-focus">Hig<span style="width:1.5px;height:16px;background:var(--fg);margin-left:-7px"></span></div></div>
+   <div class="menu" role="listbox"><div class="mi on"><span class="avatar sm">HG</span><span><b>Hig</b>gsfield</span><span class="t-l12 subtle ck" style="font-weight:400">3 campañas</span></div><div class="mi create"><i data-lucide="plus" class="i"></i>Crear cliente «Hig»</div></div></div>
+ </div></section>
+ <section class="box"><h2>StatusPill · mapa de estados reales</h2>
+  <div class="t-l12 muted" style="margin-bottom:6px">Contrato</div><div class="row" style="gap:8px"><span class="pill neutral">Borrador</span><span class="pill info">Enviado</span><span class="pill success">Firmado</span><span class="pill neutral">Completado</span><span class="pill neutral">Renovado</span><span class="pill danger">Cancelado</span></div>
+  <div class="t-l12 muted" style="margin:12px 0 6px">Firma</div><div class="row" style="gap:8px"><span class="pill info">Pendiente</span><span class="pill warning">Visto, sin firmar</span><span class="pill success">Firmado</span><span class="pill neutral">Revocado</span><span class="pill danger">Caducado</span></div>
+  <div class="t-l12 muted" style="margin:12px 0 6px">Contenido</div><div class="row" style="gap:8px"><span class="pill neutral">Pendiente</span><span class="pill info">Programado</span><span class="pill success">Publicado</span><span class="pill success">Subido al cliente</span><span class="pill neutral">Pagado</span><span class="pill danger">Fecha pasada</span><span class="pill danger">Rechazado por plataforma</span></div>
+  <div class="t-l12 muted" style="margin:12px 0 6px">Perfil en campaña</div><div class="row" style="gap:8px"><span class="pill neutral">Roster</span><span class="pill info">Propuesto</span><span class="pill success">Aprobado</span><span class="pill success">Activo</span><span class="pill danger">Rechazado</span><span class="pill ai"><i data-lucide="sparkles" class="i s14"></i>Propuesto por IA</span></div>
+  <p class="cap">Punto de 6 px y texto 12/500. El color nunca va solo, siempre con texto. neutral = sin empezar o cerrado · info = en curso, depende de otro · warning = te toca a ti · success = hecho · danger = bloqueado o vencido.</p></section>
+ <section class="box"><h2>Sidebar item</h2><div class="sbx">
+  <a class="sb-item"><i data-lucide="megaphone" class="i"></i>Default</a>
+  <a class="sb-item" style="background:var(--surface-3);color:var(--fg)"><i data-lucide="megaphone" class="i"></i>Hover</a>
+  <a class="sb-item active"><i data-lucide="file-signature" class="i"></i>Activo<span class="count">4</span></a>
+  <a class="sb-item is-focus"><i data-lucide="clapperboard" class="i"></i>Focus-visible</a>
+  <a class="sb-item"><i data-lucide="inbox" class="i"></i>Con urgentes<span class="count hot">7</span></a>
+  <a class="sb-item" style="opacity:.45"><i data-lucide="wallet" class="i"></i>Sin permiso</a></div></section>
+ <section class="box full"><h2>DataTable · filas</h2><table class="tbl" style="border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden">
+  <thead><tr><th style="width:36px"><span class="cb ind"></span></th><th>Estado de fila</th><th>Creador</th><th class="r">Tarifa</th><th>Estado</th></tr></thead><tbody>
+  <tr><td><span class="cb"></span></td><td class="muted">Default</td><td>@sarabakes</td><td class="r num">1.800,00 €</td><td><span class="pill info">Propuesto</span></td></tr>
+  <tr class="is-hover"><td><span class="cb"></span></td><td class="muted">Hover · acciones visibles</td><td>@lauratravels</td><td class="r num">2.400,00 €</td><td><span class="pill warning">Visto, sin firmar</span> <button class="btn btn-secondary btn-sm" style="margin-left:8px">Reenviar</button></td></tr>
+  <tr class="sel"><td><span class="cb on"></span></td><td class="muted">Seleccionada</td><td>@pabloframes</td><td class="r num">3.800,00 €</td><td><span class="pill info">Enviado</span></td></tr>
+  <tr class="focus"><td><span class="cb"></span></td><td class="muted">Focus (J/K)</td><td>@nachoeats</td><td class="r num">2.150,00 €</td><td><span class="pill info">Enviado</span></td></tr>
+  <tr><td><span class="cb"></span></td><td class="muted">Editando celda</td><td>@lucia.fit</td><td class="r num"><span style="display:inline-block;padding:4px 8px;margin:-4px -8px;border-radius:5px;outline:2px solid var(--focus)">900,00 €</span></td><td><span class="t-c13 subtle"><span class="spin" style="width:10px;height:10px;display:inline-block;vertical-align:-1px;margin-right:6px"></span>Guardando…</span></td></tr>
+  <tr><td><span class="cb"></span></td><td class="muted">Error al guardar</td><td>@daniurbano</td><td class="r num" style="box-shadow:inset 0 -2px 0 var(--danger)">1.500,00 €</td><td><span class="err"><i data-lucide="circle-alert" class="i s14"></i>No se guardó · <u>Reintentar</u></span></td></tr>
+  <tr><td><span class="cb"></span></td><td><div class="skel" style="width:90px"></div></td><td><div class="skel" style="width:110px"></div></td><td class="r"><div class="skel" style="width:70px;margin-left:auto"></div></td><td><div class="skel" style="width:84px;height:20px;border-radius:999px"></div></td></tr>
+  </tbody></table></section>
+ <section class="box"><h2>Toast</h2><div class="toasts">
+  <div class="toast"><i data-lucide="circle-check" class="i" style="color:var(--success-dot);margin-top:2px"></i><div><div class="t-l14">Contrato enviado a Lucía Ferrer</div><div style="opacity:.75;font-size:12.5px">Le llegará un correo con el enlace de firma.</div></div><span class="a">Deshacer</span></div>
+  <div class="toast err"><i data-lucide="circle-alert" class="i" style="color:var(--danger);margin-top:2px"></i><div><div class="t-l14">No se pudo generar el PDF</div><div class="muted" style="font-size:12.5px">El servidor tardó demasiado. Tus cambios están guardados.</div></div><span class="a">Reintentar</span></div>
+  <div class="toast"><span class="spin" style="margin-top:3px"></span><div class="t-l14">Importando 48 perfiles… 31 de 48</div></div>
+ </div></section>
+ <section class="box"><h2>Empty state y Skeleton</h2>
+  <div class="empty"><div class="ill"><i data-lucide="clapperboard" class="i s20"></i></div><h3>Todo al día</h3><p class="muted t-c14" style="margin:4px 0 14px">Ningún contenido necesita nada ahora mismo.</p><button class="btn btn-secondary btn-sm"><i data-lucide="calendar" class="i"></i>Ver esta semana</button></div>
+  <div style="display:grid;gap:8px;margin-top:16px"><div class="skel" style="width:40%;height:14px"></div><div class="skel" style="width:85%"></div><div class="skel" style="width:70%"></div></div></section>
+ <section class="box"><h2>IA · mensajes</h2><div style="display:grid;gap:12px">
+  <div class="msg-u">¿Quién va con retraso en Navidad 2026?</div>
+  <div class="tool" style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--fg-muted);padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface-2)"><span class="spin" style="width:12px;height:12px;color:var(--ai)"></span>Leyendo los contenidos de Navidad 2026…</div>
+  <div class="t-c14">3 contenidos tenían fecha el 2 oct y siguen sin publicar: <b>@martamoda</b>, <b>@lauratravels</b> y <b>@pabloframes</b>.<span style="display:inline-block;width:7px;height:15px;background:var(--ai);margin-left:2px;vertical-align:-2px;border-radius:1px"></span></div>
+  <span class="think"><span class="dots"><i></i><i></i><i></i></span>Pensando…</span>
+  <div class="toast err" style="width:auto;box-shadow:none"><i data-lucide="circle-alert" class="i" style="color:var(--danger)"></i><div class="t-c13">No he podido responder. Inténtalo de nuevo.</div><span class="a">Reintentar</span></div>
+ </div></section>
+ <section class="box"><h2>IA · tarjeta de aprobación (por cambio)</h2>
+  <div class="chg"><span class="n">1</span><div><div class="what">Pendiente</div><div class="det">@sarabakes → Aprobado por cliente</div></div><span style="display:flex;gap:4px"><button class="btn btn-ghost btn-icon btn-sm"><i data-lucide="x" class="i"></i></button><button class="btn btn-secondary btn-icon btn-sm"><i data-lucide="check" class="i"></i></button></span></div>
+  <div class="chg"><span class="n">2</span><div><div class="what">Aplicando…</div><div class="det">Crear contrato · @sarabakes</div></div><span class="spin" style="color:var(--fg-subtle)"></span></div>
+  <div class="chg ok"><span class="n">3</span><div><div class="what">Aceptado</div><div class="det">@techconjavi → Aprobado por cliente</div></div><span class="t-l12" style="color:var(--success);display:flex;gap:4px;align-items:center"><i data-lucide="check" class="i s14"></i>Hecho · <u>Deshacer</u></span></div>
+  <div class="chg no"><span class="n">4</span><div><div class="what">Descartado</div><div class="det">Crear contrato · @techconjavi</div></div><span class="t-l12 subtle">Descartado</span></div>
+  <div class="chg er"><span class="n">5</span><div><div class="what" style="color:var(--danger)">Error</div><div class="det">Tu rol no permite preparar lotes de pago.</div></div><span class="t-l12" style="color:var(--danger)">Pedir a un admin</span></div>
+ </section>
+ <section class="box"><h2>IA · chips de sugerencia</h2><div class="row" style="gap:8px">
+  <span class="sug"><i data-lucide="sparkles" class="i s14"></i>¿Quién va con retraso?</span><span class="sug hover">Hover</span><span class="sug focus">Focus-visible</span><span class="sug dis">Disabled (generando)</span></div><p class="cap">Máx. 3 chips, contextuales a la pantalla. Al pulsar se envían tal cual; no rellenan el campo.</p></section>
+ <section class="box"><h2>PageHeader</h2><div style="border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:14px">
+  <div class="crumbs" style="margin-bottom:10px">Campañas <i data-lucide="chevron-right" class="i s14 subtle"></i><b>Navidad 2026</b></div>
+  <div style="display:flex;align-items:center;gap:10px"><h3 class="t-h24">Navidad 2026</h3><span class="pill info">En curso</span><span style="margin-left:auto;display:flex;gap:8px"><button class="btn btn-secondary btn-sm">Secundaria</button><button class="btn btn-primary btn-sm">Primaria (1 sola)</button></span></div>
+  <div class="ph-meta muted t-c13" style="margin-top:4px">Higgsfield · 1 nov – 31 dic · Álvaro Romero</div></div></section>
+</div>
+<script src="lucide.min.js"></script><script src="shell.js"></script></body></html>

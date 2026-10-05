@@ -1,0 +1,686 @@
+[
+ {
+  "mode": "light",
+  "a": "fg",
+  "b": "bg",
+  "r": "16.61",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto principal"
+ },
+ {
+  "mode": "light",
+  "a": "fg",
+  "b": "surface",
+  "r": "17.19",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "fg",
+  "b": "surface-2",
+  "r": "15.80",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en sidebar/cabecera tabla"
+ },
+ {
+  "mode": "light",
+  "a": "fg",
+  "b": "surface-3",
+  "r": "14.76",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en fila hover/seleccionada"
+ },
+ {
+  "mode": "light",
+  "a": "fg-muted",
+  "b": "bg",
+  "r": "6.57",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto secundario"
+ },
+ {
+  "mode": "light",
+  "a": "fg-muted",
+  "b": "surface",
+  "r": "6.80",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "fg-muted",
+  "b": "surface-2",
+  "r": "6.25",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en sidebar"
+ },
+ {
+  "mode": "light",
+  "a": "fg-muted",
+  "b": "surface-3",
+  "r": "5.84",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en hover"
+ },
+ {
+  "mode": "light",
+  "a": "fg-subtle",
+  "b": "surface",
+  "r": "5.25",
+  "min": 4.5,
+  "ok": true,
+  "u": "Placeholder / metadato"
+ },
+ {
+  "mode": "light",
+  "a": "fg-subtle",
+  "b": "surface-2",
+  "r": "4.83",
+  "min": 4.5,
+  "ok": true,
+  "u": "Placeholder en tabla"
+ },
+ {
+  "mode": "light",
+  "a": "border-strong",
+  "b": "surface",
+  "r": "3.34",
+  "min": 3,
+  "ok": true,
+  "u": "Borde de input (1.4.11)"
+ },
+ {
+  "mode": "light",
+  "a": "border-strong",
+  "b": "bg",
+  "r": "3.23",
+  "min": 3,
+  "ok": true,
+  "u": "Borde de input sobre fondo"
+ },
+ {
+  "mode": "light",
+  "a": "primary-fg",
+  "b": "primary",
+  "r": "14.50",
+  "min": 4.5,
+  "ok": true,
+  "u": "Botón primario"
+ },
+ {
+  "mode": "light",
+  "a": "primary-fg",
+  "b": "primary-hover",
+  "r": "11.33",
+  "min": 4.5,
+  "ok": true,
+  "u": "Botón primario hover"
+ },
+ {
+  "mode": "light",
+  "a": "primary",
+  "b": "bg",
+  "r": "14.50",
+  "min": 3,
+  "ok": true,
+  "u": "Botón primario vs fondo (no-texto)"
+ },
+ {
+  "mode": "light",
+  "a": "brand",
+  "b": "surface",
+  "r": "5.34",
+  "min": 4.5,
+  "ok": true,
+  "u": "Enlace / texto marca"
+ },
+ {
+  "mode": "light",
+  "a": "brand",
+  "b": "bg",
+  "r": "5.16",
+  "min": 4.5,
+  "ok": true,
+  "u": "Enlace sobre fondo"
+ },
+ {
+  "mode": "light",
+  "a": "brand-ui",
+  "b": "surface",
+  "r": "3.54",
+  "min": 3,
+  "ok": true,
+  "u": "Indicador marca (no-texto)"
+ },
+ {
+  "mode": "light",
+  "a": "brand",
+  "b": "brand-muted",
+  "r": "4.77",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto marca sobre tinte"
+ },
+ {
+  "mode": "light",
+  "a": "focus",
+  "b": "bg",
+  "r": "3.42",
+  "min": 3,
+  "ok": true,
+  "u": "Anillo de foco vs fondo"
+ },
+ {
+  "mode": "light",
+  "a": "focus",
+  "b": "surface",
+  "r": "3.54",
+  "min": 3,
+  "ok": true,
+  "u": "Anillo de foco vs tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "success",
+  "b": "success-muted",
+  "r": "5.04",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill éxito"
+ },
+ {
+  "mode": "light",
+  "a": "warning",
+  "b": "warning-muted",
+  "r": "5.10",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill aviso"
+ },
+ {
+  "mode": "light",
+  "a": "info",
+  "b": "info-muted",
+  "r": "5.23",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill info"
+ },
+ {
+  "mode": "light",
+  "a": "danger",
+  "b": "danger-muted",
+  "r": "5.75",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill peligro"
+ },
+ {
+  "mode": "light",
+  "a": "success",
+  "b": "surface",
+  "r": "5.63",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto éxito en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "warning",
+  "b": "surface",
+  "r": "5.65",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto aviso en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "info",
+  "b": "surface",
+  "r": "5.90",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto info en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "danger",
+  "b": "surface",
+  "r": "6.57",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto error en tarjeta"
+ },
+ {
+  "mode": "light",
+  "a": "danger",
+  "b": "bg",
+  "r": "6.34",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto error en fondo"
+ },
+ {
+  "mode": "light",
+  "a": "success-dot",
+  "b": "surface",
+  "r": "3.38",
+  "min": 3,
+  "ok": true,
+  "u": "Punto éxito (no-texto)"
+ },
+ {
+  "mode": "light",
+  "a": "warning-dot",
+  "b": "surface",
+  "r": "3.18",
+  "min": 3,
+  "ok": true,
+  "u": "Punto aviso (no-texto)"
+ },
+ {
+  "mode": "light",
+  "a": "info-dot",
+  "b": "surface",
+  "r": "3.57",
+  "min": 3,
+  "ok": true,
+  "u": "Punto info"
+ },
+ {
+  "mode": "light",
+  "a": "danger-dot",
+  "b": "surface",
+  "r": "4.34",
+  "min": 3,
+  "ok": true,
+  "u": "Punto peligro"
+ },
+ {
+  "mode": "light",
+  "a": "ai",
+  "b": "ai-muted",
+  "r": "5.21",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto IA sobre tinte"
+ },
+ {
+  "mode": "light",
+  "a": "brand-fg",
+  "b": "brand",
+  "r": "5.24",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto sobre botón marca"
+ },
+ {
+  "mode": "light",
+  "a": "bg",
+  "b": "ai",
+  "r": "5.62",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto claro sobre IA sólido (badge)"
+ },
+ {
+  "mode": "light",
+  "a": "ai",
+  "b": "surface",
+  "r": "5.82",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto IA en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "fg",
+  "b": "bg",
+  "r": "16.66",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto principal"
+ },
+ {
+  "mode": "dark",
+  "a": "fg",
+  "b": "surface",
+  "r": "15.66",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "fg",
+  "b": "surface-2",
+  "r": "14.80",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en sidebar/cabecera tabla"
+ },
+ {
+  "mode": "dark",
+  "a": "fg",
+  "b": "surface-3",
+  "r": "13.45",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto en fila hover/seleccionada"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-muted",
+  "b": "bg",
+  "r": "8.35",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto secundario"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-muted",
+  "b": "surface",
+  "r": "7.84",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-muted",
+  "b": "surface-2",
+  "r": "7.41",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en sidebar"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-muted",
+  "b": "surface-3",
+  "r": "6.74",
+  "min": 4.5,
+  "ok": true,
+  "u": "Secundario en hover"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-subtle",
+  "b": "surface",
+  "r": "6.28",
+  "min": 4.5,
+  "ok": true,
+  "u": "Placeholder / metadato"
+ },
+ {
+  "mode": "dark",
+  "a": "fg-subtle",
+  "b": "surface-2",
+  "r": "5.93",
+  "min": 4.5,
+  "ok": true,
+  "u": "Placeholder en tabla"
+ },
+ {
+  "mode": "dark",
+  "a": "border-strong",
+  "b": "surface",
+  "r": "3.28",
+  "min": 3,
+  "ok": true,
+  "u": "Borde de input (1.4.11)"
+ },
+ {
+  "mode": "dark",
+  "a": "border-strong",
+  "b": "bg",
+  "r": "3.49",
+  "min": 3,
+  "ok": true,
+  "u": "Borde de input sobre fondo"
+ },
+ {
+  "mode": "dark",
+  "a": "primary-fg",
+  "b": "primary",
+  "r": "14.75",
+  "min": 4.5,
+  "ok": true,
+  "u": "Botón primario"
+ },
+ {
+  "mode": "dark",
+  "a": "primary-fg",
+  "b": "primary-hover",
+  "r": "11.84",
+  "min": 4.5,
+  "ok": true,
+  "u": "Botón primario hover"
+ },
+ {
+  "mode": "dark",
+  "a": "primary",
+  "b": "bg",
+  "r": "15.68",
+  "min": 3,
+  "ok": true,
+  "u": "Botón primario vs fondo (no-texto)"
+ },
+ {
+  "mode": "dark",
+  "a": "brand",
+  "b": "surface",
+  "r": "8.13",
+  "min": 4.5,
+  "ok": true,
+  "u": "Enlace / texto marca"
+ },
+ {
+  "mode": "dark",
+  "a": "brand",
+  "b": "bg",
+  "r": "8.65",
+  "min": 4.5,
+  "ok": true,
+  "u": "Enlace sobre fondo"
+ },
+ {
+  "mode": "dark",
+  "a": "brand-ui",
+  "b": "surface",
+  "r": "6.99",
+  "min": 3,
+  "ok": true,
+  "u": "Indicador marca (no-texto)"
+ },
+ {
+  "mode": "dark",
+  "a": "brand",
+  "b": "brand-muted",
+  "r": "6.84",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto marca sobre tinte"
+ },
+ {
+  "mode": "dark",
+  "a": "focus",
+  "b": "bg",
+  "r": "7.43",
+  "min": 3,
+  "ok": true,
+  "u": "Anillo de foco vs fondo"
+ },
+ {
+  "mode": "dark",
+  "a": "focus",
+  "b": "surface",
+  "r": "6.99",
+  "min": 3,
+  "ok": true,
+  "u": "Anillo de foco vs tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "success",
+  "b": "success-muted",
+  "r": "8.59",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill éxito"
+ },
+ {
+  "mode": "dark",
+  "a": "warning",
+  "b": "warning-muted",
+  "r": "9.18",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill aviso"
+ },
+ {
+  "mode": "dark",
+  "a": "info",
+  "b": "info-muted",
+  "r": "8.37",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill info"
+ },
+ {
+  "mode": "dark",
+  "a": "danger",
+  "b": "danger-muted",
+  "r": "7.27",
+  "min": 4.5,
+  "ok": true,
+  "u": "Pill peligro"
+ },
+ {
+  "mode": "dark",
+  "a": "success",
+  "b": "surface",
+  "r": "10.15",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto éxito en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "warning",
+  "b": "surface",
+  "r": "10.98",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto aviso en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "info",
+  "b": "surface",
+  "r": "9.79",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto info en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "danger",
+  "b": "surface",
+  "r": "8.59",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto error en tarjeta"
+ },
+ {
+  "mode": "dark",
+  "a": "danger",
+  "b": "bg",
+  "r": "9.14",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto error en fondo"
+ },
+ {
+  "mode": "dark",
+  "a": "success-dot",
+  "b": "surface",
+  "r": "7.76",
+  "min": 3,
+  "ok": true,
+  "u": "Punto éxito (no-texto)"
+ },
+ {
+  "mode": "dark",
+  "a": "warning-dot",
+  "b": "surface",
+  "r": "9.50",
+  "min": 3,
+  "ok": true,
+  "u": "Punto aviso (no-texto)"
+ },
+ {
+  "mode": "dark",
+  "a": "info-dot",
+  "b": "surface",
+  "r": "6.86",
+  "min": 3,
+  "ok": true,
+  "u": "Punto info"
+ },
+ {
+  "mode": "dark",
+  "a": "danger-dot",
+  "b": "surface",
+  "r": "5.77",
+  "min": 3,
+  "ok": true,
+  "u": "Punto peligro"
+ },
+ {
+  "mode": "dark",
+  "a": "ai",
+  "b": "ai-muted",
+  "r": "7.40",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto IA sobre tinte"
+ },
+ {
+  "mode": "dark",
+  "a": "brand-fg",
+  "b": "brand",
+  "r": "8.44",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto sobre botón marca"
+ },
+ {
+  "mode": "dark",
+  "a": "bg",
+  "b": "ai",
+  "r": "9.38",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto claro sobre IA sólido (badge)"
+ },
+ {
+  "mode": "dark",
+  "a": "ai",
+  "b": "surface",
+  "r": "8.82",
+  "min": 4.5,
+  "ok": true,
+  "u": "Texto IA en tarjeta"
+ }
+]

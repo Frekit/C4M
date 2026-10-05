@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 import {
   CircleCheckBigIcon,
   FileTextIcon,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/domain/enums";
 import { signSummaryBullets } from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
-import { formatDateTime, formatDateTimeUtc } from "@/lib/format";
+import { formatDateTimeUtc } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 import { SignForm } from "./sign-form";
@@ -50,18 +51,18 @@ export default async function SignPage({
 
   if (!request) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
+      <PageShell width="narrow" className="justify-center py-16">
         <Card>
           <CardHeader>
             <TriangleAlertIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Enlace no válido</CardTitle>
+            <h1 className="font-heading text-base leading-snug font-medium">Enlace no válido</h1>
             <CardDescription>
               Este enlace de firma no existe. Pide uno nuevo a la persona que te
               contactó.
             </CardDescription>
           </CardHeader>
         </Card>
-      </main>
+      </PageShell>
     );
   }
 
@@ -89,7 +90,9 @@ export default async function SignPage({
     <Card>
       <CardHeader>
         <CircleCheckBigIcon className="size-5 text-muted-foreground" />
-        <CardTitle>Contrato firmado</CardTitle>
+            <CardTitle>
+              Contrato firmado{request.signedAt ? ` el ${formatDateTimeUtc(request.signedAt)}` : ""}
+            </CardTitle>
         <CardDescription>
           Gracias{request.signerFullName ? `, ${request.signerFullName}` : ""}.
           Ya tenemos tus datos para pagarte.
@@ -125,15 +128,16 @@ export default async function SignPage({
   ) : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
+    <PageShell width="default" className="gap-5 pb-24">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{company.legalName}</p>
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
+        <p className="font-mono text-eyebrow-11">Contrato {contract.code}</p>
+        <h1 className="text-display-30">
           {isConditionsAnnex
             ? `Anexo de condiciones al contrato ${contract.parent?.code ?? ""}`
             : isAnnex
               ? `Anexo al contrato ${contract.parent?.code ?? ""}`
-              : "Contrato de creación de contenido orgánico"}
+              : `Hola, ${(contract.creator.displayName ?? contract.creator.handle).split(" ")[0]}. Este es tu contrato${contract.client ? ` con ${contract.client.name}` : ""}.`}
         </h1>
         <p className="text-sm text-muted-foreground">
           Referencia {contract.code} · para @{contract.creator.handle}
@@ -235,9 +239,8 @@ export default async function SignPage({
               {contract.status === CONTRACT_STATUS.CANCELLED
                 ? "El contrato se ha cancelado."
                 : isExpired
-                  ? `El enlace caducó el ${formatDateTime(request.expiresAt)}.`
-                  : "El enlace se ha revocado."}{" "}
-              Pide uno nuevo a quien te lo envió.
+                  ? "Este enlace ha caducado. Pide uno nuevo a tu contacto en Creators for Media."
+                  : "El enlace se ha revocado. Pide uno nuevo a tu contacto en Creators for Media."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -254,9 +257,10 @@ export default async function SignPage({
             token={token}
             defaultCurrency={contract.costCurrency}
             defaultEmail={request.recipientEmail}
+            summary={`${formatMoney(totalCost, contract.costCurrency, { withCode: true })} · ${contract.deliverableCount} contenidos`}
           />
         </>
       )}
-    </main>
+    </PageShell>
   );
 }

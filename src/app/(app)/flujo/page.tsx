@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PageShell } from "@/components/page-shell";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -75,9 +76,9 @@ export default async function WorkflowPage() {
   await requireUser("/flujo");
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6">
+    <PageShell width="wide" className="gap-8">
       <div className="space-y-2">
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
+        <h1 className="text-heading-24">
           Flujo actual
         </h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
@@ -403,6 +404,6 @@ export default async function WorkflowPage() {
           </li>
         </ul>
       </section>
-    </main>
+    </PageShell>
   );
 }

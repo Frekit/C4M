@@ -1,0 +1,81 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contenidos · C4M</title><link rel="stylesheet" href="base.css">
+<style>
+.phd{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:4px 0 14px}
+.views{display:flex;gap:4px;margin-bottom:12px;align-items:center}
+.view{white-space:nowrap;flex:none;height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:var(--r-sm);font-weight:500;font-size:13px;color:var(--fg-muted)}
+.view.on{background:var(--surface);box-shadow:var(--e1),inset 0 0 0 1px var(--border);color:var(--fg)}
+.view .c{font-size:11.5px;color:var(--fg-subtle)}
+.filters{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.chip{height:26px;display:inline-flex;align-items:center;gap:6px;padding:0 6px 0 10px;border-radius:var(--r-full);border:1px solid var(--border);background:var(--surface);font-size:12.5px}
+.chip b{font-weight:500}
+.chip .x{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;color:var(--fg-subtle)}
+.chip.add{border-style:dashed;color:var(--fg-muted);padding-right:10px}
+.tblwrap{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--e1)}
+.pf{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);color:var(--fg-muted);flex:none}.lnk2{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--fg-muted)}
+.tbl td{height:56px}
+.danger-t{color:var(--danger)}
+.bulk{position:fixed;left:calc(var(--sidebar-w) + (100vw - var(--sidebar-w))/2);transform:translateX(-50%);bottom:24px;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 14px;border-radius:var(--r-lg);background:var(--primary);color:var(--primary-fg);box-shadow:var(--e3);z-index:12}
+.bulk .btn{background:transparent;color:var(--primary-fg);border-color:color-mix(in oklch,var(--primary-fg) 22%,transparent)}
+.bulk .btn.solid{background:var(--primary-fg);color:var(--primary)}
+.scrim{position:fixed;inset:0;background:oklch(0.22 0.012 60 / .18);z-index:14}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:440px;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--e3);z-index:15;display:flex;flex-direction:column}
+.sh-h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.sh-b{padding:16px;overflow:auto;flex:1}
+.sh-f{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+.preview{aspect-ratio:4/4.2;border-radius:var(--r-lg);background:linear-gradient(160deg,oklch(.75 .12 40),oklch(.45 .14 10));position:relative;display:grid;place-items:center;color:white;overflow:hidden}
+.preview .play{width:56px;height:56px;border-radius:50%;background:oklch(1 0 0 / .22);backdrop-filter:blur(6px);display:grid;place-items:center}
+.preview .cap{position:absolute;left:12px;right:12px;bottom:12px;font-size:12.5px;line-height:18px;text-shadow:0 1px 2px #0006}
+.vers{display:flex;gap:6px;margin:12px 0}
+.ck{list-style:none;margin-top:12px;border:1px solid var(--border);border-radius:var(--r-md)}
+.ck li{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px}
+.ck li:last-child{border-bottom:0}
+.dl2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px}.dl2 dt{font-size:12px;color:var(--fg-muted)}.dl2 dd{font-weight:500;font-size:13px}
+.mlist{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);overflow:hidden}
+.mrow{display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);align-items:center}
+.mrow .th{width:40px;height:52px}
+.no-sheet .sheet,.no-sheet .scrim{display:none}
+body:not(.no-sheet) .bulk{display:none}
+@media (max-width:1180px){.sheet{width:400px}.tbl th:nth-child(6),.tbl td:nth-child(6){display:none}}
+@media (max-width:760px){.sheet,.scrim,.bulk{display:none}.views{overflow:auto}.phd .btn{display:none}}
+</style></head>
+<body data-nav="contenidos"><div class="app"><div class="main">
+<header class="topbar"><div class="crumbs"><b>Contenidos</b></div><div class="right"><button class="btn btn-ghost btn-sm hide-m"><i data-lucide="sparkles" class="i"></i>Preguntar <span class="kbd">⌘J</span></button><button class="btn btn-ghost btn-icon only-m" aria-label="Buscar"><i data-lucide="search" class="i s20"></i></button></div></header>
+<main class="page wide">
+ <div class="phd"><div><h1 class="t-h24">Contenidos</h1><p class="muted t-c14">Todos los contenidos contratados: fecha, publicación, subida al cliente y pago.</p></div><button class="btn btn-secondary btn-sm"><i data-lucide="download" class="i"></i>Exportar CSV</button></div>
+ <div class="views" role="tablist" aria-label="Vistas guardadas"><span class="view on">Necesitan algo <span class="c">9</span></span><span class="view">Esta semana <span class="c">9</span></span><span class="view">Fecha pasada <span class="c">3</span></span><span class="view">Sin enlace <span class="c">5</span></span><span class="view">Listos para pagar <span class="c">14</span></span><span class="view">Todos <span class="c">86</span></span><button class="btn btn-ghost btn-sm hide-m" style="margin-left:4px"><i data-lucide="plus" class="i"></i>Vista</button></div>
+ <div class="filters"><span class="chip"><span class="muted">Cliente</span><b>Higgsfield, Many Chat</b><span class="x"><i data-lucide="x" class="i s14"></i></span></span><span class="chip add"><i data-lucide="plus" class="i s14"></i>Filtro</span><span class="t-c13 subtle hide-m" style="margin-left:auto">9 de 86 · ordenados por urgencia</span></div>
+ <div class="tblwrap hide-m"><table class="tbl" aria-label="Contenidos" aria-multiselectable="true">
+ <thead><tr><th style="width:36px"><span class="cb ind"></span></th><th>Contenido</th><th>Creator</th><th>Estado</th><th>Fecha <i data-lucide="arrow-down" class="i s14" style="vertical-align:-2px"></i></th><th>Enlace</th><th>Pago</th></tr></thead>
+ <tbody><tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Reel 1 · Unboxing</div><div class="s mono" style="font-size:11.5px">CTR-2026-001</div></div></div></td><td><div class="who"><span class="ig " style="width:22px;height:22px;font-size:9px">MM</span><span class="t-c13">@martamoda</span></div></td><td><span class="pill danger">Fecha pasada</span></td><td class="num danger-t">2 oct</td><td><span class="subtle">—</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Reel 1</div><div class="s mono" style="font-size:11.5px">CTR-2026-004</div></div></div></td><td><div class="who"><span class="ig b" style="width:22px;height:22px;font-size:9px">LT</span><span class="t-c13">@lauratravels</span></div></td><td><span class="pill danger">Fecha pasada</span></td><td class="num danger-t">2 oct</td><td><span class="subtle">—</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr class="focus"><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="tiktok"></i></span><div><div class="h">TikTok 1 · Set de Navidad</div><div class="s mono" style="font-size:11.5px">CTR-2026-005</div></div></div></td><td><div class="who"><span class="ig c" style="width:22px;height:22px;font-size:9px">PF</span><span class="t-c13">@pabloframes</span></div></td><td><span class="pill danger">Fecha pasada</span></td><td class="num danger-t">2 oct</td><td><span class="subtle">—</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr class="sel"><td><span class="cb on"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Reel 2 · Antes y después</div><div class="s mono" style="font-size:11.5px">CTR-2026-001</div></div></div></td><td><div class="who"><span class="ig " style="width:22px;height:22px;font-size:9px">MM</span><span class="t-c13">@martamoda</span></div></td><td><span class="pill info">Programado</span></td><td class="num">12 oct</td><td><span class="subtle">—</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr class="sel"><td><span class="cb on"></span></td><td><div class="who"><span class="pf"><i data-brand="tiktok"></i></span><div><div class="h">TikTok 2</div><div class="s mono" style="font-size:11.5px">CTR-2026-005</div></div></div></td><td><div class="who"><span class="ig c" style="width:22px;height:22px;font-size:9px">PF</span><span class="t-c13">@pabloframes</span></div></td><td><span class="pill info">Programado</span></td><td class="num">18 oct</td><td><span class="subtle">—</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Reel · Lookbook</div><div class="s mono" style="font-size:11.5px">CTR-2026-001</div></div></div></td><td><div class="who"><span class="ig " style="width:22px;height:22px;font-size:9px">MM</span><span class="t-c13">@martamoda</span></div></td><td><span class="pill danger">Rechazado por plataforma</span></td><td class="num">1 oct</td><td><span class="lnk2"><i data-lucide="link" class="i s14"></i>instagram.com/reel/C9x…</span></td><td class="num t-c13 subtle">—</td></tr>
+<tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Story · Código regalo</div><div class="s mono" style="font-size:11.5px">CTR-2026-001</div></div></div></td><td><div class="who"><span class="ig " style="width:22px;height:22px;font-size:9px">MM</span><span class="t-c13">@martamoda</span></div></td><td><span class="pill success">Subido al cliente</span></td><td class="num">1 oct</td><td><span class="lnk2"><i data-lucide="link" class="i s14"></i>instagram.com/p/C9k…</span></td><td class="num t-c13 muted">vence 31 oct</td></tr>
+<tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="tiktok"></i></span><div><div class="h">TikTok · Receta exprés</div><div class="s mono" style="font-size:11.5px">CTR-2026-006</div></div></div></td><td><div class="who"><span class="ig d" style="width:22px;height:22px;font-size:9px">NE</span><span class="t-c13">@nachoeats</span></div></td><td><span class="pill success">Publicado</span></td><td class="num">28 sep</td><td><span class="lnk2"><i data-lucide="link" class="i s14"></i>tiktok.com/@nachoeats/…</span></td><td class="num t-c13 muted">vence 28 oct</td></tr>
+<tr><td><span class="cb"></span></td><td><div class="who"><span class="pf"><i data-brand="instagram"></i></span><div><div class="h">Reel · Black Friday teaser</div><div class="s mono" style="font-size:11.5px">CTR-2026-002</div></div></div></td><td><div class="who"><span class="ig " style="width:22px;height:22px;font-size:9px">SB</span><span class="t-c13">@sarabakes</span></div></td><td><span class="pill neutral">Pagado</span></td><td class="num">2 sep</td><td><span class="lnk2"><i data-lucide="link" class="i s14"></i>instagram.com/reel/C7q…</span></td><td class="num t-c13 muted">pagado 2 oct</td></tr></tbody></table></div>
+ <div class="mlist only-m">
+  <div class="mrow"><span class="pf"><i data-brand="instagram"></i></span><div style="flex:1;min-width:0"><div class="t-l14">Reel 1 · Unboxing</div><div class="t-c13" style="color:var(--danger)">@martamoda · era el 2 oct</div></div><span class="pill danger">Fecha pasada</span></div>
+  <div class="mrow"><span class="pf"><i data-brand="instagram"></i></span><div style="flex:1;min-width:0"><div class="t-l14">Reel 1</div><div class="t-c13" style="color:var(--danger)">@lauratravels · era el 2 oct</div></div><span class="pill danger">Fecha pasada</span></div>
+  <div class="mrow"><span class="pf"><i data-brand="tiktok"></i></span><div style="flex:1;min-width:0"><div class="t-l14">TikTok 1 · Set de Navidad</div><div class="t-c13" style="color:var(--danger)">@pabloframes · era el 2 oct</div></div><span class="pill danger">Fecha pasada</span></div>
+  <div class="mrow"><span class="pf"><i data-brand="instagram"></i></span><div style="flex:1;min-width:0"><div class="t-l14">Reel 2 · Antes y después</div><div class="t-c13 muted">@martamoda · 12 oct</div></div><span class="pill info">Programado</span></div>
+  <div class="mrow"><span class="pf"><i data-brand="instagram"></i></span><div style="flex:1;min-width:0"><div class="t-l14">Reel · Lookbook</div><div class="t-c13 muted">@martamoda · rechazado</div></div><span class="pill danger">Rechazado</span></div>
+  <div class="mrow"><span class="pf"><i data-brand="instagram"></i></span><div style="flex:1;min-width:0"><div class="t-l14">Story · Código regalo</div><div class="t-c13 muted">@martamoda · pago 31 oct</div></div><span class="pill success">Subido</span></div>
+ </div>
+</main></div></div>
+<div class="bulk" role="toolbar" aria-label="Acciones en lote"><span class="t-l13" style="margin-right:6px">2 seleccionados</span><button class="btn btn-sm"><i data-lucide="calendar" class="i"></i>Cambiar fecha</button><button class="btn btn-sm solid"><i data-lucide="link" class="i"></i>Marcar publicados</button><button class="btn btn-sm btn-icon" aria-label="Quitar selección" style="border:0"><i data-lucide="x" class="i"></i></button></div>
+<div class="scrim"></div>
+<aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+ <div class="sh-h"><span class="pill danger">Fecha pasada</span><span class="t-c13 subtle">3 de 9</span><span style="margin-left:auto;display:flex;gap:2px"><button class="btn btn-ghost btn-icon btn-sm" aria-label="Anterior (K)"><i data-lucide="chevron-up" class="i"></i></button><button class="btn btn-ghost btn-icon btn-sm" aria-label="Siguiente (J)"><i data-lucide="chevron-down" class="i"></i></button><button class="btn btn-ghost btn-icon btn-sm" aria-label="Cerrar (Esc)"><i data-lucide="x" class="i"></i></button></span></div>
+ <div class="sh-b" style="display:grid;gap:16px;align-content:start">
+  <div><h2 id="sh-t" class="t-h16">TikTok 1 · Set de Navidad</h2><div class="t-c13 muted" style="margin-top:2px">@pabloframes · <span class="mono">CTR-2026-005</span> · Navidad 2026</div></div>
+  <div class="field"><label class="label" for="u">Enlace de la publicación</label><div class="input is-error" id="u"><i data-lucide="link" class="i s14 subtle"></i>tiktok.com/@pabloframes/video/7421…</div><div class="err"><i data-lucide="circle-alert" class="i s14"></i>Este enlace ya está en otro contenido: CTR-2026-003 · TikTok 1.</div></div>
+  <div class="field"><label class="label" for="f">Fecha prevista</label><div class="input" id="f"><i data-lucide="calendar" class="i s14 subtle"></i>jueves, 2 de octubre de 2026</div><div class="help">Al publicar se guarda la fecha real.</div></div>
+  <dl class="dl2"><div><dt>Coste</dt><dd class="num">1.900,00 €</dd></div><div><dt>Venta</dt><dd class="num">US$ 2.900,00</dd></div><div><dt>Pago</dt><dd>30 días tras publicar</dd></div></dl>
+  <div class="field"><label class="label">Notas <span class="opt">(opcional)</span></label><div class="input ph" style="height:56px;align-items:flex-start;padding-top:8px">Solo las ve el equipo</div></div>
+  <div class="t-c13 subtle" style="display:flex;gap:6px;align-items:center"><i data-lucide="history" class="i s14"></i>Fecha cambiada por Álvaro Romero · 28 sep, 18:42</div>
+ </div>
+ <div class="sh-f"><span class="t-c13 subtle" style="display:flex;gap:6px;align-items:center;margin-right:auto" role="status"><i data-lucide="cloud-check" class="i s14"></i>Guardado</span><button class="btn btn-primary"><i data-lucide="check" class="i"></i>Marcar como publicado</button></div>
+</aside>
+<script src="lucide.min.js"></script><script src="shell.js"></script></body></html>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 import { ShieldAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { getLogoutHref } from "@/lib/auth/urls";
 
@@ -37,11 +37,11 @@ export default async function NoAccessPage({
   const reason = REASONS[motivo ?? ""] ?? REASONS.not_invited;
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-12 sm:px-6">
+    <PageShell width="narrow" className="justify-center py-16">
       <Card>
         <CardHeader>
           <ShieldAlertIcon className="size-5 text-muted-foreground" />
-          <CardTitle>{reason.title}</CardTitle>
+          <h1 className="font-heading text-base leading-snug font-medium">{reason.title}</h1>
           <CardDescription>{reason.description}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -55,6 +55,6 @@ export default async function NoAccessPage({
           </Button>
         </CardContent>
       </Card>
-    </main>
+    </PageShell>
   );
 }

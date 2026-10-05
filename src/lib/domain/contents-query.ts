@@ -19,6 +19,7 @@ export type ContentFilters = {
   sinEnlace?: string;
   errorPlataforma?: string;
   sinFirmar?: string;
+  vista?: string;
   pagina?: string;
 };
 
@@ -45,6 +46,7 @@ export function contentsHref(filters: ContentFilters, page = 1): string {
   if (filters.sinEnlace === "1") params.set("sinEnlace", "1");
   if (filters.errorPlataforma === "1") params.set("errorPlataforma", "1");
   if (filters.sinFirmar === "1") params.set("sinFirmar", "1");
+  if (filters.vista) params.set("vista", filters.vista);
   if (page > 1) params.set("pagina", String(page));
 
   const query = params.toString();
@@ -107,6 +109,33 @@ export function buildDeliverableWhere(
       in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT],
     };
     where.contract = contractFilter;
+  }
+
+  if (filters.vista === "necesitan") {
+    const now = new Date();
+    where.AND = [
+      {
+        OR: [
+          {
+            status: { notIn: LIVE_STATUSES },
+            scheduledFor: { lt: now },
+          },
+          { status: DELIVERABLE_STATUS.PUBLISHED, postUrl: null },
+          { platformSubmitError: { not: null } },
+          {
+            contract: {
+              status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+            },
+          },
+        ],
+      },
+    ];
+  }
+
+  if (filters.vista === "pagar") {
+    where.status = DELIVERABLE_STATUS.SUBMITTED;
+    where.paymentDueAt = { lte: new Date() };
+    where.paidAt = null;
   }
 
   return where;

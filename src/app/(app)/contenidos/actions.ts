@@ -181,7 +181,7 @@ export async function updateDeliverable(
       },
     });
     if (taken) {
-      const message = duplicatePostUrlError(taken);
+      const message = duplicatePostUrlError({ ...taken, title: taken.title });
       return { ok: false, error: message, fieldErrors: { postUrl: message } };
     }
   }
@@ -230,7 +230,7 @@ export async function updateDeliverable(
           })
         : null;
       const message = taken
-        ? duplicatePostUrlError(taken)
+        ? duplicatePostUrlError({ ...taken, title: taken.title })
         : "Ese enlace ya está en otro contenido.";
       return { ok: false, error: message, fieldErrors: { postUrl: message } };
     }

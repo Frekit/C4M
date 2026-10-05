@@ -2,6 +2,9 @@
 
 import { useEffect } from "react";
 
+import Link from "next/link";
+
+import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
@@ -16,14 +19,15 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-16 text-center">
-      <h1 className="font-heading text-2xl font-medium">Algo ha fallado</h1>
-      <p className="text-sm text-muted-foreground">
-        {error.message || "No se ha podido cargar esta pantalla."}
-      </p>
-      <div>
-        <Button onClick={reset}>Reintentar</Button>
+    <PageShell width="narrow" className="justify-center text-center py-16 gap-4">
+      <h1 className="font-serif text-[22px] leading-7">Algo ha fallado al cargar esta página.</h1>
+      <p className="text-sm text-muted-foreground">No has perdido nada.</p>
+      <div className="flex justify-center gap-2">
+        <Button onClick={reset}>Recargar</Button>
+        <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
+          Ir al Centro de acciones
+        </Button>
       </div>
-    </main>
+    </PageShell>
   );
 }

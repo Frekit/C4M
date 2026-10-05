@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
+import { SetCrumbs } from "@/components/shell-context";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -40,6 +42,7 @@ import { getBaseUrl } from "@/lib/base-url";
 import { assembleBriefing, renderClientStatus } from "@/lib/domain/campaign-briefing";
 import { loadCampaignResults } from "@/lib/domain/campaign-results";
 import { loadCampaignSheet } from "@/lib/domain/campaign-sheet";
+import { loadTalentPlanilla } from "@/lib/domain/campaign-planilla";
 
 import { CampaignBriefForm } from "./brief-form";
 import { CampaignBulkSignature } from "./bulk-signature";
@@ -49,6 +52,7 @@ import { CampaignProposalPanel } from "./proposal-panel";
 import { CampaignResultsTable } from "./results-table";
 import { CampaignRosterPanel } from "./roster-panel";
 import { CampaignThread } from "./thread-panel";
+import { TalentSheet } from "./talent-sheet";
 
 export const metadata: Metadata = {
   title: "Campaña",
@@ -56,13 +60,48 @@ export const metadata: Metadata = {
 
 export default async function CampaignWorkbenchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ vista?: string }>;
 }) {
   const { id } = await params;
+  const { vista } = await searchParams;
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
+
+  if (!vista || vista === "planilla") {
+    const planilla = await loadTalentPlanilla(id);
+    if (!planilla) notFound();
+    return (
+      <PageShell width="wide">
+        <SetCrumbs
+          crumbs={[
+            { label: "Campañas", href: "/campanas" },
+            { label: planilla.campaign.name },
+          ]}
+        />
+        <TalentSheet
+          campaignId={planilla.campaign.id}
+          campaignName={planilla.campaign.name}
+          status={planilla.campaign.status}
+          clientName={planilla.campaign.client?.name ?? null}
+          starts={
+            planilla.campaign.startsAt
+              ? formatDate(planilla.campaign.startsAt)
+              : null
+          }
+          ends={
+            planilla.campaign.endsAt ? formatDate(planilla.campaign.endsAt) : null
+          }
+          rows={planilla.rows}
+          published={planilla.published}
+          canWrite={canWrite}
+        />
+      </PageShell>
+    );
+  }
   const [data, roster, picks, catalog, proposals, clients, sheet, results, messages, baseUrl] =
     await Promise.all([
     loadCampaignWorkbench(id),
@@ -109,7 +148,14 @@ export default async function CampaignWorkbenchPage({
     : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="wide">
+      <SetCrumbs
+        crumbs={[
+          { label: "Campañas", href: "/campanas" },
+          { label: data.name, href: `/campanas/${id}` },
+          { label: "Mesa" },
+        ]}
+      />
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           <Link href="/campanas" className="hover:underline">
@@ -117,7 +163,7 @@ export default async function CampaignWorkbenchPage({
           </Link>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             {data.name}
           </h1>
           <Button
@@ -126,7 +172,7 @@ export default async function CampaignWorkbenchPage({
             nativeButton={false}
             render={<Link href={`/campanas/${id}/planilla`} />}
           >
-            Planilla
+            Catálogo
           </Button>
           <Badge variant="outline">
             {CAMPAIGN_STATUS_LABELS[data.status as CampaignStatus]}
@@ -387,7 +433,7 @@ export default async function CampaignWorkbenchPage({
         talkUrl={talkUrl}
       />
       </div>
-    </main>
+    </PageShell>
   );
 }
 

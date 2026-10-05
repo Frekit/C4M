@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import type { Metadata } from "next";
 import { FileTextIcon } from "lucide-react";
 
@@ -58,10 +59,10 @@ export default async function ContractsPage({
   const canSign = can(user.role, "signature:send");
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="wide">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             Contratos
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -228,6 +229,6 @@ export default async function ContractsPage({
           </CardContent>
         </Card>
       )}
-    </main>
+    </PageShell>
   );
 }
