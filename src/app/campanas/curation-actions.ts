@@ -213,12 +213,14 @@ export async function postAgencyMessage(
   });
   if (!campaign) return { ok: false, error: "Esa campaña no existe." };
 
+  const visibleToClient = formData.get("visibleToClient") === "1";
   await prisma.campaignMessage.create({
     data: {
       campaignId,
       authorKind: "AGENCY",
       authorLabel: user.name || user.email,
       body,
+      visibility: visibleToClient ? "SHARED" : "INTERNAL",
     },
   });
   revalidateCampaign(campaignId);
@@ -244,6 +246,7 @@ export async function askAssistant(
       authorKind: "AGENCY",
       authorLabel: user.name || user.email,
       body: question,
+      visibility: "INTERNAL",
       createdAt: askedAt,
     },
   });
@@ -253,6 +256,7 @@ export async function askAssistant(
       authorKind: "ASSISTANT",
       authorLabel: "Mesa",
       body: answer,
+      visibility: "INTERNAL",
       createdAt: new Date(askedAt.getTime() + 1),
     },
   });
@@ -302,6 +306,7 @@ export async function applyAssistantDraft(
         added > 0
           ? `Aplico el borrador: ${added} en la mesa${skipped ? `, ${skipped} ya estaban o no valían` : ""}.`
           : "El borrador no mete a nadie nuevo.",
+      visibility: "INTERNAL",
     },
   });
   revalidateCampaign(campaignId);
@@ -328,6 +333,7 @@ export async function dismissAssistantDraft(
       authorKind: "AGENCY",
       authorLabel: user.name || user.email,
       body: "Dejo el borrador. No meto esos perfiles.",
+      visibility: "INTERNAL",
     },
   });
   revalidateCampaign(campaignId);
@@ -354,6 +360,7 @@ export async function postClientMessage(
       authorKind: "CLIENT",
       authorLabel: name,
       body,
+      visibility: "SHARED",
     },
   });
   revalidateCampaign(campaign.id);

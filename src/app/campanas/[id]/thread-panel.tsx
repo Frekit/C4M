@@ -13,6 +13,7 @@ import {
 } from "@/app/campanas/curation-actions";
 import type { CampaignRosterResult } from "@/app/campanas/roster-actions";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { handlesFromDraft } from "@/lib/domain/campaign-briefing";
 
@@ -21,8 +22,13 @@ export type TalkMessage = {
   authorKind: string;
   authorLabel: string;
   body: string;
+  visibility: string;
   createdAt: string;
 };
+
+function isClientVisible(message: TalkMessage) {
+  return message.visibility === "SHARED" || message.authorKind === "CLIENT";
+}
 
 function toastTalk(state: CampaignTalkResult | CampaignRosterResult | null, ok: string) {
   if (!state) return;
@@ -96,6 +102,7 @@ export function CampaignThread({
   >(dismissAssistantDraft, null);
   const [askEpoch, setAskEpoch] = useState(0);
   const [noteEpoch, setNoteEpoch] = useState(0);
+  const [visibleToClient, setVisibleToClient] = useState(false);
 
   useEffect(() => {
     toastTalk(askState, "La mesa respondió.");
@@ -103,7 +110,10 @@ export function CampaignThread({
   }, [askState]);
   useEffect(() => {
     toastTalk(noteState, "Nota en el hilo.");
-    if (noteState?.ok) setNoteEpoch((epoch) => epoch + 1);
+    if (noteState?.ok) {
+      setNoteEpoch((epoch) => epoch + 1);
+      setVisibleToClient(false);
+    }
   }, [noteState]);
   useEffect(() => toastTalk(linkState, "Enlace listo."), [linkState]);
   useEffect(() => toastTalk(applyState, "Borrador en la mesa."), [applyState]);
@@ -111,7 +121,9 @@ export function CampaignThread({
 
   const shownLink =
     talkUrl ?? (linkState?.token ? `/hablar/${linkState.token}` : null);
-  const draft = openDraft(messages);
+  const teamMessages = messages.filter((message) => !isClientVisible(message));
+  const clientMessages = messages.filter((message) => isClientVisible(message));
+  const draft = openDraft(teamMessages);
 
   return (
     <aside className="grid gap-3 lg:sticky lg:top-4">
@@ -134,38 +146,24 @@ export function CampaignThread({
       </section>
 
       <section className="grid max-h-[32rem] gap-3 overflow-y-auto rounded-xl border bg-card p-4">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Hilo
-        </p>
-        {messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aquí habláis la agencia y el cliente. La mesa resume lo que ya está
-            escrito y, si se lo pides, deja un borrador. No cambia la campaña
-            sola.
-          </p>
-        ) : (
-          <ol className="grid gap-2">
-            {messages.map((message) => (
-              <li
-                key={message.id}
-                className={
-                  message.authorKind === "AGENCY"
-                    ? "ml-6 rounded-xl bg-primary px-3 py-2 text-primary-foreground"
-                    : message.authorKind === "ASSISTANT"
-                      ? "mr-4 rounded-xl bg-muted px-3 py-2"
-                      : "mr-6 rounded-xl border bg-background px-3 py-2"
-                }
-              >
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-70">
-                  {message.authorKind === "ASSISTANT" ? "Mesa" : message.authorLabel}
-                </p>
-                <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
-                  {message.body}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
+        <Tabs defaultValue="equipo">
+          <TabsList>
+            <TabsTrigger value="equipo">Equipo</TabsTrigger>
+            <TabsTrigger value="cliente">Con el cliente</TabsTrigger>
+          </TabsList>
+          <TabsContent value="equipo">
+            <MessageList
+              messages={teamMessages}
+              empty="La mesa y las notas internas se quedan aquí. El cliente no las ve."
+            />
+          </TabsContent>
+          <TabsContent value="cliente">
+            <MessageList
+              messages={clientMessages}
+              empty="Aquí solo entra lo que marcas como visible y lo que responde el cliente."
+            />
+          </TabsContent>
+        </Tabs>
       </section>
 
       {draft && canWrite ? (
@@ -213,7 +211,27 @@ export function CampaignThread({
       {canWrite ? (
         <form key={`nota-${noteEpoch}`} action={noteAction} className="grid gap-2">
           <input type="hidden" name="campaignId" value={campaignId} />
-          <Textarea name="body" rows={2} placeholder="Nota para el equipo o el cliente" />
+          <Textarea
+            name="body"
+            rows={2}
+            placeholder={
+              visibleToClient ? "Mensaje para el cliente" : "Nota para el equipo"
+            }
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="visibleToClient"
+              value="1"
+              checked={visibleToClient}
+              onChange={(event) => setVisibleToClient(event.target.checked)}
+              className="size-4 accent-primary"
+            />
+            Visible para el cliente
+          </label>
+          {visibleToClient ? (
+            <p className="text-xs text-muted-foreground">El cliente verá esto.</p>
+          ) : null}
           <div>
             <Button type="submit" size="sm" variant="outline" disabled={notePending}>
               {notePending ? "Enviando…" : "Escribir en el hilo"}
@@ -248,6 +266,42 @@ export function CampaignThread({
         )}
       </section>
     </aside>
+  );
+}
+
+function MessageList({
+  messages,
+  empty,
+}: {
+  messages: TalkMessage[];
+  empty: string;
+}) {
+  if (messages.length === 0) {
+    return <p className="text-sm text-muted-foreground">{empty}</p>;
+  }
+
+  return (
+    <ol className="grid gap-2">
+      {messages.map((message) => (
+        <li
+          key={message.id}
+          className={
+            message.authorKind === "AGENCY"
+              ? "ml-6 rounded-xl bg-primary px-3 py-2 text-primary-foreground"
+              : message.authorKind === "ASSISTANT"
+                ? "mr-4 rounded-xl bg-muted px-3 py-2"
+                : "mr-6 rounded-xl border bg-background px-3 py-2"
+          }
+        >
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-70">
+            {message.authorKind === "ASSISTANT" ? "Mesa" : message.authorLabel}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
+            {message.body}
+          </p>
+        </li>
+      ))}
+    </ol>
   );
 }
 

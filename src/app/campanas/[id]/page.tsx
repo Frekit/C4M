@@ -84,6 +84,7 @@ export default async function CampaignWorkbenchPage({
         authorKind: true,
         authorLabel: true,
         body: true,
+        visibility: true,
         createdAt: true,
       },
     }),

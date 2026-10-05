@@ -29,7 +29,10 @@ export default async function ClientTalkPage({
     loadCampaignSheet(campaign.id),
     loadCampaignResults(campaign.id),
     prisma.campaignMessage.findMany({
-      where: { campaignId: campaign.id },
+      where: {
+        campaignId: campaign.id,
+        OR: [{ visibility: "SHARED" }, { authorKind: "CLIENT" }],
+      },
       orderBy: { createdAt: "asc" },
       select: { id: true, authorKind: true, authorLabel: true, body: true },
     }),
