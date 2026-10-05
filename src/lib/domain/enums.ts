@@ -37,8 +37,8 @@ export type ContractStatus =
 
 export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   DRAFT: "Borrador",
-  SENT: "Enviado a firma",
-  SIGNED: "Vigente",
+  SENT: "Enviado",
+  SIGNED: "Firmado",
   COMPLETED: "Completado",
   RENEWED: "Renovado",
   CANCELLED: "Cancelado",
@@ -71,10 +71,10 @@ export type DeliverableStatus =
   (typeof DELIVERABLE_STATUS)[keyof typeof DELIVERABLE_STATUS];
 
 export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus, string> = {
-  PENDING: "Sin agendar",
-  SCHEDULED: "Agendado",
+  PENDING: "Pendiente",
+  SCHEDULED: "Programado",
   PUBLISHED: "Publicado",
-  SUBMITTED: "En plataforma",
+  SUBMITTED: "Subido al cliente",
 };
 
 export const DELIVERABLE_STATUS_HINTS: Record<DeliverableStatus, string> = {
@@ -127,7 +127,7 @@ export type CampaignStatus =
   (typeof CAMPAIGN_STATUS)[keyof typeof CAMPAIGN_STATUS];
 
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
-  ACTIVE: "Activa",
+  ACTIVE: "En curso",
   CLOSED: "Cerrada",
 };
 
@@ -200,12 +200,12 @@ export type CampaignTalentStatus =
 
 export const CAMPAIGN_TALENT_STATUS_LABELS: Record<CampaignTalentStatus, string> =
   {
-    ROSTER: "En mesa",
+    ROSTER: "Roster",
     READY: "Listo",
-    PROPOSED: "En oleada",
+    PROPOSED: "Propuesto",
     APPROVED: "Aprobado",
     ACTIVE: "Activo",
-    REJECTED: "Descartado",
+    REJECTED: "Rechazado",
   };
 
 export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> =
@@ -231,8 +231,8 @@ export type SignatureStatus =
   (typeof SIGNATURE_STATUS)[keyof typeof SIGNATURE_STATUS];
 
 export const SIGNATURE_STATUS_LABELS: Record<SignatureStatus, string> = {
-  PENDING: "Pendiente de firma",
-  VIEWED: "Abierto por el firmante",
+  PENDING: "Pendiente",
+  VIEWED: "Visto, sin firmar",
   SIGNED: "Firmado",
   REVOKED: "Revocado",
 };
