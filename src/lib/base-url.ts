@@ -8,9 +8,15 @@ export async function getBaseUrl(): Promise<string> {
     return configured.replace(/\/$/, "");
   }
 
-  const list = await headers();
-  const host = list.get("x-forwarded-host") ?? list.get("host");
-  const proto = list.get("x-forwarded-proto") ?? "http";
+  try {
+    const list = await headers();
+    const host = list.get("x-forwarded-host") ?? list.get("host");
+    const proto = list.get("x-forwarded-proto") ?? "http";
+    if (host) return `${proto}://${host}`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.includes("outside a request scope")) throw error;
+  }
 
-  return host ? `${proto}://${host}` : "http://localhost:43127";
+  return "http://localhost:43127";
 }

@@ -993,3 +993,15 @@ test("sin secreto el agente no está listo", () => {
   assert.equal(ambiguousAmount("1500,50", "USD"), false);
 });
 
+test("sin petición ni APP_BASE_URL el enlace de firma usa localhost", async () => {
+  const previous = process.env.APP_BASE_URL;
+  delete process.env.APP_BASE_URL;
+  try {
+    const { getBaseUrl } = await import("../src/lib/base-url");
+    assert.equal(await getBaseUrl(), "http://localhost:43127");
+  } finally {
+    if (previous === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = previous;
+  }
+});
+
