@@ -502,3 +502,25 @@ model MailJob {
   @@index([status, createdAt])
   @@index([contractId])
 }
+
+// Una aprobación del agente solo se ejecuta una vez. El id es el approvalId firmado.
+model AgentApproval {
+  id        String   @id
+  userId    String
+  toolName  String
+  createdAt DateTime @default(now())
+}
+
+// El CSV del lote no vuelve al modelo. Se descarga con sesión y permiso.
+model AgentPayoutFile {
+  id         String   @id @default(cuid())
+  userId     String
+  campaignId String?
+  ready      Int
+  missing    Int
+  totalLabel String
+  csv        String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

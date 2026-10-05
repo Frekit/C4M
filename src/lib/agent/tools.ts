@@ -1,11 +1,11 @@
-import { tool, type ToolApprovalStatus } from "ai";
+import { tool } from "ai";
 import { z } from "zod";
 
 import { can, type Permission } from "@/lib/auth/permissions";
 
+import type { AgentSession, ScopedInput, ToolRunOptions } from "./commands";
 import {
   previewPriceWarning,
-  previewPublishWarning,
   previewSignatureWarning,
   runAddToDesk,
   runCreateDraftContract,
@@ -19,29 +19,58 @@ import {
   runSearchRoster,
   runSetLinePrice,
   runSetTalentStatus,
-  type AgentSession,
 } from "./commands";
+import { isStrictIsoDate } from "./dates";
+import { describeWriteEffect } from "./effect";
 
-function allow(userCan: boolean, message: string): ToolApprovalStatus {
-  if (!userCan) return { type: "denied", reason: message };
-  return "user-approval";
-}
-
-function allowWithReason(
-  userCan: boolean,
-  message: string,
-  reason: string | null
-): ToolApprovalStatus {
-  if (!userCan) return { type: "denied", reason: message };
-  if (reason) return { type: "user-approval", reason };
-  return "user-approval";
-}
+const scope = {
+  campaignId: z.string().optional(),
+  contractId: z.string().optional(),
+  creatorId: z.string().optional(),
+  actorUserId: z.string().optional(),
+};
 
 function roleCan(session: AgentSession, permission: Permission) {
   return can(session.user.role, permission);
 }
 
+function stamp<T extends ScopedInput>(session: AgentSession, input: T): T {
+  return {
+    ...input,
+    campaignId: session.context.campaignId ?? "",
+    contractId: session.context.contractId ?? "",
+    creatorId: session.context.creatorId ?? "",
+    actorUserId: session.user.id,
+  };
+}
+
+async function safeTool<T>(run: () => Promise<T>) {
+  try {
+    return await run();
+  } catch (error) {
+    console.error("agent tool", error);
+    return { ok: false as const, error: "No he podido hacer ese cambio." };
+  }
+}
+
+function asRecord(input: object): Record<string, unknown> {
+  return input as Record<string, unknown>;
+}
+
 export function createC4mToolset(session: AgentSession) {
+  async function approve(
+    name: string,
+    permission: Permission,
+    denial: string,
+    input: object,
+    warning?: string | null
+  ) {
+    if (!roleCan(session, permission)) return { type: "denied" as const, reason: denial };
+    const effect = await describeWriteEffect(session.context, name, asRecord(input));
+    const reason = warning ? `${effect}\nAviso: ${warning}` : effect;
+    return { type: "user-approval" as const, reason };
+  }
+
   const tools = {
     getCampaignBriefing: tool({
       description:
@@ -77,15 +106,17 @@ export function createC4mToolset(session: AgentSession) {
       description:
         "Mete en la mesa de la campaña un perfil que ya existe en el roster. No crea perfiles nuevos.",
       inputSchema: z.object({
-        campaignId: z.string().optional(),
+        ...scope,
         handle: z.string().describe("Handle de Instagram, con o sin @. Tiene que existir."),
       }),
-      execute: async (input) => runAddToDesk(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runAddToDesk(session, input, options as ToolRunOptions)),
     }),
     setLinePrice: tool({
       description:
-        "Guarda venta, coste y piezas de una línea que todavía no se ha enviado ni activado. Usa solo importes que haya dicho la persona.",
+        "Guarda venta, coste y piezas de una línea que todavía no se ha enviado ni activado. Los campos que no envíes se conservan. Usa solo importes que haya dicho la persona, como 1500 o 1500,50.",
       inputSchema: z.object({
+        ...scope,
         talentId: z.string(),
         saleUsd: z.string().optional().describe("Venta por contenido en USD, como la dijo la persona."),
         cost: z.string().optional().describe("Coste en la moneda del creator."),
@@ -94,62 +125,72 @@ export function createC4mToolset(session: AgentSession) {
         contentPlatform: z.string().optional(),
         contentFormat: z.string().optional(),
       }),
-      execute: async (input) => runSetLinePrice(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runSetLinePrice(session, input, options as ToolRunOptions)),
     }),
     setTalentStatus: tool({
       description:
         "Aprueba o rechaza una línea que el dominio ya tiene como propuesta. No activa ni crea el contrato.",
       inputSchema: z.object({
+        ...scope,
         talentId: z.string(),
         status: z.enum(["APPROVED", "REJECTED"]),
       }),
-      execute: async (input) => runSetTalentStatus(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runSetTalentStatus(session, input, options as ToolRunOptions)),
     }),
     createDraftContract: tool({
       description:
         "Crea el contrato en borrador al activar una línea lista, con las reglas de la planilla. No lo envía a firma.",
       inputSchema: z.object({
+        ...scope,
         talentId: z.string(),
       }),
-      execute: async (input) => runCreateDraftContract(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runCreateDraftContract(session, input, options as ToolRunOptions)),
     }),
     markPublished: tool({
       description:
-        "Marca un contenido como publicado en redes. Exige fecha y enlace. No lo sube a la plataforma del cliente.",
+        "Marca un contenido como publicado en redes. Exige fecha ISO real y enlace. No lo sube a la plataforma del cliente.",
       inputSchema: z.object({
+        ...scope,
         deliverableId: z.string(),
-        contentDate: z.string().describe("Fecha YYYY-MM-DD."),
-        postUrl: z.string().describe("Enlace público del contenido."),
+        contentDate: z.string().refine(isStrictIsoDate, "Fecha no válida."),
+        postUrl: z.url(),
       }),
-      execute: async (input) => runMarkPublished(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runMarkPublished(session, input, options as ToolRunOptions)),
     }),
     queueSignatures: tool({
       description:
-        "Encola el envío a firma de contratos en borrador o ya enviados. No firma en nombre de nadie.",
+        "Encola el envío a firma de contratos en borrador o ya enviados de la campaña abierta. No firma en nombre de nadie y no manda el correo en el acto.",
       inputSchema: z.object({
+        ...scope,
         contractIds: z.array(z.string()).max(80).optional(),
-        campaignId: z.string().optional(),
         expiresInDays: z.number().int().min(1).max(90).optional(),
       }),
-      execute: async (input) => runQueueSignatures(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runQueueSignatures(session, input, options as ToolRunOptions)),
     }),
     preparePayoutBatch: tool({
       description:
-        "Arma el CSV del lote de Zexel con lo que ya se puede pagar. No marca los contenidos como pagados.",
+        "Prepara el lote de Zexel de la campaña abierta y devuelve el recuento, el total y un enlace de descarga. No marca los contenidos como pagados ni pega el CSV.",
       inputSchema: z.object({
+        ...scope,
         deliverableIds: z.array(z.string()).max(80).optional(),
-        campaignId: z.string().optional(),
       }),
-      execute: async (input) => runPreparePayoutBatch(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runPreparePayoutBatch(session, input, options as ToolRunOptions)),
     }),
     draftClientMessage: tool({
       description:
         "Guarda un borrador de mensaje para el equipo, siempre INTERNAL. No lo hace visible al cliente ni lo envía.",
       inputSchema: z.object({
-        campaignId: z.string().optional(),
+        ...scope,
         body: z.string().min(1).max(4000),
       }),
-      execute: async (input) => runDraftClientMessage(session, input),
+      execute: async (input, options) =>
+        safeTool(() => runDraftClientMessage(session, input, options as ToolRunOptions)),
     }),
   };
 
@@ -158,53 +199,84 @@ export function createC4mToolset(session: AgentSession) {
     searchRoster: "not-applicable" as const,
     listPendingActions: "not-applicable" as const,
     getContract: "not-applicable" as const,
-    addToDesk: allow(
-      roleCan(session, "campaigns:manage"),
-      "Tu rol no permite meter perfiles en la mesa."
-    ),
-    setLinePrice: async (input: { saleUsd?: string; cost?: string; currency?: string }) => {
+    addToDesk: (input: { handle: string }) =>
+      approve("addToDesk", "campaigns:manage", "Tu rol no permite meter perfiles en la mesa.", input),
+    setLinePrice: async (input: {
+      talentId?: string;
+      saleUsd?: string;
+      cost?: string;
+      currency?: string;
+    }) => {
       const warning = await previewPriceWarning(input);
-      return allowWithReason(
-        roleCan(session, "campaigns:manage"),
+      return approve(
+        "setLinePrice",
+        "campaigns:manage",
         "Tu rol no permite cambiar precios de la planilla.",
+        input,
         warning
       );
     },
-    setTalentStatus: allow(
-      roleCan(session, "campaigns:manage"),
-      "Tu rol no permite cambiar el estado de un perfil."
-    ),
-    createDraftContract: allow(
-      roleCan(session, "contracts:write"),
-      "Tu rol no permite crear contratos."
-    ),
-    markPublished: async (input: { deliverableId: string; contentDate: string }) => {
-      const warning = await previewPublishWarning(input);
-      return allowWithReason(
-        roleCan(session, "deliverables:publish"),
+    setTalentStatus: (input: object) =>
+      approve(
+        "setTalentStatus",
+        "campaigns:manage",
+        "Tu rol no permite cambiar el estado de un perfil.",
+        input
+      ),
+    createDraftContract: (input: object) =>
+      approve(
+        "createDraftContract",
+        "contracts:write",
+        "Tu rol no permite crear contratos.",
+        input
+      ),
+    markPublished: (input: object) =>
+      approve(
+        "markPublished",
+        "deliverables:publish",
         "Tu rol no permite marcar contenidos como publicados.",
-        warning
-      );
-    },
+        input
+      ),
     queueSignatures: async (input: { contractIds?: string[] }) => {
       const warning = input.contractIds?.length
         ? await previewSignatureWarning(input.contractIds)
         : null;
-      return allowWithReason(
-        roleCan(session, "signature:send"),
+      return approve(
+        "queueSignatures",
+        "signature:send",
         "Tu rol no permite enviar contratos a firma.",
+        input,
         warning
       );
     },
-    preparePayoutBatch: allow(
-      roleCan(session, "finance:manage"),
-      "Tu rol no permite preparar lotes de pago."
-    ),
-    draftClientMessage: allow(
-      roleCan(session, "campaigns:manage"),
-      "Tu rol no permite dejar notas en la campaña."
-    ),
+    preparePayoutBatch: (input: object) =>
+      approve(
+        "preparePayoutBatch",
+        "finance:manage",
+        "Tu rol no permite preparar lotes de pago.",
+        input
+      ),
+    draftClientMessage: (input: object) =>
+      approve(
+        "draftClientMessage",
+        "campaigns:manage",
+        "Tu rol no permite dejar notas en la campaña.",
+        input
+      ),
   };
 
-  return { tools, toolApproval };
+  const bind = <T extends ScopedInput>(input: T): T => stamp(session, input);
+
+  const refineToolInput = {
+    addToDesk: bind,
+    setLinePrice: bind,
+    setTalentStatus: bind,
+    createDraftContract: bind,
+    markPublished: bind,
+    queueSignatures: bind,
+    preparePayoutBatch: bind,
+    draftClientMessage: bind,
+  };
+
+  return { tools, toolApproval, refineToolInput };
 }

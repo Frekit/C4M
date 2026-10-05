@@ -1,3 +1,4 @@
+import { can } from "@/lib/auth/permissions";
 import type { AppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db";
 
@@ -9,6 +10,7 @@ export async function persistAgentTurn(input: {
   question: string;
   answer: string;
 }) {
+  if (!can(input.user.role, "campaigns:manage")) return;
   const question = input.question.trim().slice(0, 8000);
   const answer = input.answer.trim().slice(0, 8000);
   if (!question && !answer) return;

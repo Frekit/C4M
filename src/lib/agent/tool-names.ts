@@ -62,50 +62,54 @@ export function readToolLabel(name: string, output: unknown, pending: boolean) {
   return "Consulta hecha";
 }
 
-export function writeToolTitle(name: string, input: unknown) {
-  const record = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
-  const handle = typeof record.handle === "string" ? record.handle.replace(/^@/, "") : "";
-  if (name === "addToDesk") return handle ? `Meter en la mesa · @${handle}` : "Meter en la mesa";
-  if (name === "setLinePrice") return "Cambiar precio";
-  if (name === "setTalentStatus") {
-    return handle ? `Cambiar estado · @${handle}` : "Cambiar estado";
-  }
-  if (name === "createDraftContract") {
-    return handle ? `Crear contrato · @${handle}` : "Crear contrato en borrador";
-  }
-  if (name === "markPublished") return "Marcar publicado";
-  if (name === "queueSignatures") return "Enviar a firma";
-  if (name === "preparePayoutBatch") return "Preparar lote de pago";
-  if (name === "draftClientMessage") return "Borrador interno";
-  return "Cambio";
+const FIXED_TITLE: Record<string, string> = {
+  addToDesk: "Meter en la mesa",
+  setLinePrice: "Cambiar precio",
+  setTalentStatus: "Cambiar estado",
+  createDraftContract: "Crear contrato en borrador",
+  markPublished: "Marcar publicado",
+  queueSignatures: "Enviar a firma",
+  preparePayoutBatch: "Preparar lote de pago",
+  draftClientMessage: "Borrador interno",
+};
+
+/** Correo o dinero: no se aceptan con Y ni en bloque. */
+export const SENSITIVE_WRITE_TOOLS = new Set<string>([
+  "setLinePrice",
+  "createDraftContract",
+  "queueSignatures",
+  "preparePayoutBatch",
+]);
+
+export function isSensitiveWrite(name: string) {
+  return SENSITIVE_WRITE_TOOLS.has(name);
 }
 
-export function writeToolDetail(name: string, input: unknown) {
-  const record = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
-  if (name === "setTalentStatus" && typeof record.status === "string") {
-    return record.status === "APPROVED" ? "Propuesto → Aprobado" : "Propuesto → Rechazado";
+export function fixedWriteTitle(name: string) {
+  return FIXED_TITLE[name] ?? "Cambio";
+}
+
+/** El texto de la tarjeta sale del servidor. El input del modelo no se pinta. */
+export function approvalCardFromReason(name: string, reason: string | undefined) {
+  const lines = (reason ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const warnings = lines
+    .filter((line) => line.startsWith("Aviso:"))
+    .map((line) => line.slice("Aviso:".length).trim())
+    .filter(Boolean);
+  const body = lines.filter((line) => !line.startsWith("Aviso:"));
+  if (body.length === 0) {
+    return {
+      title: fixedWriteTitle(name),
+      detail: "El servidor no ha descrito el cambio.",
+      warning: warnings.join(" ") || undefined,
+    };
   }
-  if (name === "setLinePrice") {
-    const sale = typeof record.saleUsd === "string" ? record.saleUsd : "";
-    const cost = typeof record.cost === "string" ? record.cost : "";
-    const currency = typeof record.currency === "string" ? record.currency : "";
-    return [sale && `venta ${sale} USD`, cost && `coste ${cost} ${currency}`]
-      .filter(Boolean)
-      .join(" · ");
-  }
-  if (name === "createDraftContract") return "Borrador, sin enviar a firma";
-  if (name === "markPublished") {
-    return typeof record.contentDate === "string"
-      ? `Publicar el ${record.contentDate}`
-      : "Publicar en redes";
-  }
-  if (name === "queueSignatures") return "Encola la firma. No firma sola.";
-  if (name === "preparePayoutBatch") return "Arma el CSV. No marca el lote como pagado.";
-  if (name === "draftClientMessage" && typeof record.body === "string") {
-    return record.body.slice(0, 140);
-  }
-  if (name === "addToDesk" && typeof record.handle === "string") {
-    return `@${record.handle.replace(/^@/, "")}`;
-  }
-  return "Cambio propuesto";
+  return {
+    title: body[0] ?? fixedWriteTitle(name),
+    detail: body.slice(1).join(" · ") || "Cambio propuesto",
+    warning: warnings.join(" ") || undefined,
+  };
 }

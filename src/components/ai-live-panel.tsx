@@ -15,12 +15,12 @@ import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { contextFromPathname, routeChip } from "@/lib/agent/route-context";
 import {
+  approvalCardFromReason,
   isReadTool,
+  isSensitiveWrite,
   isWriteTool,
   readToolLabel,
   toolNameFromPart,
-  writeToolDetail,
-  writeToolTitle,
 } from "@/lib/agent/tool-names";
 
 type ToolPart = {
@@ -56,16 +56,18 @@ function rowState(part: ToolPart, status: string): ApprovalUiState {
     if (status === "submitted" || status === "streaming") return "aplicando";
     return "aceptado";
   }
-  if (part.approval?.requestReason) return "aviso";
+  if (approvalCardFromReason(toolNameFromPart(part.type), part.approval?.requestReason).warning) {
+    return "aviso";
+  }
   return "pendiente";
 }
 
 function rowWarning(part: ToolPart, state: ApprovalUiState) {
   if (state === "error") {
     const output = part.output as { error?: string } | undefined;
-    return output?.error || part.approval?.reason || part.errorText || part.approval?.requestReason;
+    return output?.error || part.approval?.reason || part.errorText;
   }
-  return part.approval?.requestReason;
+  return approvalCardFromReason(toolNameFromPart(part.type), part.approval?.requestReason).warning;
 }
 
 function chipsFor(pathname: string) {
@@ -93,7 +95,7 @@ export function LiveAiPanel({ onClose }: { onClose: () => void }) {
         }),
       })
   );
-  const { messages, sendMessage, status, error, addToolApprovalResponse, regenerate } = useChat({
+  const { messages, sendMessage, status, addToolApprovalResponse, regenerate } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
   });
@@ -107,14 +109,14 @@ export function LiveAiPanel({ onClose }: { onClose: () => void }) {
       if (!isWriteTool(name) || !part.approval?.id) return [];
       const state = rowState(part, status);
       if (state !== "pendiente" && state !== "aviso") return [];
-      return [{ id: part.approval.id }];
+      return [{ id: part.approval.id, sensitive: isSensitiveWrite(name) }];
     });
   }, [messages, status]);
 
   useHotkeys({
     y: () => {
       const item = pendingApprovals[0];
-      if (!item || busy) return;
+      if (!item || item.sensitive || busy) return;
       void addToolApprovalResponse({ id: item.id, approved: true });
     },
     n: () => {
@@ -167,7 +169,6 @@ export function LiveAiPanel({ onClose }: { onClose: () => void }) {
         {status === "error" ? (
           <div className="rounded-lg border border-danger/35 bg-danger-muted px-3 py-2 text-copy-13 text-danger">
             <p>No he podido responder. Inténtalo de nuevo.</p>
-            {error?.message ? <p className="mt-1 text-copy-12">{error.message}</p> : null}
             <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => void regenerate()}>
               Reintentar
             </Button>
@@ -260,17 +261,23 @@ function MessageView({
     .map((part) => {
       const name = toolNameFromPart(part.type);
       const state = rowState(part, status);
+      const copy = approvalCardFromReason(name, part.approval?.requestReason);
       return {
         id: part.approval?.id ?? part.toolCallId ?? name,
-        title: writeToolTitle(name, part.input),
-        detail: writeToolDetail(name, part.input) || "Cambio propuesto",
+        title: copy.title,
+        detail: copy.detail,
         state,
-        warning: rowWarning(part, state),
+        warning: state === "error" ? rowWarning(part, state) : copy.warning,
       };
     });
-  const openIds = items
-    .filter((item) => item.state === "pendiente" || item.state === "aviso")
-    .map((item) => item.id);
+  const openIds = writes.flatMap((part) => {
+    const name = toolNameFromPart(part.type);
+    const state = rowState(part, status);
+    if (state !== "pendiente" && state !== "aviso") return [];
+    if (isSensitiveWrite(name)) return [];
+    const id = part.approval?.id;
+    return id ? [id] : [];
+  });
 
   return (
     <div className="grid gap-2">

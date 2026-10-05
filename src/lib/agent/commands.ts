@@ -15,7 +15,6 @@ import {
   SIGNATURE_FILTER_BATCH,
 } from "@/lib/domain/enums";
 import { loadFinanceQueues } from "@/lib/domain/finance";
-import { processMailQueue } from "@/lib/domain/mail-queue";
 import { syncPackSettlement } from "@/lib/domain/pack-sync";
 import {
   duplicatePostUrlError,
@@ -35,11 +34,14 @@ import {
 import { placeCreatorOnCampaign } from "@/app/(app)/campanas/roster-actions";
 import { extractInstagramHandle } from "@/lib/domain/instagram-handle";
 import { buildZexelLote } from "@/lib/domain/zexel-batch";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, fromMinorUnits, parseAgentAmount } from "@/lib/money";
 import { Prisma } from "@prisma/client";
 
+import { payoutTotalsLabel } from "./effect";
 import { aiActorLabel } from "./config";
+import { isStrictIsoDate } from "./dates";
 import { boundId, type AgentRouteContext } from "./route-context";
+import { untrusted } from "./trust";
 
 export type AgentSession = {
   user: AppUser;
@@ -57,6 +59,107 @@ function aiUser(user: AppUser): AppUser {
 function assertCan(user: AppUser, permission: Permission, message: string) {
   if (!can(user.role, permission)) return denied(permission, message);
   return null;
+}
+
+export type ScopedInput = {
+  campaignId?: string;
+  contractId?: string;
+  creatorId?: string;
+  actorUserId?: string;
+};
+
+export type ToolRunOptions = {
+  toolCallId: string;
+  messages: unknown;
+};
+
+function assertScope(
+  session: AgentSession,
+  input: ScopedInput,
+  requireCampaign: boolean
+) {
+  if (input.actorUserId !== session.user.id) {
+    return { ok: false as const, error: "Esta aprobación es de otra persona." };
+  }
+  const campaignId = session.context.campaignId ?? "";
+  const contractId = session.context.contractId ?? "";
+  const creatorId = session.context.creatorId ?? "";
+  if ((input.campaignId ?? "") !== campaignId) {
+    return { ok: false as const, error: "Esa campaña no es la de esta pantalla." };
+  }
+  if ((input.contractId ?? "") !== contractId) {
+    return { ok: false as const, error: "Ese contrato no es el de esta pantalla." };
+  }
+  if ((input.creatorId ?? "") !== creatorId) {
+    return { ok: false as const, error: "Ese perfil no es el de esta pantalla." };
+  }
+  if (requireCampaign && !campaignId) {
+    return { ok: false as const, error: "Abre la campaña antes de hacer este cambio." };
+  }
+  return null;
+}
+
+export function approvalIdForCall(messages: unknown, toolCallId: string) {
+  if (!Array.isArray(messages) || !toolCallId) return null;
+  for (const message of messages) {
+    if (!message || typeof message !== "object") continue;
+    const content = (message as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const record = part as { type?: string; approvalId?: string; toolCallId?: string };
+      if (
+        record.type === "tool-approval-request" &&
+        record.toolCallId === toolCallId &&
+        typeof record.approvalId === "string"
+      ) {
+        return record.approvalId;
+      }
+    }
+  }
+  return null;
+}
+
+async function claimApproval(
+  session: AgentSession,
+  toolName: string,
+  options: ToolRunOptions
+) {
+  const approvalId = approvalIdForCall(options.messages, options.toolCallId);
+  if (!approvalId) return { ok: false as const, error: "Falta la aprobación." };
+  try {
+    await prisma.agentApproval.create({
+      data: { id: approvalId, userId: session.user.id, toolName },
+    });
+  } catch (error) {
+    const code =
+      error instanceof Prisma.PrismaClientKnownRequestError
+        ? error.code
+        : error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "";
+    if (code === "P2002") {
+      return { ok: false as const, error: "Esa aprobación ya se usó." };
+    }
+    throw error;
+  }
+  return null;
+}
+
+async function beginWrite(
+  session: AgentSession,
+  toolName: string,
+  input: ScopedInput,
+  options: ToolRunOptions,
+  permission: Permission,
+  denial: string,
+  requireCampaign: boolean
+) {
+  const blocked = assertCan(session.user, permission, denial);
+  if (blocked) return blocked;
+  const scope = assertScope(session, input, requireCampaign);
+  if (scope) return scope;
+  return claimApproval(session, toolName, options);
 }
 
 export async function runGetCampaignBriefing(
@@ -85,6 +188,11 @@ export async function runGetCampaignBriefing(
   return {
     ok: true as const,
     ...packet,
+    objective: packet.objective ? untrusted(packet.objective) : packet.objective,
+    audience: packet.audience ? untrusted(packet.audience) : packet.audience,
+    networks: packet.networks ? untrusted(packet.networks) : packet.networks,
+    formats: packet.formats ? untrusted(packet.formats) : packet.formats,
+    notes: packet.notes ? untrusted(packet.notes) : packet.notes,
     onDesk: packet.onDesk.slice(0, 40),
     onDeskTruncated: packet.onDesk.length > 40,
   };
@@ -115,8 +223,8 @@ export async function runListPendingActions(session: AgentSession) {
     empty: center.empty,
     cards: center.cards.slice(0, 12).map((card) => ({
       id: card.id,
-      title: card.title,
-      body: card.body,
+      title: untrusted(card.title),
+      body: untrusted(card.body),
       kind: card.kind,
       campaignId: card.campaignId ?? null,
       campaignName: card.campaignName ?? null,
@@ -207,16 +315,20 @@ export async function runGetContract(
 
 export async function runAddToDesk(
   session: AgentSession,
-  input: { campaignId?: string; handle: string }
+  input: ScopedInput & { handle: string },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "addToDesk",
+    input,
+    options,
     "campaigns:manage",
-    "Tu rol no permite meter perfiles en la mesa."
+    "Tu rol no permite meter perfiles en la mesa.",
+    true
   );
   if (blocked) return blocked;
-  const bound = boundId(session.context.campaignId, input.campaignId);
-  if (!bound.ok) return bound;
+  const bound = { ok: true as const, id: input.campaignId ?? "" };
   const handle = extractInstagramHandle(input.handle);
   if (!handle) return { ok: false as const, error: "Ese handle no es válido." };
 
@@ -263,7 +375,9 @@ export async function runAddToDesk(
 }
 
 async function talentInContext(session: AgentSession, talentId: string) {
-  if (!session.context.campaignId) return null;
+  if (!session.context.campaignId) {
+    return { ok: false as const, error: "Abre la campaña antes de hacer este cambio." };
+  }
   const line = await prisma.campaignTalent.findUnique({
     where: { id: talentId },
     select: { campaignId: true },
@@ -277,7 +391,7 @@ async function talentInContext(session: AgentSession, talentId: string) {
 
 export async function runSetLinePrice(
   session: AgentSession,
-  input: {
+  input: ScopedInput & {
     talentId: string;
     saleUsd?: string;
     cost?: string;
@@ -285,27 +399,37 @@ export async function runSetLinePrice(
     deliverableCount?: string;
     contentPlatform?: string;
     contentFormat?: string;
-  }
+  },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "setLinePrice",
+    input,
+    options,
     "campaigns:manage",
-    "Tu rol no permite cambiar precios de la planilla."
+    "Tu rol no permite cambiar precios de la planilla.",
+    true
   );
   if (blocked) return blocked;
   const scope = await talentInContext(session, input.talentId);
   if (scope) return scope;
-  return applyTalentQuote(aiUser(session.user), input);
+  return applyTalentQuote(aiUser(session.user), input, { merge: true });
 }
 
 export async function runSetTalentStatus(
   session: AgentSession,
-  input: { talentId: string; status: string }
+  input: ScopedInput & { talentId: string; status: string },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "setTalentStatus",
+    input,
+    options,
     "campaigns:manage",
-    "Tu rol no permite cambiar el estado de un perfil."
+    "Tu rol no permite cambiar el estado de un perfil.",
+    true
   );
   if (blocked) return blocked;
   if (input.status === "ACTIVE") {
@@ -321,12 +445,17 @@ export async function runSetTalentStatus(
 
 export async function runCreateDraftContract(
   session: AgentSession,
-  input: { talentId: string }
+  input: ScopedInput & { talentId: string },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "createDraftContract",
+    input,
+    options,
     "contracts:write",
-    "Tu rol no permite crear contratos."
+    "Tu rol no permite crear contratos.",
+    true
   );
   if (blocked) return blocked;
   const scope = await talentInContext(session, input.talentId);
@@ -336,12 +465,17 @@ export async function runCreateDraftContract(
 
 export async function runMarkPublished(
   session: AgentSession,
-  input: { deliverableId: string; contentDate: string; postUrl: string }
+  input: ScopedInput & { deliverableId: string; contentDate: string; postUrl: string },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "markPublished",
+    input,
+    options,
     "deliverables:publish",
-    "Tu rol no permite marcar contenidos como publicados."
+    "Tu rol no permite marcar contenidos como publicados.",
+    false
   );
   if (blocked) return blocked;
 
@@ -355,10 +489,15 @@ export async function runMarkPublished(
   if (!deliverable) return { ok: false as const, error: "Ese contenido no existe." };
   if (
     session.context.campaignId &&
-    deliverable.campaignId &&
     deliverable.campaignId !== session.context.campaignId
   ) {
     return { ok: false as const, error: "Ese contenido no es de esta campaña." };
+  }
+  if (session.context.contractId && deliverable.contractId !== session.context.contractId) {
+    return { ok: false as const, error: "Ese contenido no es de este contrato." };
+  }
+  if (!isStrictIsoDate(input.contentDate)) {
+    return { ok: false as const, error: "Fecha no válida." };
   }
   if (deliverable.status === DELIVERABLE_STATUS.SUBMITTED) {
     return {
@@ -453,49 +592,37 @@ export async function runMarkPublished(
 
 export async function runQueueSignatures(
   session: AgentSession,
-  input: { contractIds?: string[]; campaignId?: string; expiresInDays?: number }
+  input: ScopedInput & { contractIds?: string[]; expiresInDays?: number },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "queueSignatures",
+    input,
+    options,
     "signature:send",
-    "Tu rol no permite enviar contratos a firma."
+    "Tu rol no permite enviar contratos a firma.",
+    true
   );
   if (blocked) return blocked;
 
   const days = input.expiresInDays && input.expiresInDays >= 1 && input.expiresInDays <= 90
     ? input.expiresInDays
     : 14;
-  const campaignBound = input.campaignId
-    ? boundId(session.context.campaignId, input.campaignId)
-    : session.context.campaignId
-      ? { ok: true as const, id: session.context.campaignId }
-      : null;
-  if (campaignBound && !campaignBound.ok) return campaignBound;
-
+  const campaignId = session.context.campaignId ?? "";
   const ids = input.contractIds?.filter(Boolean) ?? [];
-  const scopedCampaignId = campaignBound?.ok ? campaignBound.id : undefined;
-  if (ids.length === 0 && !scopedCampaignId) {
-    return {
-      ok: false as const,
-      error: "Indica la campaña o los contratos. No encolo toda la base.",
-    };
-  }
-  const contracts = ids.length
-    ? await prisma.contract.findMany({
-        where: { id: { in: ids.slice(0, SIGNATURE_FILTER_BATCH) } },
-        select: { id: true },
-      })
-    : await prisma.contract.findMany({
-        where: {
-          status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
-          deliverables: { some: { campaignId: scopedCampaignId } },
-        },
-        take: SIGNATURE_FILTER_BATCH,
-        select: { id: true },
-      });
+  const contracts = await prisma.contract.findMany({
+    where: {
+      status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+      deliverables: { some: { campaignId } },
+      ...(ids.length > 0 ? { id: { in: ids.slice(0, SIGNATURE_FILTER_BATCH) } } : {}),
+    },
+    take: SIGNATURE_FILTER_BATCH,
+    select: { id: true },
+  });
 
   if (contracts.length === 0) {
-    return { ok: false as const, error: "No hay contratos pendientes de firma." };
+    return { ok: false as const, error: "No hay contratos pendientes de firma en esta campaña." };
   }
 
   const report = await queueUnsignedContracts({
@@ -503,44 +630,51 @@ export async function runQueueSignatures(
     expiresInDays: days,
     createdBy: aiActorLabel(session.user.email),
   });
-  const mail = await processMailQueue();
 
   await recordAudit({
     entityType: "Contract",
-    entityId: campaignBound?.ok ? campaignBound.id : contracts[0]?.id ?? "batch",
+    entityId: campaignId,
     action: "SIGNATURE_BATCH",
     actor: aiUser(session.user),
-    metadata: { queued: report.queued, skipped: report.skipped, processed: mail.processed },
+    metadata: { queued: report.queued, skipped: report.skipped, campaignId },
   });
 
-  return { ok: true as const, ...report, processed: mail.processed };
+  return { ok: true as const, queued: report.queued, skipped: report.skipped };
 }
 
 export async function runPreparePayoutBatch(
   session: AgentSession,
-  input: { deliverableIds?: string[]; campaignId?: string }
+  input: ScopedInput & { deliverableIds?: string[] },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "preparePayoutBatch",
+    input,
+    options,
     "finance:manage",
-    "Tu rol no permite preparar lotes de pago."
+    "Tu rol no permite preparar lotes de pago.",
+    true
   );
   if (blocked) return blocked;
 
-  const campaignId = input.campaignId
-    ? boundId(session.context.campaignId, input.campaignId)
-    : session.context.campaignId
-      ? { ok: true as const, id: session.context.campaignId }
-      : null;
-  if (campaignId && !campaignId.ok) return campaignId;
-
-  const queues = await loadFinanceQueues(
-    campaignId?.ok ? { campana: campaignId.id } : {}
-  );
+  const campaignId = session.context.campaignId ?? "";
+  const queues = await loadFinanceQueues({ campana: campaignId });
   const lote = buildZexelLote(
     queues.payoutGroups,
     input.deliverableIds?.length ? input.deliverableIds : undefined
   );
+  const total = payoutTotalsLabel(lote.ready);
+  const file = await prisma.agentPayoutFile.create({
+    data: {
+      userId: session.user.id,
+      campaignId,
+      ready: lote.ready.length,
+      missing: lote.missingEmail.length,
+      totalLabel: total,
+      csv: lote.csv,
+    },
+  });
 
   await recordAudit({
     entityType: "Deliverable",
@@ -551,30 +685,54 @@ export async function runPreparePayoutBatch(
       ready: lote.ready.length,
       missingEmail: lote.missingEmail.length,
       items: lote.itemIds.length,
+      fileId: file.id,
     },
   });
 
   return {
     ok: true as const,
     ready: lote.ready.length,
-    missingEmail: lote.missingEmail.map((row) => row.creatorHandle),
-    csv: lote.csv.slice(0, 4000),
+    missingEmail: lote.missingEmail.length,
+    items: lote.itemIds.length,
+    total,
+    downloadPath: `/api/agent/payouts/${file.id}`,
     markedPaid: false,
   };
 }
 
+export async function readAgentPayout(id: string, user: AppUser) {
+  if (!can(user.role, "finance:manage")) {
+    return Response.json({ error: "Tu rol no permite preparar lotes de pago." }, { status: 403 });
+  }
+  const file = await prisma.agentPayoutFile.findUnique({ where: { id } });
+  if (!file || file.userId !== user.id) {
+    return Response.json({ error: "Ese lote no existe." }, { status: 404 });
+  }
+  return new Response(file.csv, {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="lote-${file.id}.csv"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function runDraftClientMessage(
   session: AgentSession,
-  input: { campaignId?: string; body: string }
+  input: ScopedInput & { body: string },
+  options: ToolRunOptions
 ) {
-  const blocked = assertCan(
-    session.user,
+  const blocked = await beginWrite(
+    session,
+    "draftClientMessage",
+    input,
+    options,
     "campaigns:manage",
-    "Tu rol no permite dejar notas en la campaña."
+    "Tu rol no permite dejar notas en la campaña.",
+    true
   );
   if (blocked) return blocked;
-  const bound = boundId(session.context.campaignId, input.campaignId);
-  if (!bound.ok) return bound;
+  const bound = { ok: true as const, id: input.campaignId ?? "" };
   const body = input.body.trim().slice(0, 4000);
   if (!body) return { ok: false as const, error: "El borrador está vacío." };
 
@@ -619,17 +777,30 @@ export async function previewSignatureWarning(contractIds: string[]) {
 }
 
 export async function previewPriceWarning(input: {
+  talentId?: string;
   saleUsd?: string;
   cost?: string;
   currency?: string;
+  deliverableCount?: string;
 }) {
-  const sale = input.saleUsd ? Number(input.saleUsd.replace(",", ".")) : null;
-  const cost = input.cost ? Number(input.cost.replace(",", ".")) : null;
-  if (sale == null || cost == null || !Number.isFinite(sale) || !Number.isFinite(cost)) {
-    return null;
+  if (!input.talentId) return null;
+  const existing = await prisma.campaignTalent.findUnique({ where: { id: input.talentId } });
+  if (!existing) return null;
+  const saleRaw = input.saleUsd?.trim() || "";
+  const costRaw = input.cost?.trim() || "";
+  const currency = (
+    costRaw ? input.currency?.trim() || existing.costCurrency || "EUR" : existing.costCurrency || "USD"
+  ).toUpperCase();
+  const sale = saleRaw
+    ? parseAgentAmount(saleRaw, "USD")
+    : existing.salePriceCentsPerContent;
+  const cost = costRaw ? parseAgentAmount(costRaw, currency) : existing.costMinorPerContent;
+  if (sale == null || cost == null) return null;
+  if (currency === "USD") {
+    return cost > sale ? "El margen sale negativo." : null;
   }
-  if ((input.currency ?? "EUR").toUpperCase() === "USD" && cost > sale) {
-    return "El margen sale negativo.";
+  if (fromMinorUnits(cost, currency) > fromMinorUnits(sale, "USD")) {
+    return `El coste en ${currency} supera la venta en USD.`;
   }
   return null;
 }

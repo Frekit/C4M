@@ -71,9 +71,11 @@ function UnconfiguredPanel({
 }) {
   const pathname = usePathname();
   const missing =
-    setup === "missing-model"
-      ? "Falta C4M_AI_MODEL (un id proveedor/modelo de AI Gateway)."
-      : "Falta AI_GATEWAY_API_KEY.";
+    setup === "missing-secret"
+      ? "Falta TOOL_APPROVAL_SECRET (32 bytes o más)."
+      : setup === "missing-model"
+        ? "Falta C4M_AI_MODEL (un id proveedor/modelo de AI Gateway)."
+        : "Falta AI_GATEWAY_API_KEY.";
 
   return (
     <section aria-label="Asistente" className="flex h-full min-h-0 flex-col bg-card">

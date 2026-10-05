@@ -11,17 +11,22 @@ import {
 } from "@/lib/agent/config";
 import { createLocalFixtureModel } from "@/lib/agent/local-fixture";
 import { persistAgentTurn } from "@/lib/agent/messages";
+import { consumeAgentRate } from "@/lib/agent/rate-limit";
 import { parseRouteContext, type AgentRouteContext } from "@/lib/agent/route-context";
+import { can } from "@/lib/auth/permissions";
 import { getCurrentUser } from "@/lib/auth/session";
+import type { AppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db";
 
 export const maxDuration = 60;
 
-function textLength(message: { parts?: Array<{ type?: string; text?: string }> }) {
-  return (message.parts ?? []).reduce(
-    (sum, part) => sum + (part.type === "text" ? part.text?.length ?? 0 : 0),
-    0
-  );
+const GENERIC_ERROR = "No he podido responder.";
+
+function messageChars(message: unknown) {
+  if (!message || typeof message !== "object") return 0;
+  const parts = (message as { parts?: unknown }).parts;
+  if (!Array.isArray(parts)) return JSON.stringify(message).length;
+  return parts.reduce<number>((sum, part) => sum + JSON.stringify(part).length, 0);
 }
 
 function lastUserText(messages: UIMessage[]) {
@@ -32,6 +37,42 @@ function lastUserText(messages: UIMessage[]) {
     .map((part) => part.text)
     .join("\n")
     .trim();
+}
+
+async function readCappedBody(request: Request) {
+  const declared = Number(request.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > AGENT_MAX_BODY_BYTES) {
+    return { ok: false as const, error: "La conversación es demasiado grande." };
+  }
+  if (!request.body) {
+    const text = await request.text();
+    if (new TextEncoder().encode(text).byteLength > AGENT_MAX_BODY_BYTES) {
+      return { ok: false as const, error: "La conversación es demasiado grande." };
+    }
+    return { ok: true as const, text };
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > AGENT_MAX_BODY_BYTES) {
+      await reader.cancel();
+      return { ok: false as const, error: "La conversación es demasiado grande." };
+    }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true as const, text: new TextDecoder().decode(merged) };
 }
 
 async function resolveContext(raw: unknown): Promise<
@@ -63,30 +104,27 @@ async function resolveContext(raw: unknown): Promise<
   return { ok: true, context };
 }
 
-export async function POST(request: Request) {
-  // requireUser redirige a las pantallas. Aquí la misma sesión responde 401.
-  let user = null;
-  try {
-    user = await getCurrentUser();
-  } catch {
-    user = null;
-  }
-  if (!user) {
-    return Response.json({ error: "Sin sesión" }, { status: 401 });
-  }
-
+export async function handleAgentPost(request: Request, user: AppUser) {
   if (aiSetup() !== "ready") {
     return Response.json({ error: "IA no configurada" }, { status: 503 });
   }
 
-  const declared = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declared) && declared > AGENT_MAX_BODY_BYTES) {
-    return Response.json({ error: "La conversación es demasiado grande." }, { status: 413 });
+  const rate = consumeAgentRate(user.id);
+  if (!rate.ok) {
+    return Response.json(
+      { error: `Demasiadas peticiones. El límite es ${rate.limit} por minuto.` },
+      { status: 429 }
+    );
+  }
+
+  const body = await readCappedBody(request);
+  if (!body.ok) {
+    return Response.json({ error: body.error }, { status: 413 });
   }
 
   let payload: unknown;
   try {
-    payload = await request.json();
+    payload = JSON.parse(body.text);
   } catch {
     return Response.json({ error: "El cuerpo no es JSON." }, { status: 400 });
   }
@@ -98,10 +136,8 @@ export async function POST(request: Request) {
   if (!Array.isArray(record.messages) || record.messages.length === 0) {
     return Response.json({ error: "Faltan los mensajes." }, { status: 400 });
   }
-  if (record.messages.length > AGENT_MAX_MESSAGES) {
-    return Response.json({ error: "Hay demasiados mensajes en esta conversación." }, { status: 413 });
-  }
-  if (record.messages.some((message) => textLength(message as UIMessage) > AGENT_MAX_TEXT_CHARS)) {
+  const messages = (record.messages as UIMessage[]).slice(-AGENT_MAX_MESSAGES);
+  if (messages.some((message) => messageChars(message) > AGENT_MAX_TEXT_CHARS)) {
     return Response.json({ error: "Un mensaje pasa del tamaño permitido." }, { status: 413 });
   }
 
@@ -110,7 +146,6 @@ export async function POST(request: Request) {
     return Response.json({ error: resolved.error }, { status: 400 });
   }
 
-  const messages = record.messages as UIMessage[];
   const agent = createC4mAgent(
     { user, context: resolved.context },
     isLocalMockModel() ? createLocalFixtureModel() : undefined
@@ -131,6 +166,7 @@ export async function POST(request: Request) {
           .trim();
         const answer = event.text.trim() || fromParts;
         if (!resolved.context.campaignId) return;
+        if (!can(user.role, "campaigns:manage")) return;
         const freshQuestion = messages.at(-1)?.role === "user";
         await persistAgentTurn({
           campaignId: resolved.context.campaignId,
@@ -142,9 +178,28 @@ export async function POST(request: Request) {
         revalidatePath(`/campanas/${resolved.context.campaignId}/planilla`);
       },
     });
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onError: (error) => {
+        console.error("agent stream", error);
+        return GENERIC_ERROR;
+      },
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No he podido responder.";
-    return Response.json({ error: message }, { status: 400 });
+    console.error("agent route", error);
+    return Response.json({ error: GENERIC_ERROR }, { status: 400 });
   }
+}
+
+export async function POST(request: Request) {
+  // requireUser redirige a las pantallas. Aquí la misma sesión responde 401.
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
+  if (!user) {
+    return Response.json({ error: "Sin sesión" }, { status: 401 });
+  }
+  return handleAgentPost(request, user);
 }

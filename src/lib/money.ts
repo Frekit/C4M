@@ -55,6 +55,27 @@ export function parseAmountToMinorUnits(
   return toMinorUnits(Number(normalized), currency);
 }
 
+export const AMBIGUOUS_AMOUNT_ERROR =
+  "El importe no es claro. Escríbelo como 1500 o 1500,50.";
+
+/** `1.500`, `1,500` o `1.500,00` no dicen si el punto es miles o decimal. */
+export function ambiguousAmount(raw: string, currency: string): boolean {
+  const trimmed = raw.trim().replace(/\s/g, "");
+  if (!trimmed) return false;
+  const dots = trimmed.split(".").length - 1;
+  const commas = trimmed.split(",").length - 1;
+  if ((dots > 0 && commas > 0) || dots > 1 || commas > 1) return true;
+  const separator = dots === 1 ? "." : commas === 1 ? "," : "";
+  if (!separator) return false;
+  const fraction = trimmed.split(separator)[1] ?? "";
+  return fraction.length === 3 && currencyDecimals(currency) !== 3;
+}
+
+export function parseAgentAmount(raw: string, currency: string): number | null {
+  if (ambiguousAmount(raw, currency)) return null;
+  return parseAmountToMinorUnits(raw, currency);
+}
+
 export function formatMoney(
   minor: number,
   currency: string,

@@ -26,7 +26,12 @@ import {
 } from "@/lib/domain/creator-cost-quote";
 import { resolveFxRate } from "@/lib/domain/fx";
 import { isSupportedCurrency } from "@/lib/currencies";
-import { parseAmountToMinorUnits } from "@/lib/money";
+import {
+  AMBIGUOUS_AMOUNT_ERROR,
+  ambiguousAmount,
+  parseAgentAmount,
+  parseAmountToMinorUnits,
+} from "@/lib/money";
 
 export type TalentCommandResult = {
   ok: boolean;
@@ -39,6 +44,179 @@ export type TalentCommandResult = {
   handle?: string;
 };
 
+export type AgentQuoteInput = {
+  saleUsd?: string;
+  cost?: string;
+  currency?: string;
+  deliverableCount?: string;
+  contentPlatform?: string;
+  contentFormat?: string;
+};
+
+type StoredQuote = {
+  status: string;
+  salePriceCentsPerContent: number | null;
+  costMinorPerContent: number | null;
+  costCurrency: string | null;
+  deliverableCount: number | null;
+  contentPlatform: string | null;
+  contentFormat: string | null;
+  packageCostMinor: number | null;
+};
+
+export type ResolvedQuote = {
+  salePriceCentsPerContent: number | null;
+  costMinorPerContent: number | null;
+  costCurrency: string | null;
+  deliverableCount: number | null;
+  contentPlatform: string | null;
+  contentFormat: string | null;
+  packageCostMinor: number | null;
+};
+
+function amountOrError(raw: string, currency: string, label: string) {
+  if (ambiguousAmount(raw, currency)) {
+    return { ok: false as const, error: `${label}: ${AMBIGUOUS_AMOUNT_ERROR}` };
+  }
+  const parsed = parseAgentAmount(raw, currency);
+  if (parsed === null) return { ok: false as const, error: `Revisa ${label.toLowerCase()}.` };
+  return { ok: true as const, value: parsed };
+}
+
+/** Lo que el agente va a guardar: lo omitido se queda como está en la fila. */
+export function resolveMergedQuote(
+  existing: StoredQuote,
+  input: AgentQuoteInput
+): { ok: true; quote: ResolvedQuote } | { ok: false; error: string } {
+  const sentSale = input.saleUsd?.trim() ?? "";
+  const sentCost = input.cost?.trim() ?? "";
+  const sentPieces = input.deliverableCount?.trim() ?? "";
+  const sentCurrency = input.currency?.trim().toUpperCase() ?? "";
+  const sentPlatform = (input.contentPlatform ?? "").trim().toUpperCase();
+  const sentFormat = (input.contentFormat ?? "").trim();
+
+  let sale = existing.salePriceCentsPerContent;
+  if (sentSale) {
+    const parsed = amountOrError(sentSale, "USD", "La venta");
+    if (!parsed.ok) return parsed;
+    sale = parsed.value;
+  }
+
+  const currency = sentCost
+    ? sentCurrency || existing.costCurrency || "EUR"
+    : existing.costCurrency;
+  if (currency && !isSupportedCurrency(currency)) {
+    return { ok: false, error: `Moneda ${currency} no soportada.` };
+  }
+
+  let cost = existing.costMinorPerContent;
+  if (sentCost) {
+    const parsed = amountOrError(sentCost, currency || "EUR", "El coste");
+    if (!parsed.ok) return parsed;
+    cost = parsed.value;
+  }
+
+  let pieces = existing.deliverableCount;
+  if (sentPieces) {
+    const count = Number.parseInt(sentPieces, 10);
+    if (!count || count < 1) {
+      return { ok: false, error: "Las piezas tienen que ser ≥ 1." };
+    }
+    pieces = count;
+  }
+
+  let contentPlatform = existing.contentPlatform;
+  let contentFormat = existing.contentFormat;
+  let packageCostMinor = existing.packageCostMinor;
+  if (sentFormat || sentPlatform) {
+    contentPlatform = sentFormat && isCostPlatform(sentPlatform) ? sentPlatform : null;
+    contentFormat =
+      contentPlatform && isCostFormat(contentPlatform, sentFormat) ? sentFormat : null;
+    if (sentFormat && !contentFormat) {
+      return { ok: false, error: "Ese formato no existe en esa red." };
+    }
+  }
+
+  if (contentFormat) {
+    if (!pieces) return { ok: false, error: "Pon cuántos contenidos lleva el paquete." };
+    if (cost === null) return { ok: false, error: "Pon el coste del paquete." };
+    if (sentCost || sentFormat || sentPlatform || sentPieces) {
+      const split = perContentFromPackage(sentCost ? cost : (packageCostMinor ?? cost), pieces);
+      if (!split.ok) return { ok: false, error: split.error };
+      packageCostMinor = sentCost ? cost : (packageCostMinor ?? cost);
+      cost = split.perContentMinor;
+    }
+  }
+
+  return {
+    ok: true,
+    quote: {
+      salePriceCentsPerContent: sale,
+      costMinorPerContent: cost,
+      costCurrency: cost !== null ? currency : null,
+      deliverableCount: pieces,
+      contentPlatform,
+      contentFormat,
+      packageCostMinor: contentFormat ? packageCostMinor : null,
+    },
+  };
+}
+
+async function applyMergedTalentQuote(
+  actor: AppUser,
+  input: AgentQuoteInput & { talentId: string }
+): Promise<TalentCommandResult> {
+  const id = input.talentId.trim();
+  if (!id) return { ok: false, error: "Falta el perfil." };
+  const existing = await prisma.campaignTalent.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Esa línea no existe." };
+  if (quoteIsFrozen(existing.status)) {
+    return {
+      ok: false,
+      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
+    };
+  }
+
+  const resolved = resolveMergedQuote(existing, input);
+  if (!resolved.ok) return resolved;
+  const quote = resolved.quote;
+
+  const changed = await prisma.campaignTalent.updateMany({
+    where: {
+      id,
+      status: {
+        in: [CAMPAIGN_TALENT_STATUS.ROSTER, CAMPAIGN_TALENT_STATUS.READY],
+      },
+    },
+    data: {
+      ...quote,
+      status: statusAfterSavingQuote(
+        lineQuoteComplete({ status: existing.status, ...quote })
+      ),
+    },
+  });
+  if (changed.count !== 1) {
+    return {
+      ok: false,
+      error: "Esa línea ya se envió o se activó. La cotización no se toca.",
+    };
+  }
+
+  await recordAudit({
+    entityType: "CampaignTalent",
+    entityId: id,
+    action: "QUOTE_SET",
+    actor,
+    metadata: { campaignId: existing.campaignId, merge: true },
+  });
+
+  return {
+    ok: true,
+    campaignId: existing.campaignId,
+    creatorId: existing.creatorId,
+  };
+}
+
 export async function applyTalentQuote(
   actor: AppUser,
   input: {
@@ -49,8 +227,10 @@ export async function applyTalentQuote(
     deliverableCount?: string;
     contentPlatform?: string;
     contentFormat?: string;
-  }
+  },
+  options?: { merge?: boolean }
 ): Promise<TalentCommandResult> {
+  if (options?.merge) return applyMergedTalentQuote(actor, input);
   const id = input.talentId.trim();
   const saleUsd = input.saleUsd?.trim() ?? "";
   const cost = input.cost?.trim() ?? "";
