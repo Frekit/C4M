@@ -17,11 +17,12 @@ import {
 } from "@/lib/domain/campaign-desk";
 import { loadCampaignResults } from "@/lib/domain/campaign-results";
 import { loadCampaignSheet } from "@/lib/domain/campaign-sheet";
+import { clientAuthorLabel } from "@/lib/domain/client-author-label";
 import {
   placeCreatorOnCampaign,
   revalidateCampaign,
-  type CampaignRosterResult,
-} from "./roster-actions";
+} from "@/lib/domain/campaign-placement";
+import type { CampaignRosterResult } from "./roster-actions";
 
 export type CampaignTalkResult = {
   ok: boolean;
@@ -340,7 +341,7 @@ export async function postClientMessage(
 ): Promise<CampaignTalkResult> {
   const token = String(formData.get("token") ?? "");
   const body = clip(formData.get("body"), 4000);
-  const name = clip(formData.get("name"), 80) ?? "Cliente";
+  const name = clientAuthorLabel(clip(formData.get("name"), 80));
   if (!body) return { ok: false, error: "Escribe el mensaje." };
   const campaign = await prisma.campaign.findUnique({
     where: { clientAccessToken: token },

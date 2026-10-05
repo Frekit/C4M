@@ -15,6 +15,7 @@ import type { CampaignRosterResult } from "@/app/campanas/roster-actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { handlesFromDraft } from "@/lib/domain/campaign-briefing";
+import { clientAuthorLabel } from "@/lib/domain/client-author-label";
 
 export type TalkMessage = {
   id: string;
@@ -157,7 +158,11 @@ export function CampaignThread({
                 }
               >
                 <p className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-70">
-                  {message.authorKind === "ASSISTANT" ? "Mesa" : message.authorLabel}
+                  {message.authorKind === "ASSISTANT"
+                    ? "Mesa"
+                    : message.authorKind === "CLIENT"
+                      ? clientAuthorLabel(message.authorLabel)
+                      : message.authorLabel}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
                   {message.body}

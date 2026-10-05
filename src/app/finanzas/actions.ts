@@ -329,6 +329,7 @@ export async function markReadyMatching(
   _prev: FinanceActionResult | null,
   formData: FormData
 ): Promise<FinanceActionResult> {
+  await requirePermission("finance:manage", "/finanzas");
   const campaignId = String(formData.get("campaignId") ?? "");
   if (!campaignId) {
     return { ok: false, error: "Elige una campaña." };
