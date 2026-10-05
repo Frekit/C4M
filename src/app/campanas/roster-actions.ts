@@ -35,15 +35,13 @@ import {
   perContentFromPackage,
 } from "@/lib/domain/creator-cost-quote";
 import { parseAmountToMinorUnits } from "@/lib/money";
-import { extractInstagramHandle } from "@/lib/domain/validation";
-import {
-  loadRosterCatalog,
-  resolveRosterFields,
-} from "@/lib/domain/roster-catalog";
+import { handlesFromPaste, TALENT_PASTE_MAX } from "@/lib/domain/talent-paste";
 
 export type CampaignRosterResult = {
   ok: boolean;
   error?: string;
+  added?: number;
+  skipped?: number;
 };
 
 function revalidateCampaign(campaignId: string, creatorId?: string) {
@@ -53,65 +51,147 @@ function revalidateCampaign(campaignId: string, creatorId?: string) {
   if (creatorId) revalidatePath(`/creators/${creatorId}`);
 }
 
-export async function addTalentToCampaign(
+async function placeCreatorOnCampaign(
+  campaignId: string,
+  creatorId: string,
+  email: string
+) {
+  const open = await prisma.campaignTalent.findFirst({
+    where: {
+      campaignId,
+      creatorId,
+      status: { in: [...OPEN_TALENT_STATUSES] },
+    },
+    select: { id: true },
+  });
+  if (open) return false;
+
+  await prisma.campaignTalent.create({
+    data: {
+      campaignId,
+      creatorId,
+      status: CAMPAIGN_TALENT_STATUS.ROSTER,
+      createdBy: email,
+    },
+  });
+  return true;
+}
+
+function addedMessage(added: number, skipped: number) {
+  if (added === 0) {
+    return { ok: false as const, error: "Esos perfiles ya están en la mesa.", added, skipped };
+  }
+  return { ok: true as const, added, skipped };
+}
+
+export async function addCreatorsToCampaign(
   _prev: CampaignRosterResult | null,
   formData: FormData
 ): Promise<CampaignRosterResult> {
   const user = await requirePermission("campaigns:manage", "/campanas");
   const campaignId = String(formData.get("campaignId") ?? "");
-  const handle = extractInstagramHandle(String(formData.get("instagram") ?? ""));
+  const creatorIds = [
+    ...new Set(
+      formData
+        .getAll("creatorId")
+        .map((value) => String(value))
+        .filter(Boolean)
+    ),
+  ];
 
-  if (!campaignId || !handle) {
-    return { ok: false, error: "Falta la campaña o el Instagram." };
+  if (!campaignId) return { ok: false, error: "Falta la campaña." };
+  if (creatorIds.length === 0) {
+    return { ok: false, error: "Marca al menos un perfil." };
+  }
+  if (creatorIds.length > TALENT_PASTE_MAX) {
+    return { ok: false, error: `Como máximo ${TALENT_PASTE_MAX} perfiles por tanda.` };
   }
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
+    select: { id: true },
   });
   if (!campaign) return { ok: false, error: "Esa campaña no existe." };
 
-  const resolved = resolveRosterFields(await loadRosterCatalog(), {
-    country: String(formData.get("country") ?? "").trim() || null,
-    profileType: String(formData.get("profileType") ?? "").trim() || null,
-  });
-  if (!resolved.ok) return { ok: false, error: resolved.error };
+  let added = 0;
+  let skipped = 0;
+  for (const creatorId of creatorIds) {
+    const creator = await prisma.creator.findUnique({
+      where: { id: creatorId },
+      select: { id: true },
+    });
+    if (!creator) {
+      skipped += 1;
+      continue;
+    }
+    const placed = await placeCreatorOnCampaign(campaignId, creator.id, user.email);
+    if (placed) added += 1;
+    else skipped += 1;
+  }
 
-  const { creator } = await upsertRosterCreator({
-    handle,
-    country: resolved.country,
-    profileType: resolved.profileType,
-    createdBy: user.email,
-  });
-
-  const open = await prisma.campaignTalent.findFirst({
-    where: {
-      campaignId,
-      creatorId: creator.id,
-      status: { in: [...OPEN_TALENT_STATUSES] },
-    },
-  });
-
-  if (!open) {
-    await prisma.campaignTalent.create({
-      data: {
-        campaignId,
-        creatorId: creator.id,
-        status: CAMPAIGN_TALENT_STATUS.ROSTER,
-        createdBy: user.email,
-      },
+  if (added > 0) {
+    await recordAudit({
+      entityType: "CampaignTalent",
+      entityId: campaignId,
+      action: "ROSTER_ADDED",
+      actor: user,
+      metadata: { campaignId, added, skipped },
     });
   }
 
-  await recordAudit({
-    entityType: "CampaignTalent",
-    entityId: `${campaignId}:${creator.id}`,
-    action: "ROSTER_ADDED",
-    actor: user,
-    metadata: { handle, campaignId, reused: Boolean(open) },
-  });
+  revalidateCampaign(campaignId);
+  return addedMessage(added, skipped);
+}
 
-  revalidateCampaign(campaignId, creator.id);
-  return { ok: true };
+export async function pasteTalentToCampaign(
+  _prev: CampaignRosterResult | null,
+  formData: FormData
+): Promise<CampaignRosterResult> {
+  const user = await requirePermission("campaigns:manage", "/campanas");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const parsed = handlesFromPaste(String(formData.get("handles") ?? ""));
+
+  if (!campaignId) return { ok: false, error: "Falta la campaña." };
+  if (parsed.handles.length === 0) {
+    return {
+      ok: false,
+      error: "No veo ningún Instagram. Pega handles o enlaces, uno por línea.",
+    };
+  }
+  if (parsed.handles.length > TALENT_PASTE_MAX) {
+    return { ok: false, error: `Como máximo ${TALENT_PASTE_MAX} perfiles por tanda.` };
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { id: true },
+  });
+  if (!campaign) return { ok: false, error: "Esa campaña no existe." };
+
+  let added = 0;
+  let skipped = parsed.invalid;
+  for (const handle of parsed.handles) {
+    const { creator } = await upsertRosterCreator({
+      handle,
+      createdBy: user.email,
+    });
+    const placed = await placeCreatorOnCampaign(campaignId, creator.id, user.email);
+    if (placed) added += 1;
+    else skipped += 1;
+  }
+
+  if (added > 0) {
+    await recordAudit({
+      entityType: "CampaignTalent",
+      entityId: campaignId,
+      action: "ROSTER_ADDED",
+      actor: user,
+      metadata: { campaignId, added, skipped, pasted: parsed.handles.length },
+    });
+  }
+
+  revalidateCampaign(campaignId);
+  return addedMessage(added, skipped);
 }
 
 export async function setCampaignTalentStatus(formData: FormData) {

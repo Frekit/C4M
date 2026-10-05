@@ -18,6 +18,7 @@ import { committedSaleCents } from "@/lib/domain/campaign-desk";
 import {
   loadCampaignProposals,
   loadCampaignRoster,
+  loadRosterPicks,
 } from "@/lib/domain/campaign-roster";
 import { loadCampaignWorkbench } from "@/lib/domain/campaign-stats";
 import { loadRosterCatalog } from "@/lib/domain/roster-catalog";
@@ -54,9 +55,10 @@ export default async function CampaignWorkbenchPage({
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
-  const [data, roster, catalog, proposals, clients] = await Promise.all([
+  const [data, roster, picks, catalog, proposals, clients] = await Promise.all([
     loadCampaignWorkbench(id),
     loadCampaignRoster(id),
+    loadRosterPicks(id),
     loadRosterCatalog(),
     loadCampaignProposals(id),
     prisma.client.findMany({
@@ -286,6 +288,7 @@ export default async function CampaignWorkbenchPage({
         campaignId={data.id}
         canWrite={canWrite}
         rows={roster}
+        picks={picks}
         catalog={catalog}
         approvalMode={data.approvalMode as CampaignApproval}
         engagementKind={data.engagementKind as CampaignEngagement}

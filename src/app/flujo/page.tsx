@@ -150,8 +150,8 @@ export default async function WorkflowPage() {
               href="/campanas"
               hrefLabel="Campañas"
             >
-              Entra en mesa aunque no tenga precio. Si ese Instagram ya está en
-              otra campaña, se avisa. En always-on se puede abrir otra pasada.
+              Márcalos en el roster o pega varios handles. Entran aunque no
+              tengan precio. Si ese Instagram ya está en otra campaña, se avisa.
             </Step>
             <Arrow />
             <Step n="4" title="Completar la línea">

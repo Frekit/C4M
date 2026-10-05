@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import {
+  OPEN_TALENT_STATUSES,
   committedSaleCents,
   policyFromCampaign,
   type CampaignPolicy,
 } from "@/lib/domain/campaign-desk";
+import { CAMPAIGN_TALENT_STATUS } from "@/lib/domain/enums";
 import {
   mergeCreatorPresence,
   otherCampaigns,
@@ -14,6 +16,52 @@ import {
   sortCostQuotes,
 } from "@/lib/domain/creator-cost-quote";
 import { formatMoney } from "@/lib/money";
+
+export type RosterPick = {
+  id: string;
+  handle: string;
+  displayName: string | null;
+  country: string | null;
+  profileType: string | null;
+  already: "active" | "rejected" | null;
+};
+
+export async function loadRosterPicks(campaignId: string): Promise<RosterPick[]> {
+  const creators = await prisma.creator.findMany({
+    orderBy: { handle: "asc" },
+    select: {
+      id: true,
+      handle: true,
+      displayName: true,
+      country: true,
+      profileType: true,
+      campaignTalents: {
+        where: { campaignId },
+        select: { status: true },
+      },
+    },
+  });
+
+  const open = new Set<string>(OPEN_TALENT_STATUSES);
+  return creators.flatMap((creator) => {
+    const statuses = creator.campaignTalents.map((row) => row.status);
+    if (statuses.some((status) => open.has(status))) return [];
+    return [
+      {
+        id: creator.id,
+        handle: creator.handle,
+        displayName: creator.displayName,
+        country: creator.country,
+        profileType: creator.profileType,
+        already: statuses.includes(CAMPAIGN_TALENT_STATUS.ACTIVE)
+          ? "active"
+          : statuses.includes(CAMPAIGN_TALENT_STATUS.REJECTED)
+            ? "rejected"
+            : null,
+      },
+    ];
+  });
+}
 
 export type CampaignRosterRow = {
   id: string;

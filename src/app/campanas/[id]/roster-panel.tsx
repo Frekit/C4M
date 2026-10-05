@@ -5,13 +5,12 @@ import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  addTalentToCampaign,
   saveCampaignTalentPrices,
   setCampaignTalentStatus,
   activateCampaignTalent,
   type CampaignRosterResult,
 } from "@/app/campanas/roster-actions";
-import { CatalogSelect } from "@/components/catalog-select";
+import { AddTalentPicker } from "./add-talent-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import type {
   CampaignProposalRow,
   CampaignRosterRow,
+  RosterPick,
 } from "@/lib/domain/campaign-roster";
 import {
   canActivateLine,
@@ -84,61 +84,6 @@ function toastResult(state: CampaignRosterResult | null) {
   if (!state) return;
   if (state.ok) toast.success("Mesa actualizada.");
   else if (state.error) toast.error(state.error);
-}
-
-function AddTalentForm({
-  campaignId,
-  catalog,
-}: {
-  campaignId: string;
-  catalog: RosterCatalog;
-}) {
-  const [state, formAction, pending] = useActionState<
-    CampaignRosterResult | null,
-    FormData
-  >(addTalentToCampaign, null);
-  const [formEpoch, setFormEpoch] = useState(0);
-
-  useEffect(() => {
-    if (!state) return;
-    if (state.ok) {
-      toast.success("Mesa actualizada.");
-      setFormEpoch((epoch) => epoch + 1);
-    } else if (state.error) {
-      toast.error(state.error);
-    }
-  }, [state]);
-
-  return (
-    <form
-      key={formEpoch}
-      action={formAction}
-      className="grid gap-3 sm:grid-cols-4 sm:items-end"
-    >
-      <input type="hidden" name="campaignId" value={campaignId} />
-      <div className="grid gap-1.5 sm:col-span-2">
-        <Label htmlFor="instagram">Instagram</Label>
-        <Input id="instagram" name="instagram" required placeholder="@handle" />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="country">País</Label>
-        <CatalogSelect id="country" name="country" options={catalog.countries} />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="profileType">Tipo</Label>
-        <CatalogSelect
-          id="profileType"
-          name="profileType"
-          options={catalog.profileTypes}
-        />
-      </div>
-      <div className="sm:col-span-4">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Añadiendo…" : "Meter en esta campaña"}
-        </Button>
-      </div>
-    </form>
-  );
 }
 
 function QuoteForm({ row }: { row: CampaignRosterRow }) {
@@ -276,6 +221,7 @@ export function CampaignRosterPanel({
   campaignId,
   canWrite,
   rows,
+  picks,
   catalog,
   approvalMode,
   engagementKind,
@@ -286,6 +232,7 @@ export function CampaignRosterPanel({
   campaignId: string;
   canWrite: boolean;
   rows: CampaignRosterRow[];
+  picks: RosterPick[];
   catalog: RosterCatalog;
   approvalMode: CampaignApproval;
   engagementKind: CampaignEngagement;
@@ -305,14 +252,17 @@ export function CampaignRosterPanel({
       <CardHeader>
         <CardTitle>Mesa de la campaña</CardTitle>
         <CardDescription>
-          Pueden entrar sin precio. Para activar (o mandar al cliente) hacen
-          falta piezas + venta + coste. El mismo Instagram puede tener otra
-          pasada más adelante.
+          Márcalos en el roster o pega varios handles. Pueden entrar sin
+          precio. Para activar hacen falta piezas, venta y coste.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
         {canWrite ? (
-          <AddTalentForm campaignId={campaignId} catalog={catalog} />
+          <AddTalentPicker
+            campaignId={campaignId}
+            picks={picks}
+            catalog={catalog}
+          />
         ) : null}
 
         {rows.length === 0 ? (
