@@ -124,12 +124,19 @@ export async function POST(request: Request) {
       messages: modelMessages,
       abortSignal: request.signal,
       onEnd: async (event) => {
+        const fromParts = event.content
+          .filter((part) => part.type === "text" && "text" in part)
+          .map((part) => part.text)
+          .join("\n")
+          .trim();
+        const answer = event.text.trim() || fromParts;
         if (!resolved.context.campaignId) return;
+        const freshQuestion = messages.at(-1)?.role === "user";
         await persistAgentTurn({
           campaignId: resolved.context.campaignId,
           user,
-          question: lastUserText(messages),
-          answer: event.text,
+          question: freshQuestion ? lastUserText(messages) : "",
+          answer,
         });
         revalidatePath(`/campanas/${resolved.context.campaignId}`);
         revalidatePath(`/campanas/${resolved.context.campaignId}/planilla`);

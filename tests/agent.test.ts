@@ -251,6 +251,21 @@ describe("agente", () => {
     );
   });
 
+  test("el modelo local transmite la aprobación sin salir a la red", async () => {
+    const { createLocalFixtureModel } = await import("@/lib/agent/local-fixture");
+    const beforeCount = await prisma.campaignTalent.count();
+    const agent = createC4mAgent(
+      { user: person("CREATORS"), context: { campaignId } },
+      createLocalFixtureModel()
+    );
+    const result = await agent.stream({ prompt: "Mete a @sarabakes en la mesa" });
+    const approval = approvalOf(await result.content);
+
+    assert.ok(approval);
+    assert.equal(approval.isAutomatic, undefined);
+    assert.equal(await prisma.campaignTalent.count(), beforeCount);
+  });
+
   test("la ruta sin sesión responde 401", async () => {
     const { POST } = await import("@/app/api/agent/route");
     const response = await POST(
