@@ -55,7 +55,7 @@ export default async function SignPage({
         <Card>
           <CardHeader>
             <TriangleAlertIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Enlace no válido</CardTitle>
+            <h1 className="font-heading text-base leading-snug font-medium">Enlace no válido</h1>
             <CardDescription>
               Este enlace de firma no existe. Pide uno nuevo a la persona que te
               contactó.

@@ -595,7 +595,7 @@ function ShellBody({
               >
                 <SearchIcon />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setAiOpen(!aiOpen)}>
+              <Button variant="ghost" size="sm" aria-label="Preguntar al asistente" onClick={() => setAiOpen(!aiOpen)}>
                 <SparklesIcon className="text-ai" />
                 <span className="hidden sm:inline">Preguntar</span>
                 <kbd className="hidden rounded-[4px] border border-border px-1 font-mono text-[11px] text-fg-subtle md:inline">

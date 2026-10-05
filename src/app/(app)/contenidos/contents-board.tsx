@@ -58,7 +58,7 @@ export function ContentsBoard({
 
   const columns = useMemo<ColumnDef<ContentRowData, unknown>[]>(
     () => [
-      { id: "select", header: "" },
+      { id: "select", header: () => <span className="sr-only">Seleccionar</span> },
       {
         id: "contenido",
         header: "Contenido",

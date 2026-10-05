@@ -49,7 +49,7 @@ export function ApprovalCard({
   return (
     <article className="rounded-xl border bg-card p-3">
       <header className="flex items-center justify-between gap-2">
-        <h3 className="text-label-13">{title}</h3>
+        <p className="text-label-13">{title}</p>
         <span className="text-copy-12 text-fg-subtle">
           {done}/{items.length}
         </span>

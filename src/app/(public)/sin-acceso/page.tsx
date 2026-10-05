@@ -8,7 +8,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { getLogoutHref } from "@/lib/auth/urls";
 
@@ -42,7 +41,7 @@ export default async function NoAccessPage({
       <Card>
         <CardHeader>
           <ShieldAlertIcon className="size-5 text-muted-foreground" />
-          <CardTitle>{reason.title}</CardTitle>
+          <h1 className="font-heading text-base leading-snug font-medium">{reason.title}</h1>
           <CardDescription>{reason.description}</CardDescription>
         </CardHeader>
         <CardContent>

@@ -13,7 +13,7 @@ export function CatalogOptionsTable({
   const [selected, setSelected] = useState<string[]>([]);
   const columns = useMemo<ColumnDef<(typeof options)[number], unknown>[]>(
     () => [
-      { id: "select", header: "" },
+      { id: "select", header: () => <span className="sr-only">Seleccionar</span> },
       { accessorKey: "label", header: "Nombre" },
       {
         id: "aliases",
