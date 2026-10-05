@@ -3,6 +3,7 @@ import { convertToUsdCents } from "@/lib/money";
 import {
   CAMPAIGN_TALENT_STATUS,
   CONTRACT_STATUS,
+  DELIVERABLE_STATUS,
 } from "@/lib/domain/enums";
 
 export type PlanillaRow = {
@@ -81,6 +82,13 @@ export async function loadTalentPlanilla(campaignId: string) {
       })
     : [];
 
+  const published = await prisma.deliverable.count({
+    where: {
+      campaignId,
+      status: { in: [DELIVERABLE_STATUS.PUBLISHED, DELIVERABLE_STATUS.SUBMITTED] },
+    },
+  });
+
   const currencies = [
     ...new Set(talents.map((row) => row.costCurrency).filter(Boolean)),
   ] as string[];
@@ -133,5 +141,5 @@ export async function loadTalentPlanilla(campaignId: string) {
     };
   });
 
-  return { campaign, rows };
+  return { campaign, rows, published };
 }

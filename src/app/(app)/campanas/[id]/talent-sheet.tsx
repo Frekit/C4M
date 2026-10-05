@@ -21,12 +21,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { costPackageLabel, isCostPlatform } from "@/lib/domain/creator-cost-quote";
 import {
   CAMPAIGN_STATUS_LABELS,
   CAMPAIGN_TALENT_STATUS,
   CAMPAIGN_TALENT_STATUS_LABELS,
+  SIGNATURE_STATUS_LABELS,
   type CampaignStatus,
   type CampaignTalentStatus,
+  type SignatureStatus,
 } from "@/lib/domain/enums";
 import type { PlanillaRow } from "@/lib/domain/campaign-planilla";
 import { formatMoney, formatPercent, fromMinorUnits } from "@/lib/money";
@@ -38,6 +41,40 @@ function usd(cents: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100)}`;
+}
+
+function PlanillaKpis({ rows, published }: { rows: PlanillaRow[]; published: number }) {
+  const active = rows.filter((row) => row.status !== "REJECTED");
+  const sale = active.reduce((sum, row) => sum + (row.saleCents ?? 0) * (row.count ?? 1), 0);
+  const committed = active
+    .filter((row) => row.status === "ACTIVE" || row.status === "APPROVED")
+    .reduce((sum, row) => sum + (row.saleCents ?? 0) * (row.count ?? 1), 0);
+  const margins = active.map((row) => row.margin).filter((value): value is number => value != null);
+  const margin = margins.length
+    ? margins.reduce((sum, value) => sum + value, 0) / margins.length
+    : null;
+  const ratio = sale > 0 ? Math.round((committed / sale) * 100) : 0;
+  return (
+    <div className="grid overflow-hidden rounded-xl border border-border sm:grid-cols-2 xl:grid-cols-4">
+      <div className="border-border px-4 py-3.5 not-last:border-b sm:not-last:border-r xl:not-last:border-b-0">
+        <p className="text-copy-12 text-fg-subtle">Presupuesto de venta</p>
+        <p className="text-heading-20 tabular-nums">{usd(sale)}</p>
+      </div>
+      <div className="border-border px-4 py-3.5 not-last:border-b sm:nth-[2n]:border-r-0 sm:not-last:border-r xl:border-r xl:not-last:border-b-0">
+        <p className="text-copy-12 text-fg-subtle">Venta comprometida</p>
+        <p className="text-heading-20 tabular-nums">{usd(committed)}</p>
+        <p className="text-copy-12 text-muted-foreground">{ratio} %</p>
+      </div>
+      <div className="border-border px-4 py-3.5 not-last:border-b sm:not-last:border-r xl:border-r xl:not-last:border-b-0">
+        <p className="text-copy-12 text-fg-subtle">Margen medio</p>
+        <p className="text-heading-20 tabular-nums">{margin == null ? "—" : formatPercent(margin)}</p>
+      </div>
+      <div className="px-4 py-3.5">
+        <p className="text-copy-12 text-fg-subtle">Publicados</p>
+        <p className="text-heading-20 tabular-nums">{published}</p>
+      </div>
+    </div>
+  );
 }
 
 function platformBrand(value: string | null): BrandName | null {
@@ -55,6 +92,7 @@ export function TalentSheet({
   starts,
   ends,
   rows,
+  published,
   canWrite,
 }: {
   campaignId: string;
@@ -64,6 +102,7 @@ export function TalentSheet({
   starts: string | null;
   ends: string | null;
   rows: PlanillaRow[];
+  published: number;
   canWrite: boolean;
 }) {
   const router = useRouter();
@@ -205,6 +244,8 @@ export function TalentSheet({
         }
       />
 
+      <PlanillaKpis rows={rows} published={published} />
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           id="planilla-filtro"
@@ -274,18 +315,32 @@ export function TalentSheet({
                       />
                     </td>
                     <td className="px-2">
-                      <Link href={`/creators/${row.creatorId}`} className="text-label-13">
-                        {row.name || `@${row.handle}`}
-                      </Link>
-                      <span className="ml-2 inline-flex items-center gap-1 text-copy-12 text-fg-subtle">
-                        {brand ? <BrandIcon brand={brand} /> : null}@{row.handle}
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-medium"
+                        >
+                          {(row.name || row.handle).slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="min-w-0">
+                          <Link href={`/creators/${row.creatorId}`} className="block text-label-13">
+                            {row.name || `@${row.handle}`}
+                          </Link>
+                          <span className="inline-flex items-center gap-1 text-copy-12 text-fg-subtle">
+                            {brand ? <BrandIcon brand={brand} /> : null}@{row.handle}
+                          </span>
+                        </span>
                       </span>
                     </td>
                     <td className="px-2 tabular-nums text-copy-13">
                       {row.views == null ? "—" : new Intl.NumberFormat("es-ES").format(row.views)}
                     </td>
                     <td className="px-2 text-copy-13">
-                      {row.count ? `${row.count} × ${row.format ?? "piezas"}` : "—"}
+                      {row.count
+                        ? row.platform && row.format && isCostPlatform(row.platform)
+                          ? costPackageLabel(row.platform, row.format, row.count)
+                          : `${row.count} × ${row.format ?? "piezas"}`
+                        : "—"}
                     </td>
                     <td className="px-2 text-right">
                       {canWrite && !row.frozen ? (
@@ -340,9 +395,19 @@ export function TalentSheet({
                     </td>
                     <td className="px-2 text-copy-12">
                       {row.contractId ? (
-                        <Link href={`/contratos/${row.contractId}`} className="font-mono">
-                          {row.contractCode}
-                        </Link>
+                        <span className="inline-flex flex-col">
+                          <Link href={`/contratos/${row.contractId}`} className="font-mono">
+                            {row.contractCode}
+                          </Link>
+                          {row.signatureStatus ? (
+                            <span className="text-fg-subtle">
+                              {SIGNATURE_STATUS_LABELS[row.signatureStatus as SignatureStatus] ??
+                                row.signatureStatus}
+                            </span>
+                          ) : row.contractStatus === "SIGNED" ? (
+                            <span className="text-success">Firmado</span>
+                          ) : null}
+                        </span>
                       ) : row.status === CAMPAIGN_TALENT_STATUS.APPROVED && canWrite ? (
                         <Button
                           size="sm"

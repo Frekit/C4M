@@ -93,7 +93,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
       <header className="flex h-[52px] shrink-0 items-center gap-2 border-b px-3">
         <SparklesIcon className="size-4 text-ai" />
         <p className="text-label-13">Asistente</p>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-label-12 text-muted-foreground">
+        <span className="inline-flex max-w-[46%] items-center truncate rounded-full border border-border bg-card px-2 py-0.5 text-label-12 text-muted-foreground">
           {routeChip(pathname)}
         </span>
         <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={onClose} aria-label="Cerrar asistente">
@@ -103,15 +103,17 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         {DEMO ? (
           <>
-            <p className="ml-8 rounded-xl bg-muted px-3 py-2 text-copy-14">
+            <p className="ml-auto max-w-[86%] rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-copy-14">
               Higgsfield ha aprobado a @sarabakes y @techconjavi.
             </p>
-            <p className="text-copy-12 text-success">Ha leído la Planilla · 8 filas</p>
+            <p className="rounded-lg border border-border bg-muted px-2 py-1.5 text-copy-12 text-success">
+              ✓ Ha leído la Planilla de Navidad 2026 · 8 filas
+            </p>
             <p className="text-copy-14">
               Propongo 4 cambios. No se guarda nada hasta que los aceptes. Esto es una simulación: no hay modelo ni escritura.
             </p>
             <ApprovalCard
-              title="Planilla // 4 cambios"
+              title="Navidad 2026 // 4 cambios"
               items={items}
               onAccept={(id) => finish([id])}
               onDiscard={(id) => patch(id, "descartado")}
@@ -127,12 +129,27 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
         )}
         {note ? <p className="text-copy-13 text-muted-foreground">{note}</p> : null}
         <div className="mt-auto flex flex-wrap gap-2">
-          <button type="button" className="rounded-full border px-2 py-1 text-label-12" onClick={() => setDraft("¿Quién va con retraso?")}>
-            ¿Quién va con retraso?
-          </button>
-          <button type="button" className="rounded-full border px-2 py-1 text-label-12" onClick={() => setDraft("Añade el email que falta")}>
-            Añade el email que falta
-          </button>
+          {[
+            "Añade el email de @techconjavi",
+            "¿Quién va con retraso?",
+            "Resume la planilla",
+          ].map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              className="h-7 rounded-full border border-border bg-card px-2.5 text-label-12 text-muted-foreground hover:border-ai/40 hover:bg-ai-muted hover:text-ai"
+              onClick={() => {
+                setDraft("");
+                setNote(
+                  DEMO
+                    ? `Modo demo: «${chip}» no se envía a un modelo. La tarjeta de arriba sigue siendo el ejemplo.`
+                    : "El asistente todavía no está conectado. NEXT_PUBLIC_AI_PANEL=demo muestra el ejemplo."
+                );
+              }}
+            >
+              {chip}
+            </button>
+          ))}
         </div>
       </div>
       <form
@@ -157,7 +174,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
           rows={2}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Pide algo…"
+          placeholder={pathname.startsWith("/campanas/") ? "Pide algo sobre esta campaña…" : "Pide algo…"}
           className="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-copy-14 outline-none focus-visible:border-ring"
         />
         <div className="mt-2 flex items-center justify-between">

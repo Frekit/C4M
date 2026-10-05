@@ -96,6 +96,7 @@ export default async function CampaignWorkbenchPage({
             planilla.campaign.endsAt ? formatDate(planilla.campaign.endsAt) : null
           }
           rows={planilla.rows}
+          published={planilla.published}
           canWrite={canWrite}
         />
       </PageShell>

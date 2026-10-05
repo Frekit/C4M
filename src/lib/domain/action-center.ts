@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { prisma } from "@/lib/db";
 import {
   CONTRACT_STATUS,
@@ -113,7 +115,7 @@ function dayLabel(date: Date) {
   }).format(date);
 }
 
-export async function loadActionCenter(
+export const loadActionCenter = cache(async function loadActionCenter(
   firstName: string,
   now = new Date()
 ): Promise<ActionCenter> {
@@ -365,12 +367,23 @@ export async function loadActionCenter(
   for (const [key, items] of lateByCampaign) {
     const campaign = items[0]?.campaign;
     const handles = [...new Set(items.map((item) => item.contract.creator.handle))];
+    const when = items[0]?.scheduledFor
+      ? new Intl.DateTimeFormat("es-ES", {
+          day: "numeric",
+          month: "short",
+          timeZone: "UTC",
+        }).format(items[0].scheduledFor)
+      : null;
+    const lateNoun =
+      items.length === 1 ? "contenido tenía fecha" : "contenidos tenían fecha";
     cards.push({
       id: `late-${key}`,
       tone: "danger",
       kind: "contenido",
       title: campaign?.name ?? "Sin campaña",
-      body: `${items.length} ${items.length === 1 ? "contenido tenía fecha" : "contenidos tenían fecha"} y siguen sin publicar`,
+      body: when
+        ? `${items.length} ${lateNoun} el ${when} y siguen sin publicar`
+        : `${items.length} ${lateNoun} y siguen sin publicar`,
       meta: campaign?.client?.name,
       campaignId: campaign?.id,
       campaignName: campaign?.name,
@@ -578,7 +591,7 @@ export async function loadActionCenter(
       when: event.createdAt.toISOString(),
     })),
   };
-}
+});
 
 export function handleInitials(handle: string) {
   return initials(handle);

@@ -1,5 +1,8 @@
 "use client";
 
+import { CheckIcon, GitPullRequestArrowIcon, XIcon } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type ApprovalUiState =
@@ -23,12 +26,28 @@ export type ApprovalItem = {
 const LABEL: Record<ApprovalUiState, string> = {
   pendiente: "Pendiente",
   aceptado: "Aceptado",
-  aplicando: "Aplicando",
+  aplicando: "Aplicando…",
   hecho: "Hecho",
   descartado: "Descartado",
   aviso: "Aviso",
   error: "Error",
 };
+
+function Detail({ detail, struck }: { detail: string; struck: boolean }) {
+  const parts = detail.split(" → ");
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return (
+      <p className={cn("text-copy-13", struck && "text-fg-subtle line-through")}>
+        <span className="text-fg-subtle line-through">{parts[0]}</span>
+        {" → "}
+        <span className="text-foreground">{parts[1]}</span>
+      </p>
+    );
+  }
+  return (
+    <p className={cn("text-copy-13 text-fg-subtle", struck && "line-through")}>{detail}</p>
+  );
+}
 
 export function ApprovalCard({
   title,
@@ -44,55 +63,104 @@ export function ApprovalCard({
   onAcceptRest?: () => void;
 }) {
   const pending = items.filter((item) => item.state === "pendiente" || item.state === "aviso").length;
-  const done = items.filter((item) => item.state === "hecho" || item.state === "aceptado").length;
+  const decided = items.length - pending;
 
   return (
-    <article className="rounded-xl border bg-card p-3">
-      <header className="flex items-center justify-between gap-2">
-        <p className="text-label-13">{title}</p>
-        <span className="text-copy-12 text-fg-subtle">
-          {done}/{items.length}
+    <article className="overflow-hidden rounded-xl border border-ai/28 bg-card shadow-(--e2)">
+      <header className="flex items-center gap-2 bg-ai-muted/55 px-3 py-2">
+        <GitPullRequestArrowIcon className="size-4 text-ai" aria-hidden />
+        <p className="min-w-0 flex-1 text-label-13">{title}</p>
+        <span className="font-mono text-[11px] text-fg-subtle">
+          {decided}/{items.length}
         </span>
       </header>
-      <ol className="mt-2 grid gap-2">
-        {items.map((item, index) => (
-          <li key={item.id} className="grid gap-1 rounded-lg border border-border px-2 py-2">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-copy-13">
-                <span className="text-fg-subtle">{index + 1}</span> {item.title}
-              </p>
+      <ol className="grid">
+        {items.map((item, index) => {
+          const open = item.state === "pendiente" || item.state === "aviso";
+          const struck = item.state === "descartado";
+          return (
+            <li
+              key={item.id}
+              className={cn(
+                "grid grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-2 border-t border-border px-3 py-2",
+                item.state === "aceptado" && "bg-success-muted/45",
+                item.state === "error" && "border-danger/35"
+              )}
+            >
               <span
                 className={cn(
-                  "text-label-12",
-                  item.state === "hecho" && "text-success",
-                  item.state === "descartado" && "text-fg-subtle",
-                  item.state === "error" && "text-danger",
-                  item.state === "aviso" && "text-warning",
-                  item.state === "aplicando" && "text-ai"
+                  "grid size-5 place-items-center rounded-[4px] bg-muted font-mono text-[11px] text-fg-subtle",
+                  item.state === "aceptado" && "bg-success-muted text-success"
                 )}
               >
-                {LABEL[item.state]}
+                {index + 1}
               </span>
-            </div>
-            <p className="text-copy-12 text-fg-subtle">{item.detail}</p>
-            {item.warning ? <p className="text-copy-12 text-warning">{item.warning}</p> : null}
-            {(item.state === "pendiente" || item.state === "aviso") && onAccept && onDiscard ? (
-              <div className="flex gap-2">
-                <button type="button" className="text-label-12 text-success" onClick={() => onAccept(item.id)}>
-                  Aceptar
-                </button>
-                <button type="button" className="text-label-12 text-fg-subtle" onClick={() => onDiscard(item.id)}>
-                  Descartar
-                </button>
+              <div className="min-w-0">
+                <p className="text-label-12 text-fg-subtle">{item.title}</p>
+                <Detail detail={item.detail} struck={struck} />
+                {item.warning ? (
+                  <p className="mt-1 rounded-md bg-warning-muted px-2 py-1 text-copy-12 text-warning">
+                    {item.warning}
+                  </p>
+                ) : null}
+                {!open ? (
+                  <p
+                    className={cn(
+                      "mt-1 text-label-12",
+                      item.state === "hecho" && "text-success",
+                      item.state === "aceptado" && "text-success",
+                      item.state === "descartado" && "text-fg-subtle",
+                      item.state === "error" && "text-danger",
+                      item.state === "aplicando" && "text-ai"
+                    )}
+                  >
+                    {item.state === "hecho"
+                      ? "✓ Hecho"
+                      : item.state === "aceptado"
+                        ? "✓ Aceptado"
+                        : item.state === "descartado"
+                          ? "↶ Descartado"
+                          : LABEL[item.state]}
+                  </p>
+                ) : null}
               </div>
-            ) : null}
-          </li>
-        ))}
+              {open && onAccept && onDiscard ? (
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-7"
+                    aria-label={`Descartar ${item.title}`}
+                    onClick={() => onDiscard(item.id)}
+                  >
+                    <XIcon />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-sm"
+                    className="size-7"
+                    aria-label={`Aceptar ${item.title}`}
+                    onClick={() => onAccept(item.id)}
+                  >
+                    <CheckIcon />
+                  </Button>
+                </div>
+              ) : (
+                <span className="sr-only">{LABEL[item.state]}</span>
+              )}
+            </li>
+          );
+        })}
       </ol>
       {pending > 0 && onAcceptRest ? (
-        <button type="button" className="mt-3 text-label-13 text-primary" onClick={onAcceptRest}>
-          Aceptar {pending} restantes
-        </button>
+        <footer className="flex items-center justify-between gap-3 border-t border-border bg-muted px-3 py-2">
+          <p className="text-copy-12 text-fg-subtle">No se guarda nada hasta que aceptes.</p>
+          <Button type="button" size="sm" onClick={onAcceptRest}>
+            Aceptar {pending} restantes
+          </Button>
+        </footer>
       ) : null}
     </article>
   );
