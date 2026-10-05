@@ -132,12 +132,12 @@ export default async function SignPage({
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{company.legalName}</p>
         <p className="font-mono text-eyebrow-11">Contrato {contract.code}</p>
-        <h1 className="font-serif text-[26px] leading-8">
+        <h1 className="text-display-30">
           {isConditionsAnnex
             ? `Anexo de condiciones al contrato ${contract.parent?.code ?? ""}`
             : isAnnex
               ? `Anexo al contrato ${contract.parent?.code ?? ""}`
-              : `Hola. Este es tu contrato${contract.client ? ` con ${contract.client.name}` : ""}.`}
+              : `Hola, ${(contract.creator.displayName ?? contract.creator.handle).split(" ")[0]}. Este es tu contrato${contract.client ? ` con ${contract.client.name}` : ""}.`}
         </h1>
         <p className="text-sm text-muted-foreground">
           Referencia {contract.code} · para @{contract.creator.handle}

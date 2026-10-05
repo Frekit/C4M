@@ -274,7 +274,9 @@ export function TalentSheet({
           <table className="w-full min-w-[880px] text-left">
             <thead className="sticky top-0 bg-muted text-label-12 text-muted-foreground">
               <tr className="h-[34px]">
-                <th className="px-2" />
+                <th className="px-2">
+                  <span className="sr-only">Seleccionar</span>
+                </th>
                 <th className="px-2">Creator</th>
                 <th className="px-2">Mediana</th>
                 <th className="px-2">Contenidos</th>
