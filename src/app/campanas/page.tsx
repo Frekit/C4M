@@ -179,6 +179,14 @@ export default async function CampaignsPage() {
                       variant="outline"
                       size="sm"
                       nativeButton={false}
+                      render={<Link href={`/campanas/${campaign.id}/planilla`} />}
+                    >
+                      Planilla
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      nativeButton={false}
                       render={
                         <Link href={`/contenidos?campana=${campaign.id}`} />
                       }

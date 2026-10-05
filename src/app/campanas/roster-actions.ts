@@ -47,6 +47,7 @@ export type CampaignRosterResult = {
 function revalidateCampaign(campaignId: string, creatorId?: string) {
   revalidatePath("/campanas");
   revalidatePath(`/campanas/${campaignId}`);
+  revalidatePath(`/campanas/${campaignId}/planilla`);
   revalidatePath("/creators");
   if (creatorId) revalidatePath(`/creators/${creatorId}`);
 }

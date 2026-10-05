@@ -81,6 +81,14 @@ export default async function CampaignWorkbenchPage({
           <h1 className="font-heading text-2xl font-medium tracking-tight">
             {data.name}
           </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/campanas/${id}/planilla`} />}
+          >
+            Planilla
+          </Button>
           <Badge variant="outline">
             {CAMPAIGN_STATUS_LABELS[data.status as CampaignStatus]}
           </Badge>

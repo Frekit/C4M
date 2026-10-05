@@ -150,8 +150,10 @@ export default async function WorkflowPage() {
               href="/campanas"
               hrefLabel="Campañas"
             >
-              Márcalos en el roster o pega varios handles. Entran aunque no
-              tengan precio. Si ese Instagram ya está en otra campaña, se avisa.
+              Abre la planilla de la campaña: ahí está todo el roster, con
+              país, tipo, views, tarifas y si ya están en la mesa. Filtra y
+              marca los que entran. Si falta alguien, pega los handles. Entran
+              aunque no tengan precio.
             </Step>
             <Arrow />
             <Step n="4" title="Completar la línea">
