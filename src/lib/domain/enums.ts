@@ -215,7 +215,7 @@ export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> 
     PROPOSED: "Oleada marcada como enviada. El cliente no la abre.",
     APPROVED: "La agencia registró el sí. Falta activar el contrato.",
     ACTIVE: "Ya opera en esta pasada.",
-    REJECTED: "No entra en esta pasada.",
+    REJECTED: "La marca dijo que no. Queda anotado para no volver a presentarlo.",
   };
 
 export const ROSTER_IMPORT_MAX_ROWS = 2000;

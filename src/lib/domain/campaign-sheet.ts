@@ -63,6 +63,7 @@ export type CampaignSheetRow = {
   statusLabel: string;
   others: string[];
   brands: string[];
+  rejectedBrands: string[];
   formatLabel: string;
   piecesLabel: string;
   saleLabel: string;
@@ -78,6 +79,8 @@ export type CampaignSheetFilters = {
   mesa?: string;
   red?: string;
   marca?: string;
+  rechazo?: string;
+  clientName?: string;
   countryValues?: string[];
   typeValues?: string[];
 };
@@ -227,16 +230,21 @@ export function buildCampaignSheetRow(
   const seen = new Set<string>();
   const others: string[] = [];
   const brands = new Set<string>();
+  const rejectedBrands = new Set<string>();
   for (const talent of creator.talents) {
-    if (talent.clientName && talent.status !== CAMPAIGN_TALENT_STATUS.REJECTED) {
+    if (talent.clientName && talent.status === CAMPAIGN_TALENT_STATUS.REJECTED) {
+      rejectedBrands.add(talent.clientName);
+    } else if (talent.clientName) {
       brands.add(talent.clientName);
     }
     if (talent.campaignId === campaignId || seen.has(talent.campaignId)) continue;
     seen.add(talent.campaignId);
+    const refused =
+      talent.status === CAMPAIGN_TALENT_STATUS.REJECTED ? " · dijo que no" : "";
     others.push(
       talent.clientName
-        ? `${talent.clientName} · ${talent.campaignName}`
-        : talent.campaignName
+        ? `${talent.clientName} · ${talent.campaignName}${refused}`
+        : `${talent.campaignName}${refused}`
     );
   }
 
@@ -279,6 +287,7 @@ export function buildCampaignSheetRow(
     statusLabel,
     others,
     brands: [...brands].sort((a, b) => a.localeCompare(b, "es")),
+    rejectedBrands: [...rejectedBrands].sort((a, b) => a.localeCompare(b, "es")),
     othersLabel: others.join("; ") || "—",
     ...lineLabels(chosen),
   };
@@ -293,6 +302,7 @@ export function filterCampaignSheet(
   const mesa = filters.mesa?.trim() ?? "";
   const red = filters.red?.trim() ?? "";
   const marca = filters.marca?.trim() ?? "";
+  const rechazo = filters.rechazo?.trim() ?? "";
   const countries = filters.countryValues;
   const types = filters.typeValues;
 
@@ -306,6 +316,7 @@ export function filterCampaignSheet(
         row.quotesLabel,
         row.othersLabel,
         row.brands.join(" "),
+        row.rejectedBrands.join(" "),
         row.statusLabel,
       ]
         .join(" ")
@@ -323,6 +334,16 @@ export function filterCampaignSheet(
     if (mesa === "apartada" && row.place !== "saved") return false;
     if (mesa === "no" && row.place !== "dismissed") return false;
     if (marca && !row.brands.includes(marca)) return false;
+    if (rechazo === "ocultar") {
+      if (
+        filters.clientName &&
+        row.rejectedBrands.includes(filters.clientName)
+      ) {
+        return false;
+      }
+    } else if (rechazo && !row.rejectedBrands.includes(rechazo)) {
+      return false;
+    }
     if (red === "sin" && row.platforms.length > 0) return false;
     if (red && red !== "sin" && !row.platforms.includes(red)) return false;
     return true;

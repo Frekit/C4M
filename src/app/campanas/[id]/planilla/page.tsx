@@ -72,15 +72,24 @@ export default async function CampaignSheetPage({
 
   const pais = filters.pais?.trim() ?? "";
   const tipo = filters.tipo?.trim() ?? "";
+  const clientName = data.campaign.client?.name ?? "";
   const brands = [
     ...new Set(data.rows.flatMap((row) => row.brands)),
   ].sort((a, b) => a.localeCompare(b, "es"));
+  const refusedBrands = [
+    ...new Set(data.rows.flatMap((row) => row.rejectedBrands)),
+  ].sort((a, b) => a.localeCompare(b, "es"));
+  const toldNoHere = clientName
+    ? data.rows.filter((row) => row.rejectedBrands.includes(clientName)).length
+    : 0;
   const visible = filterCampaignSheet(data.rows, {
     q: filters.q,
     views: filters.views,
     mesa: filters.mesa,
     red: filters.red,
     marca: filters.marca,
+    rechazo: filters.rechazo,
+    clientName: clientName || undefined,
     countryValues: pais
       ? storedValuesForFilter(data.catalog.countries, pais)
       : undefined,
@@ -97,7 +106,8 @@ export default async function CampaignSheetPage({
       filters.views ||
       filters.mesa ||
       filters.red ||
-      filters.marca
+      filters.marca ||
+      filters.rechazo
   );
 
   return (
@@ -117,9 +127,10 @@ export default async function CampaignSheetPage({
             Elegir perfiles
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Todo el roster. Filtra, marca y mételos en la campaña. Abre una
-            fila para ver views y tarifas antes de decidir. Quien ya está
-            dentro se ve, pero no se vuelve a marcar.
+            Todo el roster. Filtra, marca y mételos en la campaña. Si esta
+            marca ya dijo que no a alguien, se ve en la fila para no volver
+            a presentarlo. Quien ya está dentro se ve, pero no se vuelve a
+            marcar.
           </p>
         </div>
         <Button
@@ -200,6 +211,26 @@ export default async function CampaignSheetPage({
           </select>
         </label>
         <label className="grid gap-1 text-xs text-muted-foreground">
+          Dijo que no
+          <select
+            name="rechazo"
+            defaultValue={filters.rechazo ?? ""}
+            className={fieldClass}
+          >
+            <option value="">Todos</option>
+            {clientName && toldNoHere > 0 ? (
+              <option value="ocultar">
+                Ocultar a quien {clientName} dijo que no
+              </option>
+            ) : null}
+            {refusedBrands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand} dijo que no
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
           Tarifa
           <select name="red" defaultValue={filters.red ?? ""} className={fieldClass}>
             <option value="">Cualquier red</option>
@@ -226,6 +257,28 @@ export default async function CampaignSheetPage({
           </Button>
         ) : null}
       </form>
+
+      {clientName && toldNoHere > 0 ? (
+        <p className="max-w-3xl text-sm leading-relaxed">
+          {clientName} ya dijo que no a {toldNoHere}{" "}
+          {toldNoHere === 1 ? "perfil" : "perfiles"}. Queda anotado para no
+          volver a presentar
+          {toldNoHere === 1 ? "lo" : "los"}.{" "}
+          <Link
+            href={`/campanas/${id}/planilla?rechazo=ocultar`}
+            className="underline underline-offset-4"
+          >
+            Ocultarlos
+          </Link>
+          {" · "}
+          <Link
+            href={`/campanas/${id}/planilla?rechazo=${encodeURIComponent(clientName)}`}
+            className="underline underline-offset-4"
+          >
+            Verlos
+          </Link>
+        </p>
+      ) : null}
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <PulseTile label="En la campaña" value={String(data.pulse.onDesk)} />
@@ -281,7 +334,12 @@ export default async function CampaignSheetPage({
         {canWrite ? ` · ${selectable} se pueden meter` : ""}
       </p>
 
-      <CampaignSheet campaignId={id} rows={visible} canWrite={canWrite} />
+      <CampaignSheet
+        campaignId={id}
+        rows={visible}
+        canWrite={canWrite}
+        clientName={clientName || null}
+      />
     </main>
   );
 }

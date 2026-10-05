@@ -30,9 +30,17 @@ function ratesByNetwork(rates: SheetRateLine[]) {
   return groups;
 }
 
+function refusalLabel(brands: string[], clientName: string | null) {
+  if (clientName && brands.includes(clientName)) return `${clientName} dijo que no`;
+  if (brands.length === 1) return `${brands[0]} dijo que no`;
+  if (brands.length > 1) return `${brands.length} marcas dijeron que no`;
+  return null;
+}
+
 function CurationPanel({
   row,
   campaignId,
+  clientName,
   canWrite,
   marked,
   pending,
@@ -44,6 +52,7 @@ function CurationPanel({
 }: {
   row: CampaignSheetRow | null;
   campaignId: string;
+  clientName: string | null;
   canWrite: boolean;
   marked: boolean;
   pending: boolean;
@@ -62,7 +71,8 @@ function CurationPanel({
         <h2 className={sectionLabel}>Curación</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Abre un perfil de la tabla. Aquí se ve la mediana, las tarifas por
-          red y las marcas con las que ya ha trabajado, para decidir si entra.
+          red, las marcas con las que ya ha estado y si alguna ya dijo que
+          no.
         </p>
       </aside>
     );
@@ -153,6 +163,17 @@ function CurationPanel({
           </p>
         ) : null}
       </section>
+
+      {row.rejectedBrands.length > 0 ? (
+        <section className="grid gap-1">
+          <h3 className={sectionLabel}>Dijo que no</h3>
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            {clientName && row.rejectedBrands.includes(clientName)
+              ? `${clientName} ya dijo que no. Meterlo es volver a presentarlo.`
+              : `${row.rejectedBrands.join(", ")} ya dijo que no.`}
+          </p>
+        </section>
+      ) : null}
 
       <section className="grid gap-1">
         <h3 className={sectionLabel}>Otras marcas</h3>
@@ -257,10 +278,12 @@ export function CampaignSheet({
   campaignId,
   rows,
   canWrite,
+  clientName,
 }: {
   campaignId: string;
   rows: CampaignSheetRow[];
   canWrite: boolean;
+  clientName: string | null;
 }) {
   const [pickState, pickAction, pickPending] = useActionState<
     CampaignRosterResult | null,
@@ -404,6 +427,7 @@ export function CampaignSheet({
                 rows.map((row) => {
                   const checked = selected.has(row.id);
                   const active = openId === row.id;
+                  const refused = refusalLabel(row.rejectedBrands, clientName);
                   const stickyBg = checked || active ? "bg-muted" : "bg-background";
                   return (
                     <tr
@@ -445,6 +469,14 @@ export function CampaignSheet({
                           <span className="mt-0.5 block text-muted-foreground">
                             {row.displayName}
                           </span>
+                        ) : null}
+                        {refused ? (
+                          <Badge
+                            variant="outline"
+                            className="mt-0.5 border-amber-400 text-amber-800 dark:text-amber-300"
+                          >
+                            {refused}
+                          </Badge>
                         ) : null}
                       </td>
                       <td className="px-2 py-1.5 whitespace-nowrap">
@@ -512,6 +544,7 @@ export function CampaignSheet({
       <CurationPanel
         row={openRow}
         campaignId={campaignId}
+        clientName={clientName}
         canWrite={canWrite}
         marked={openRow ? selected.has(openRow.id) : false}
         pending={pickPending}

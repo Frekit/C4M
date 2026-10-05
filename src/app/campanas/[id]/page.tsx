@@ -351,6 +351,7 @@ export default async function CampaignWorkbenchPage({
         budgetSaleCents={data.budgetSaleCents}
         drafts={proposals.filter((item) => item.status === "DRAFT")}
         hasClient={Boolean(data.client)}
+        clientName={data.client?.name ?? null}
       />
 
       {canSign ? (

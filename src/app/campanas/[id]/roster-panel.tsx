@@ -64,10 +64,13 @@ function draftTitleFor(
 function waitingCopy(
   status: string,
   inDraft: string | null,
-  clientApproves: boolean
+  clientApproves: boolean,
+  clientName: string | null
 ) {
   if (status === CAMPAIGN_TALENT_STATUS.REJECTED) {
-    return "Descartado. Corrige la línea y mételo en otra oleada si vuelve a entrar.";
+    return clientName
+      ? `${clientName} dijo que no. Queda anotado para no volver a presentarlo.`
+      : "Descartado. Queda anotado en esta campaña.";
   }
   if (inDraft) {
     return `Ya está en «${inDraft}», sin enviar. Márcala enviada cuando el lote esté cerrado.`;
@@ -225,6 +228,7 @@ export function CampaignRosterPanel({
   budgetSaleCents,
   drafts,
   hasClient,
+  clientName,
 }: {
   campaignId: string;
   canWrite: boolean;
@@ -235,6 +239,7 @@ export function CampaignRosterPanel({
   budgetSaleCents: number | null;
   drafts: CampaignProposalRow[];
   hasClient: boolean;
+  clientName: string | null;
 }) {
   const policy = policyFromCampaign({
     engagementKind,
@@ -383,7 +388,7 @@ export function CampaignRosterPanel({
                         </form>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          {waitingCopy(row.status, inDraft, clientApproves) ??
+                          {waitingCopy(row.status, inDraft, clientApproves, clientName) ??
                             (activate.ok
                               ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
                               : activate.error)}
@@ -398,7 +403,9 @@ export function CampaignRosterPanel({
                     <div className="grid gap-2">
                       <p className="text-xs text-muted-foreground">
                         Esto lo anota el equipo, con lo que se dijo en el hilo.
-                        El cliente no pulsa estos botones.
+                        Si marcas que dijo que no, queda registrado en esta
+                        marca para no volver a presentarlo. El cliente no
+                        pulsa estos botones.
                       </p>
                       <div className="flex flex-wrap gap-2">
                       {(
@@ -421,7 +428,9 @@ export function CampaignRosterPanel({
                               row.status === status ? "default" : "ghost"
                             }
                           >
-                            {CAMPAIGN_TALENT_STATUS_LABELS[status]}
+                            {status === CAMPAIGN_TALENT_STATUS.REJECTED
+                              ? "Dijo que no"
+                              : CAMPAIGN_TALENT_STATUS_LABELS[status]}
                           </Button>
                         </form>
                       ))}

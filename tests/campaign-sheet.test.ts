@@ -138,6 +138,97 @@ test("la planilla enseña tarifas, views y deja fuera a quien ya está abierto",
   assert.match(again.costLabel, /pieza/);
 });
 
+function talent(
+  overrides: Partial<SheetCreatorInput["talents"][number]>
+): SheetCreatorInput["talents"][number] {
+  return {
+    status: "ROSTER",
+    createdAt: NOW,
+    campaignId: "otra",
+    campaignName: "Launch",
+    clientName: null,
+    deliverableCount: null,
+    contentPlatform: null,
+    contentFormat: null,
+    salePriceCentsPerContent: null,
+    costMinorPerContent: null,
+    costCurrency: null,
+    packageCostMinor: null,
+    ...overrides,
+  };
+}
+
+test("un no del cliente queda en la marca y no cuenta como haber estado", () => {
+  const refused = buildCampaignSheetRow(
+    creator({
+      talents: [
+        talent({
+          status: "REJECTED",
+          campaignName: "Launch",
+          clientName: "Higgsfield",
+        }),
+        talent({
+          status: "ACTIVE",
+          campaignId: "tercera",
+          campaignName: "Always",
+          clientName: "Many Chat",
+        }),
+      ],
+    }),
+    CAMPAIGN,
+    NOW
+  );
+  assert.deepEqual(refused.rejectedBrands, ["Higgsfield"]);
+  assert.deepEqual(refused.brands, ["Many Chat"]);
+  assert.equal(refused.othersLabel, "Higgsfield · Launch · dijo que no; Many Chat · Always");
+
+  const here = buildCampaignSheetRow(
+    creator({
+      id: "c9",
+      handle: "uxsin",
+      talents: [
+        talent({
+          status: "REJECTED",
+          campaignId: CAMPAIGN,
+          campaignName: "UX",
+          clientName: "Higgsfield",
+        }),
+      ],
+    }),
+    CAMPAIGN,
+    NOW
+  );
+  assert.equal(here.place, "rejected");
+  assert.deepEqual(here.rejectedBrands, ["Higgsfield"]);
+  assert.deepEqual(here.brands, []);
+  assert.equal(here.othersLabel, "—");
+
+  const clean = buildCampaignSheetRow(
+    creator({ id: "c2", handle: "limpio", talents: [] }),
+    CAMPAIGN,
+    NOW
+  );
+  const rows = [refused, here, clean];
+  assert.deepEqual(
+    filterCampaignSheet(rows, { rechazo: "Higgsfield" }).map((row) => row.handle),
+    ["ana.garcia", "uxsin"]
+  );
+  assert.deepEqual(
+    filterCampaignSheet(rows, { rechazo: "ocultar", clientName: "Higgsfield" }).map(
+      (row) => row.handle
+    ),
+    ["limpio"]
+  );
+  assert.deepEqual(
+    filterCampaignSheet(rows, { marca: "Higgsfield" }).map((row) => row.handle),
+    []
+  );
+  assert.deepEqual(
+    filterCampaignSheet(rows, { q: "higgsfield" }).map((row) => row.handle),
+    ["ana.garcia", "uxsin"]
+  );
+});
+
 test("filtra por texto, país, views, mesa y red", () => {
   const rows = [
     buildCampaignSheetRow(creator(), CAMPAIGN, NOW),
