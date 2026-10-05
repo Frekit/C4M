@@ -6,7 +6,6 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import {
-  OPEN_TALENT_STATUSES,
   canActivateLine,
   canMarkClientDecision,
   canSendLineInWave,
@@ -16,6 +15,10 @@ import {
   quoteIsFrozen,
   statusAfterSavingQuote,
 } from "@/lib/domain/campaign-desk";
+import {
+  placeCreatorOnCampaign,
+  revalidateCampaign,
+} from "@/lib/domain/campaign-placement";
 import { upsertRosterCreator } from "@/lib/domain/roster-upsert";
 import { campaignForClient } from "@/lib/domain/client-campaign";
 import { costPerContentUsdCents } from "@/lib/domain/contract-math";
@@ -43,50 +46,6 @@ export type CampaignRosterResult = {
   added?: number;
   skipped?: number;
 };
-
-export async function revalidateCampaign(campaignId: string, creatorId?: string) {
-  revalidatePath("/campanas");
-  revalidatePath(`/campanas/${campaignId}`);
-  revalidatePath(`/campanas/${campaignId}/planilla`);
-  revalidatePath("/creators");
-  if (creatorId) revalidatePath(`/creators/${creatorId}`);
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    select: { clientAccessToken: true },
-  });
-  if (campaign?.clientAccessToken) {
-    revalidatePath(`/hablar/${campaign.clientAccessToken}`);
-  }
-}
-
-export async function placeCreatorOnCampaign(
-  campaignId: string,
-  creatorId: string,
-  email: string
-) {
-  await prisma.campaignCuration.deleteMany({
-    where: { campaignId, creatorId },
-  });
-  const open = await prisma.campaignTalent.findFirst({
-    where: {
-      campaignId,
-      creatorId,
-      status: { in: [...OPEN_TALENT_STATUSES] },
-    },
-    select: { id: true },
-  });
-  if (open) return false;
-
-  await prisma.campaignTalent.create({
-    data: {
-      campaignId,
-      creatorId,
-      status: CAMPAIGN_TALENT_STATUS.ROSTER,
-      createdBy: email,
-    },
-  });
-  return true;
-}
 
 function addedMessage(added: number, skipped: number) {
   if (added === 0) {

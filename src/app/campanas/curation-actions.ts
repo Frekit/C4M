@@ -20,8 +20,8 @@ import { loadCampaignSheet } from "@/lib/domain/campaign-sheet";
 import {
   placeCreatorOnCampaign,
   revalidateCampaign,
-  type CampaignRosterResult,
-} from "./roster-actions";
+} from "@/lib/domain/campaign-placement";
+import type { CampaignRosterResult } from "./roster-actions";
 
 export type CampaignTalkResult = {
   ok: boolean;
