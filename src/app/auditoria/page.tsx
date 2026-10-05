@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTimeUtc } from "@/lib/format";
 import {
   Card,
   CardContent,
@@ -80,7 +80,7 @@ export default async function AuditPage() {
                       {ACTION_LABELS[event.action] ?? event.action}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {formatDateTime(event.createdAt)}
+                      {formatDateTimeUtc(event.createdAt)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">

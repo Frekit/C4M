@@ -42,7 +42,7 @@ import {
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
 import { isAccruedDeliverable, packKey, settlementPolicyOf } from "@/lib/domain/settlement";
-import { formatDate, formatDateTime, toInputDate } from "@/lib/format";
+import { formatDate, formatDateTime, formatDateTimeUtc, toInputDate } from "@/lib/format";
 import { formatMoney, formatPercent } from "@/lib/money";
 
 import { revokeSignature } from "../actions";
@@ -419,8 +419,8 @@ export default async function ContractPage({
               </span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Fecha (UTC)</span>
-              <span>{formatDateTime(view.signedSignature.signedAt)}</span>
+              <span className="text-muted-foreground">Fecha</span>
+              <span>{formatDateTimeUtc(view.signedSignature.signedAt)}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">IP</span>

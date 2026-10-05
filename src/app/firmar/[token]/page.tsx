@@ -24,7 +24,7 @@ import {
 } from "@/lib/domain/enums";
 import { signSummaryBullets } from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatDateTimeUtc } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 import { SignForm } from "./sign-form";
@@ -199,8 +199,8 @@ export default async function SignPage({
           <CardContent className="grid gap-3">
             <dl className="grid gap-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Fecha de firma (UTC)</dt>
-                <dd>{formatDateTime(request.signedAt)}</dd>
+                <dt className="text-muted-foreground">Fecha de firma</dt>
+                <dd>{formatDateTimeUtc(request.signedAt)}</dd>
               </div>
               {request.documentSha256 ? (
                 <div className="grid gap-1">
