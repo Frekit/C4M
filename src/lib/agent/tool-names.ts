@@ -79,6 +79,7 @@ export const SENSITIVE_WRITE_TOOLS = new Set<string>([
   "createDraftContract",
   "queueSignatures",
   "preparePayoutBatch",
+  "markPublished",
 ]);
 
 export function isSensitiveWrite(name: string) {

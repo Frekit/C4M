@@ -26,6 +26,7 @@ import {
   resolveDeliverableState,
 } from "@/lib/domain/rules";
 import { queueUnsignedContracts } from "@/lib/domain/signature-send";
+import { getBaseUrl } from "@/lib/base-url";
 import {
   activateTalentLine,
   applyClientTalentStatus,
@@ -42,6 +43,7 @@ import { aiActorLabel } from "./config";
 import { isStrictIsoDate } from "./dates";
 import { boundId, type AgentRouteContext } from "./route-context";
 import { untrusted } from "./trust";
+import { isHttpUrl } from "./urls";
 
 export type AgentSession = {
   user: AppUser;
@@ -99,25 +101,45 @@ function assertScope(
   return null;
 }
 
+type ApprovalRecord = { type?: string; approvalId?: string; toolCallId?: string; approved?: boolean };
+
+function messageParts(message: unknown): ApprovalRecord[] {
+  if (!message || typeof message !== "object") return [];
+  const content = (message as { content?: unknown }).content;
+  if (!Array.isArray(content)) return [];
+  return content.filter((part): part is ApprovalRecord => Boolean(part) && typeof part === "object");
+}
+
+/**
+ * El id que se consume es el de la respuesta que el SDK ya verificó.
+ * Más de una petición para la misma llamada es un señuelo: no se ejecuta.
+ */
 export function approvalIdForCall(messages: unknown, toolCallId: string) {
   if (!Array.isArray(messages) || !toolCallId) return null;
+  const requests: string[] = [];
+  const approved = new Set<string>();
   for (const message of messages) {
-    if (!message || typeof message !== "object") continue;
-    const content = (message as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const part of content) {
-      if (!part || typeof part !== "object") continue;
-      const record = part as { type?: string; approvalId?: string; toolCallId?: string };
+    for (const part of messageParts(message)) {
       if (
-        record.type === "tool-approval-request" &&
-        record.toolCallId === toolCallId &&
-        typeof record.approvalId === "string"
+        part.type === "tool-approval-request" &&
+        part.toolCallId === toolCallId &&
+        typeof part.approvalId === "string"
       ) {
-        return record.approvalId;
+        requests.push(part.approvalId);
+      }
+      if (
+        part.type === "tool-approval-response" &&
+        part.approved === true &&
+        typeof part.approvalId === "string"
+      ) {
+        approved.add(part.approvalId);
       }
     }
   }
-  return null;
+  if (requests.length !== 1) return null;
+  const approvalId = requests[0];
+  if (!approvalId || !approved.has(approvalId)) return null;
+  return approvalId;
 }
 
 async function claimApproval(
@@ -126,10 +148,17 @@ async function claimApproval(
   options: ToolRunOptions
 ) {
   const approvalId = approvalIdForCall(options.messages, options.toolCallId);
-  if (!approvalId) return { ok: false as const, error: "Falta la aprobación." };
+  if (!approvalId || !options.toolCallId) {
+    return { ok: false as const, error: "Esa aprobación no es válida." };
+  }
   try {
     await prisma.agentApproval.create({
-      data: { id: approvalId, userId: session.user.id, toolName },
+      data: {
+        id: approvalId,
+        userId: session.user.id,
+        toolName,
+        toolCallId: options.toolCallId,
+      },
     });
   } catch (error) {
     const code =
@@ -207,8 +236,8 @@ export async function runSearchRoster(
     ok: true as const,
     items: rows.map((row) => ({
       id: row.id,
-      handle: row.handle,
-      displayName: row.displayName,
+      handle: untrusted(row.handle),
+      displayName: row.displayName ? untrusted(row.displayName) : null,
       hasContactEmail: Boolean(row.contactEmail?.trim()),
     })),
   };
@@ -283,15 +312,19 @@ export async function runGetContract(
   return {
     ok: true as const,
     id: contract.id,
-    code: contract.code,
+    code: untrusted(contract.code),
     status: contract.status,
-    handle: contract.creator.handle,
+    handle: untrusted(contract.creator.handle),
+    displayName: contract.creator.displayName ? untrusted(contract.creator.displayName) : null,
     hasContactEmail: Boolean(contract.creator.contactEmail?.trim()),
-    contactEmail: showEmail ? contract.creator.contactEmail : null,
-    clientName: contract.client?.name ?? null,
+    contactEmail:
+      showEmail && contract.creator.contactEmail
+        ? untrusted(contract.creator.contactEmail)
+        : null,
+    clientName: contract.client?.name ? untrusted(contract.client.name) : null,
     deliverableCount: contract.deliverableCount,
-    saleLabel: formatMoney(contract.salePriceCentsPerContent, "USD"),
-    costLabel: formatMoney(contract.costMinorPerContent, contract.costCurrency),
+    saleLabel: untrusted(formatMoney(contract.salePriceCentsPerContent, "USD")),
+    costLabel: untrusted(formatMoney(contract.costMinorPerContent, contract.costCurrency)),
     negativeMargin: totals.hasNegativeMargin,
     startsAt: contract.startsAt?.toISOString() ?? null,
     endsAt: contract.endsAt?.toISOString() ?? null,
@@ -305,9 +338,10 @@ export async function runGetContract(
     signature: contract.signatureRequests[0]
       ? {
           status: contract.signatureRequests[0].status,
-          recipientEmail: showEmail
-            ? contract.signatureRequests[0].recipientEmail
-            : null,
+          recipientEmail:
+            showEmail && contract.signatureRequests[0].recipientEmail
+              ? untrusted(contract.signatureRequests[0].recipientEmail)
+              : null,
         }
       : null,
   };
@@ -590,11 +624,43 @@ export async function runMarkPublished(
   };
 }
 
+export const PAYOUT_FILE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function deleteExpiredPayoutFiles(now = Date.now()) {
+  await prisma.agentPayoutFile.deleteMany({
+    where: { createdAt: { lt: new Date(now - PAYOUT_FILE_TTL_MS) } },
+  });
+}
+
+export async function openSignatureContractIds(campaignId: string | undefined) {
+  if (!campaignId) return [];
+  const contracts = await prisma.contract.findMany({
+    where: {
+      status: { in: [CONTRACT_STATUS.DRAFT, CONTRACT_STATUS.SENT] },
+      deliverables: { some: { campaignId } },
+    },
+    orderBy: [{ code: "asc" }, { id: "asc" }],
+    take: SIGNATURE_FILTER_BATCH,
+    select: { id: true },
+  });
+  return contracts.map((contract) => contract.id);
+}
+
+export async function openPayoutDeliverableIds(campaignId: string | undefined) {
+  if (!campaignId) return [];
+  const queues = await loadFinanceQueues({ campana: campaignId });
+  return buildZexelLote(queues.payoutGroups).itemIds;
+}
+
 export async function runQueueSignatures(
   session: AgentSession,
   input: ScopedInput & { contractIds?: string[]; expiresInDays?: number },
   options: ToolRunOptions
 ) {
+  const baseUrl = await getBaseUrl();
+  if (!isHttpUrl(baseUrl)) {
+    return { ok: false as const, error: "Falta la URL pública de la app." };
+  }
   const blocked = await beginWrite(
     session,
     "queueSignatures",
@@ -629,6 +695,7 @@ export async function runQueueSignatures(
     contractIds: contracts.map((contract) => contract.id),
     expiresInDays: days,
     createdBy: aiActorLabel(session.user.email),
+    baseUrl,
   });
 
   await recordAudit({
@@ -659,11 +726,9 @@ export async function runPreparePayoutBatch(
   if (blocked) return blocked;
 
   const campaignId = session.context.campaignId ?? "";
+  await deleteExpiredPayoutFiles();
   const queues = await loadFinanceQueues({ campana: campaignId });
-  const lote = buildZexelLote(
-    queues.payoutGroups,
-    input.deliverableIds?.length ? input.deliverableIds : undefined
-  );
+  const lote = buildZexelLote(queues.payoutGroups, input.deliverableIds);
   const total = payoutTotalsLabel(lote.ready);
   const file = await prisma.agentPayoutFile.create({
     data: {
@@ -704,6 +769,7 @@ export async function readAgentPayout(id: string, user: AppUser) {
   if (!can(user.role, "finance:manage")) {
     return Response.json({ error: "Tu rol no permite preparar lotes de pago." }, { status: 403 });
   }
+  await deleteExpiredPayoutFiles();
   const file = await prisma.agentPayoutFile.findUnique({ where: { id } });
   if (!file || file.userId !== user.id) {
     return Response.json({ error: "Ese lote no existe." }, { status: 404 });

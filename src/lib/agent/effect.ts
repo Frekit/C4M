@@ -6,8 +6,24 @@ import { buildZexelLote } from "@/lib/domain/zexel-batch";
 import { formatMoney } from "@/lib/money";
 import { resolveMergedQuote } from "@/lib/domain/talent-commands";
 
+function shown(value: string) {
+  const authoredWarning = value.startsWith("Aviso:");
+  const body = authoredWarning ? value.slice("Aviso:".length) : value;
+  const cleaned = body
+    .replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+  if (authoredWarning) return cleaned ? `Aviso: ${cleaned}` : "";
+  if (cleaned.startsWith("Aviso:")) return `«${cleaned}»`;
+  return cleaned;
+}
+
 function lines(...parts: Array<string | null | undefined | false>) {
-  return parts.filter((part): part is string => Boolean(part)).join("\n");
+  return parts
+    .filter((part): part is string => Boolean(part))
+    .map(shown)
+    .filter(Boolean)
+    .join("\n");
 }
 
 function moneyLine(
@@ -44,7 +60,7 @@ export async function describeWriteEffect(
   if (name === "createDraftContract") return describeContract(input);
   if (name === "markPublished") return describePublish(context, input);
   if (name === "queueSignatures") return describeSignatures(context, input);
-  if (name === "preparePayoutBatch") return describePayout(context);
+  if (name === "preparePayoutBatch") return describePayout(context, input);
   if (name === "draftClientMessage") return describeDraft(input);
   return "Cambio";
 }
@@ -225,7 +241,10 @@ async function describeSignatures(
   );
 }
 
-async function describePayout(context: { campaignId?: string }) {
+async function describePayout(
+  context: { campaignId?: string },
+  input: Record<string, unknown>
+) {
   if (!context.campaignId) {
     return "Preparar lote de pago\nAbre la campaña antes de hacer este cambio.";
   }
@@ -234,7 +253,10 @@ async function describePayout(context: { campaignId?: string }) {
     select: { name: true },
   });
   const queues = await loadFinanceQueues({ campana: context.campaignId });
-  const lote = buildZexelLote(queues.payoutGroups);
+  const selected = Array.isArray(input.deliverableIds)
+    ? input.deliverableIds.filter((id): id is string => typeof id === "string")
+    : undefined;
+  const lote = buildZexelLote(queues.payoutGroups, selected);
   return lines(
     `Preparar lote de pago · ${campaign?.name ?? "esta campaña"}`,
     `${lote.ready.length} listos · ${totalsLabel(lote.ready)}`,

@@ -503,12 +503,15 @@ model MailJob {
   @@index([contractId])
 }
 
-// Una aprobación del agente solo se ejecuta una vez. El id es el approvalId firmado.
+// Una aprobación del agente solo se ejecuta una vez.
+// id es el approvalId que firmó el SDK. toolCallId impide repetir la misma llamada
+// con un approvalId señuelo.
 model AgentApproval {
-  id        String   @id
-  userId    String
-  toolName  String
-  createdAt DateTime @default(now())
+  id         String   @id
+  toolCallId String   @unique
+  userId     String
+  toolName   String
+  createdAt  DateTime @default(now())
 }
 
 // El CSV del lote no vuelve al modelo. Se descarga con sesión y permiso.

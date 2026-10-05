@@ -25,8 +25,16 @@ const GENERIC_ERROR = "No he podido responder.";
 function messageChars(message: unknown) {
   if (!message || typeof message !== "object") return 0;
   const parts = (message as { parts?: unknown }).parts;
-  if (!Array.isArray(parts)) return JSON.stringify(message).length;
-  return parts.reduce<number>((sum, part) => sum + JSON.stringify(part).length, 0);
+  if (!Array.isArray(parts)) {
+    const content = (message as { content?: unknown }).content;
+    return typeof content === "string" ? content.length : 0;
+  }
+  return parts.reduce<number>((sum, part) => {
+    if (!part || typeof part !== "object") return sum;
+    const record = part as { type?: string; text?: string };
+    if (record.type === "text" && typeof record.text === "string") return sum + record.text.length;
+    return sum;
+  }, 0);
 }
 
 function lastUserText(messages: UIMessage[]) {

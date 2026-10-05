@@ -5,6 +5,8 @@ import { can, type Permission } from "@/lib/auth/permissions";
 
 import type { AgentSession, ScopedInput, ToolRunOptions } from "./commands";
 import {
+  openPayoutDeliverableIds,
+  openSignatureContractIds,
   previewPriceWarning,
   previewSignatureWarning,
   runAddToDesk,
@@ -22,6 +24,7 @@ import {
 } from "./commands";
 import { isStrictIsoDate } from "./dates";
 import { describeWriteEffect } from "./effect";
+import { isHttpUrl } from "./urls";
 
 const scope = {
   campaignId: z.string().optional(),
@@ -156,7 +159,7 @@ export function createC4mToolset(session: AgentSession) {
         ...scope,
         deliverableId: z.string(),
         contentDate: z.string().refine(isStrictIsoDate, "Fecha no válida."),
-        postUrl: z.url(),
+        postUrl: z.string().refine(isHttpUrl, "El enlace tiene que ser http o https."),
       }),
       execute: async (input, options) =>
         safeTool(() => runMarkPublished(session, input, options as ToolRunOptions)),
@@ -273,8 +276,24 @@ export function createC4mToolset(session: AgentSession) {
     setTalentStatus: bind,
     createDraftContract: bind,
     markPublished: bind,
-    queueSignatures: bind,
-    preparePayoutBatch: bind,
+    queueSignatures: async (input: ScopedInput & { contractIds?: string[] }) => {
+      const stamped = stamp(session, input);
+      const ids = stamped.contractIds?.filter(Boolean) ?? [];
+      if (ids.length > 0) return { ...stamped, contractIds: ids };
+      return {
+        ...stamped,
+        contractIds: await openSignatureContractIds(session.context.campaignId),
+      };
+    },
+    preparePayoutBatch: async (input: ScopedInput & { deliverableIds?: string[] }) => {
+      const stamped = stamp(session, input);
+      const ids = stamped.deliverableIds?.filter(Boolean) ?? [];
+      if (ids.length > 0) return { ...stamped, deliverableIds: ids };
+      return {
+        ...stamped,
+        deliverableIds: await openPayoutDeliverableIds(session.context.campaignId),
+      };
+    },
     draftClientMessage: bind,
   };
 

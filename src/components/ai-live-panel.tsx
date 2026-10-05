@@ -14,6 +14,7 @@ import { ApprovalCard, type ApprovalItem, type ApprovalUiState } from "@/compone
 import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { contextFromPathname, routeChip } from "@/lib/agent/route-context";
+import { publicAgentError } from "@/lib/agent/errors";
 import {
   approvalCardFromReason,
   isReadTool,
@@ -65,7 +66,8 @@ function rowState(part: ToolPart, status: string): ApprovalUiState {
 function rowWarning(part: ToolPart, state: ApprovalUiState) {
   if (state === "error") {
     const output = part.output as { error?: string } | undefined;
-    return output?.error || part.approval?.reason || part.errorText;
+    const text = output?.error || part.approval?.reason || part.errorText;
+    return text ? publicAgentError(text) : text;
   }
   return approvalCardFromReason(toolNameFromPart(part.type), part.approval?.requestReason).warning;
 }
