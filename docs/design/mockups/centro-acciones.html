@@ -1,0 +1,102 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Centro de acciones · C4M</title><link rel="stylesheet" href="base.css">
+<style>
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:8px 0 20px}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--e1);margin-bottom:28px}
+.strip .kpi+.kpi{border-left:1px solid var(--border)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.act{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--e1);margin-bottom:10px}
+.act-top{display:flex;gap:12px;padding:14px 16px;align-items:flex-start}
+.act-ic{width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;flex:none}
+.act-ic.w{background:var(--warning-muted);color:var(--warning)} .act-ic.i{background:var(--info-muted);color:var(--info)} .act-ic.s{background:var(--success-muted);color:var(--success)} .act-ic.d{background:var(--danger-muted);color:var(--danger)} .act-ic.b{background:var(--brand-muted);color:var(--brand)}
+.act-body{flex:1;min-width:0}
+.act-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-subtle);margin-bottom:2px}
+.act-title{font-weight:600;font-size:14.5px;line-height:21px}
+.act-sub{color:var(--fg-muted);font-size:13px;margin-top:2px}
+.act-cta{display:flex;gap:6px;align-items:center;flex:none}
+.opts{border-top:1px solid var(--border);padding:6px}
+.opt{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:var(--r-md)}
+.opt:hover,.opt.hover{background:var(--surface-2)}
+.opt .k{width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:grid;place-items:center;font-size:11.5px;font-weight:600;color:var(--fg-muted);background:var(--surface);font-family:var(--font-mono)}
+.opt .t{font-weight:500}
+.opt .s{font-size:12.5px;color:var(--fg-muted)}
+.opt .chev{margin-left:auto;color:var(--fg-subtle)}
+.opt.ai .k{background:var(--ai-muted);color:var(--ai);border-color:transparent}
+.avs{display:flex}.avs .ig{width:20px;height:20px;font-size:8.5px;border:2px solid var(--surface);margin-left:-6px}.avs .ig:first-child{margin-left:0}
+.side .card+.card{margin-top:16px}
+.tl{list-style:none;padding:4px 16px 12px}
+.tl li{display:grid;grid-template-columns:44px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:center}
+.tl li:last-child{border-bottom:0}
+.tl .d{font-size:11.5px;color:var(--fg-subtle);line-height:14px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:3px 0}
+.tl .d b{display:block;font-size:15px;line-height:18px;color:var(--fg);font-weight:600}
+.feed{list-style:none;padding:8px 16px 14px}
+.feed li{display:flex;gap:10px;font-size:13px;color:var(--fg-muted);padding:7px 0;line-height:18px}
+.feed b{color:var(--fg);font-weight:500}
+.done{display:flex;align-items:center;gap:8px;color:var(--fg-subtle);font-size:13px;padding:10px 4px}
+@media (max-width:1180px){.grid{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr;gap:16px}.side .card+.card{margin-top:0}}
+@media (max-width:760px){
+ .hero{flex-direction:column;align-items:flex-start;margin-top:4px}.hero .t-display{font-size:26px;line-height:32px}
+ .strip{grid-template-columns:1fr 1fr}.strip .kpi:nth-child(3){border-left:0}.strip .kpi:nth-child(n+3){border-top:1px solid var(--border)}
+ .act-top{flex-wrap:wrap}.act-cta{width:100%;padding-left:44px}.act-cta .btn{flex:1}
+ .side{grid-template-columns:1fr}
+}
+</style></head>
+<body data-nav="acciones"><div class="app"><div class="main">
+<header class="topbar"><div class="crumbs"><b>Centro de acciones</b></div>
+<div class="right"><button class="btn btn-ghost btn-sm hide-m"><i data-lucide="sparkles" class="i"></i>Preguntar <span class="kbd">⌘J</span></button><button class="btn btn-secondary btn-sm hide-m"><i data-lucide="plus" class="i"></i>Nuevo</button><button class="btn btn-ghost btn-icon only-m" aria-label="Buscar"><i data-lucide="search" class="i s20"></i></button></div></header>
+<main class="page">
+ <div class="hero"><div><div class="t-eyebrow" style="margin-bottom:6px">Lunes, 5 de octubre</div><h1 class="t-display" style="max-width:640px">Buenos días, Álvaro. <span class="muted">Hay 5 cosas que esperan una decisión tuya.</span></h1></div>
+ <div class="seg hide-m"><span class="on">Todo <span class="subtle">5</span></span><span>Firmas 1</span><span>Contenidos 3</span><span>Pagos 1</span></div></div>
+ <section class="strip" aria-label="Resumen">
+  <div class="kpi"><div class="t-l12 muted">Contratos en firma</div><div class="v">4</div><div class="d">1 caduca en 2 días</div></div>
+  <div class="kpi"><div class="t-l12 muted">Contenidos esta semana</div><div class="v">9</div><div class="d">5 programados · 4 pendientes</div></div>
+  <div class="kpi"><div class="t-l12 muted">Fecha pasada sin publicar</div><div class="v" style="color:var(--danger)">3</div><div class="d">Navidad 2026</div></div>
+  <div class="kpi"><div class="t-l12 muted">Listo para pagar</div><div class="v">18.400 €</div><div class="d">9 creators · 14 contenidos</div></div>
+ </section>
+ <div class="grid">
+ <section aria-labelledby="h-dec">
+  <div class="sec-h"><h2 id="h-dec" class="t-h16">Necesita tu decisión</h2><span class="pill warning no-dot">Urgente 1</span><span class="t-c13 subtle hide-m" style="margin-left:auto">J / K para moverte · E para resolver</span></div>
+  <article class="act" style="box-shadow:var(--e2);border-color:color-mix(in oklch,var(--warning-dot) 45%,var(--border))">
+   <div class="act-top"><div class="act-ic w"><i data-lucide="calendar-x-2" class="i"></i></div>
+    <div class="act-body"><div class="act-meta"><span style="width:6px;height:6px;border-radius:50%;background:var(--warning-dot)"></span>Navidad 2026 · Higgsfield · <span>desde el viernes</span></div>
+    <div class="act-title">3 contenidos tenían fecha el 2 oct y siguen sin publicar</div>
+    <div class="act-sub" style="display:flex;align-items:center;gap:8px"><span class="avs"><span class="ig">MM</span><span class="ig b">LT</span><span class="ig c">PF</span></span>@martamoda, @lauratravels y @pabloframes</div></div>
+   </div>
+   <div class="opts" role="list">
+    <div class="opt hover" role="listitem"><span class="k">A</span><div><div class="t">Mover la fecha al jueves 8 oct</div><div class="s">Cambia la fecha prevista de los 3 contenidos. El pago se recalcula desde la publicación.</div></div><i data-lucide="chevron-right" class="i chev"></i></div>
+    <div class="opt" role="listitem"><span class="k">B</span><div><div class="t">Ya están publicados: añadir los enlaces</div><div class="s">Pega el enlace de cada publicación y se marcan como publicados.</div></div><i data-lucide="chevron-right" class="i chev"></i></div>
+    <div class="opt ai" role="listitem"><span class="k">C</span><div><div class="t">Pedir otra cosa al asistente…</div><div class="s">Abre el panel ⌘J con estos 3 contenidos como contexto.</div></div><i data-lucide="sparkles" class="i chev" style="color:var(--ai)"></i></div>
+   </div>
+  </article>
+  <article class="act"><div class="act-top"><div class="act-ic b"><i data-lucide="file-clock" class="i"></i></div>
+   <div class="act-body"><div class="act-meta"><span class="mono">CTR-2026-004</span> · Navidad 2026 · enviado hace 5 días</div><div class="act-title">@lauratravels abrió el enlace de firma pero no ha firmado</div><div class="act-sub">El enlace caduca el miércoles 7 oct · 2 × Reel · 2.400,00 €</div></div>
+   <div class="act-cta"><button class="btn btn-ghost btn-sm">Copiar enlace</button><button class="btn btn-primary btn-sm"><i data-lucide="send" class="i"></i>Reenviar</button></div></div></article>
+  <article class="act"><div class="act-top"><div class="act-ic i"><i data-lucide="link-2-off" class="i"></i></div>
+   <div class="act-body"><div class="act-meta">Contenidos · Black Friday · Many Chat</div><div class="act-title">5 contenidos publicados sin enlace</div><div class="act-sub">Sin enlace no se pueden subir a la plataforma del cliente ni pagar.</div></div>
+   <div class="act-cta"><button class="btn btn-secondary btn-sm">Añadir enlaces</button></div></div></article>
+  <article class="act"><div class="act-top"><div class="act-ic s"><i data-lucide="wallet" class="i"></i></div>
+   <div class="act-body"><div class="act-meta">Finanzas · 3 campañas</div><div class="act-title">Lote de pago listo: 9 creators · 18.400 €</div><div class="act-sub">14 contenidos subidos al cliente con el plazo de pago cumplido.</div></div>
+   <div class="act-cta"><button class="btn btn-ghost btn-sm">Ver detalle</button><button class="btn btn-secondary btn-sm"><i data-lucide="check" class="i"></i>Preparar lote</button></div></div></article>
+  <article class="act"><div class="act-top"><div class="act-ic d"><i data-lucide="circle-x" class="i"></i></div>
+   <div class="act-body"><div class="act-meta">Navidad 2026 · Higgsfield · hace 3 h</div><div class="act-title">Higgsfield rechazó la subida de 1 contenido</div><div class="act-sub">Reel de @martamoda · «El enlace no corresponde a una publicación pública»</div></div>
+   <div class="act-cta"><button class="btn btn-secondary btn-sm">Revisar enlace</button></div></div></article>
+  <div class="done"><i data-lucide="circle-check" class="i" style="color:var(--success-dot)"></i>Resueltas hoy: 2 · <a href="#" style="color:var(--fg-muted)">Ver historial</a></div>
+ </section>
+ <aside class="side">
+  <section class="card"><div class="card-h"><h2 class="t-h14">Esta semana</h2><a class="t-l12 muted" style="margin-left:auto;text-decoration:none" href="#">Calendario</a></div>
+   <ul class="tl">
+    <li><div class="d">MAR<b>6</b></div><div><div class="t-l13">4 contenidos programados</div><div class="t-l12 subtle" style="font-weight:400">Navidad 2026</div></div><span class="pill info">Programado</span></li>
+    <li><div class="d">MIÉ<b>7</b></div><div><div class="t-l13">Caduca la firma · CTR-2026-004</div><div class="t-l12 subtle" style="font-weight:400">@lauratravels</div></div><span class="pill warning">Visto</span></li>
+    <li><div class="d">VIE<b>9</b></div><div><div class="t-l13">Vencen 6 pagos</div><div class="t-l12 subtle" style="font-weight:400">Black Friday · Many Chat</div></div><span class="pill neutral">Pago</span></li>
+   </ul></section>
+  <section class="card"><div class="card-h"><h2 class="t-h14">Actividad</h2></div>
+   <ul class="feed">
+    <li><span class="avatar sm">MM</span><span><b>@martamoda</b> firmó <span class="mono">CTR-2026-001</span> · 1 d</span></li>
+    <li><span class="avatar sm" style="background:var(--ai-muted);color:var(--ai);border:0"><i data-lucide="sparkles" class="i s14"></i></span><span><b>C4M IA</b> en nombre de <b>Álvaro</b>: 2 perfiles pasados a Aprobado · 1 d</span></li>
+    <li><span class="avatar sm">HG</span><span><b>Higgsfield</b> escribió en el hilo de Navidad 2026 · 2 d</span></li>
+   </ul></section>
+ </aside>
+ </div>
+</main></div></div>
+<script src="lucide.min.js"></script><script src="shell.js"></script></body></html>
