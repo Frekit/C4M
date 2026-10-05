@@ -14,7 +14,7 @@ import {
 import { can } from "@/lib/auth/permissions";
 import type { AppUser } from "@/lib/auth/types";
 import { getLogoutHref } from "@/lib/auth/urls";
-import { ROLE_LABELS } from "@/lib/domain/enums";
+import { ROLE_LABELS, ROLES } from "@/lib/domain/enums";
 
 function initials(name: string) {
   return name
@@ -135,9 +135,11 @@ export function AppNav({ user }: { user: AppUser | null }) {
               <DropdownMenuItem render={<Link href="/cuenta" />}>
                 Mi cuenta
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/estado" />}>
-                Estado del sistema
-              </DropdownMenuItem>
+              {user.role === ROLES.ADMIN ? (
+                <DropdownMenuItem render={<Link href="/estado" />}>
+                  Estado del sistema
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem render={<Link href="/auditoria" />}>
                 Auditoría
               </DropdownMenuItem>

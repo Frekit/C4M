@@ -1,11 +1,22 @@
+const MADRID = "Europe/Madrid";
+
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
   year: "numeric",
-  timeZone: "UTC",
+  timeZone: MADRID,
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: MADRID,
+});
+
+const dateTimeUtcFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
   year: "numeric",
@@ -22,6 +33,13 @@ export function formatDate(value: Date | string | null | undefined): string {
 export function formatDateTime(value: Date | string | null | undefined): string {
   if (!value) return "—";
   return dateTimeFormatter.format(new Date(value));
+}
+
+// Huella legal: auditoría y la aceptación de la firma. El resto de la app
+// habla en hora de Madrid, sin sufijo.
+export function formatDateTimeUtc(value: Date | string | null | undefined): string {
+  if (!value) return "—";
+  return `${dateTimeUtcFormatter.format(new Date(value))} UTC`;
 }
 
 export function toInputDate(value: Date | string | null | undefined): string {

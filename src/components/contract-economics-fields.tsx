@@ -304,7 +304,7 @@ export function ContractEconomicsFields({
               <dt className="text-muted-foreground">Coste en USD</dt>
               <dd>{formatMoney(summary.costTotalUsd, "USD")}</dd>
             </div>
-            <Separator className="my-1" />
+            <div className="border-t" />
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">Margen</dt>
               <dd

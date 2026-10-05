@@ -82,7 +82,11 @@ export function ContractChain({
               </div>
 
               {contract.kind === CONTRACT_KIND.CONDITIONS_ANNEX ? null : (
-                <Progress value={progress.ratio * 100} className="mt-2 h-1.5" />
+                <Progress
+                  value={progress.ratio * 100}
+                  aria-label="Contenidos publicados del contrato"
+                  className="mt-2 h-1.5"
+                />
               )}
             </Link>
           </li>

@@ -17,11 +17,12 @@ const PUBLIC_PREFIXES = [
   "/sin-acceso",
   "/firmar",
   "/hablar",
+  "/invitacion",
   "/auth",
   "/api/salud",
 ];
 
-function isPublicPath(pathname: string) {
+export function isPublicPath(pathname: string) {
   return PUBLIC_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

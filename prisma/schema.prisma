@@ -358,11 +358,15 @@ model CampaignMessage {
   authorKind  String
   authorLabel String
   body        String
+  // INTERNAL | SHARED. Las consultas a la mesa son internas. Solo lo
+  // marcado como visible para el cliente (y sus respuestas) sale del equipo.
+  visibility  String   @default("INTERNAL")
   createdAt   DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, createdAt])
+  @@index([campaignId, visibility])
 }
 
 // --- Firma del contrato por el talento o su agencia ---

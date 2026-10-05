@@ -16,7 +16,7 @@ import {
   privacyCopy,
 } from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTimeUtc } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 const PAGE_WIDTH = 595.28;
@@ -351,7 +351,7 @@ export async function buildContractPdf(
     paragraph(
       `Documento aceptado y firmado electrónicamente por ${input.signature.signerFullName ?? input.signature.recipientEmail}.`
     );
-    keyValue("Fecha y hora (UTC)", formatDateTime(input.signature.signedAt));
+    keyValue("Fecha y hora", formatDateTimeUtc(input.signature.signedAt));
     keyValue("Email del firmante", input.signature.recipientEmail);
     keyValue("Dirección IP", input.signature.signerIp ?? "no registrada");
     cursor.y -= 4;

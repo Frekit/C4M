@@ -1,5 +1,6 @@
 import { ChevronDownIcon } from "lucide-react";
 
+import { fieldDescribedBy } from "@/components/field-described-by";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,11 @@ export function NativeSelectField({
   disabled?: boolean;
   className?: string;
 }) {
+  const { descriptionId, errorId, describedBy } = fieldDescribedBy(name, {
+    description: Boolean(description) && !error,
+    error: Boolean(error),
+  });
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Label htmlFor={name}>{label}</Label>
@@ -39,7 +45,8 @@ export function NativeSelectField({
           defaultValue={defaultValue ?? options[0]?.value}
           required={required}
           disabled={disabled}
-          aria-invalid={Boolean(error)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
           className="h-8 w-full appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30"
         >
           {options.map((option) => (
@@ -50,9 +57,15 @@ export function NativeSelectField({
         </select>
         <ChevronDownIcon className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 text-muted-foreground" />
       </div>
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p id={errorId} className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
       {!error && description ? (
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p id={descriptionId} className="text-xs text-muted-foreground">
+          {description}
+        </p>
       ) : null}
     </div>
   );

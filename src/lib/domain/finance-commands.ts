@@ -182,7 +182,7 @@ export function assertCanMarkPaid(
     return {
       ok: false,
       error:
-        "Solo se puede pagar lo que ya está en cola: submitted en plataforma, o el pack cerrado.",
+        "Solo se puede pagar lo que ya está en cola: marcado en plataforma, o con el pack cerrado.",
     };
   }
 

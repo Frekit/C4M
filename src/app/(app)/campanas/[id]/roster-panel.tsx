@@ -1,0 +1,471 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import {
+  saveCampaignTalentPrices,
+  setCampaignTalentStatus,
+  activateCampaignTalent,
+  type CampaignRosterResult,
+} from "@/app/(app)/campanas/roster-actions";
+import { AddTalentPicker } from "./add-talent-picker";
+import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/field";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import type {
+  CampaignProposalRow,
+  CampaignRosterRow,
+  RosterPick,
+} from "@/lib/domain/campaign-roster";
+import {
+  canActivateLine,
+  canMarkClientDecision,
+  policyFromCampaign,
+  quoteIsFrozen,
+} from "@/lib/domain/campaign-desk";
+import {
+  CAMPAIGN_APPROVAL,
+  CAMPAIGN_TALENT_STATUS,
+  CAMPAIGN_TALENT_STATUS_LABELS,
+  type CampaignApproval,
+  type CampaignEngagement,
+  type CampaignTalentStatus,
+} from "@/lib/domain/enums";
+import type { RosterCatalog } from "@/lib/domain/roster-catalog";
+import { labelForSlug } from "@/lib/domain/roster-labels";
+import { CURRENCIES } from "@/lib/currencies";
+import {
+  COST_PLATFORM,
+  COST_PLATFORM_LABELS,
+  formatsForPlatform,
+  isCostPlatform,
+  quotePackageText,
+} from "@/lib/domain/creator-cost-quote";
+import { formatMoney, fromMinorUnits } from "@/lib/money";
+
+import { AddToProposalForm } from "./proposal-panel";
+
+function draftTitleFor(
+  proposalId: string | null,
+  drafts: CampaignProposalRow[]
+) {
+  if (!proposalId) return null;
+  return drafts.find((proposal) => proposal.id === proposalId)?.title ?? null;
+}
+
+function waitingCopy(
+  status: string,
+  inDraft: string | null,
+  clientApproves: boolean
+) {
+  if (status === CAMPAIGN_TALENT_STATUS.REJECTED) {
+    return "Descartado. Corrige la línea y mételo en otra oleada si vuelve a entrar.";
+  }
+  if (inDraft) {
+    return `Ya está en «${inDraft}», sin enviar. Márcala enviada cuando el lote esté cerrado.`;
+  }
+  if (clientApproves && status === CAMPAIGN_TALENT_STATUS.READY) {
+    return "Lista para una oleada. Márcala enviada cuando el lote esté cerrado. El cliente no la ve: se habla en el hilo.";
+  }
+  return null;
+}
+
+function toastResult(state: CampaignRosterResult | null) {
+  if (!state) return;
+  if (state.ok) toast.success("Mesa actualizada.");
+  else if (state.error) toast.error(state.error);
+}
+
+function QuoteForm({ row }: { row: CampaignRosterRow }) {
+  const [state, formAction, pending] = useActionState<
+    CampaignRosterResult | null,
+    FormData
+  >(saveCampaignTalentPrices, null);
+
+  useEffect(() => toastResult(state), [state]);
+  const initialPlatform =
+    row.contentPlatform && isCostPlatform(row.contentPlatform)
+      ? row.contentPlatform
+      : COST_PLATFORM.INSTAGRAM;
+  const [platform, setPlatform] = useState(initialPlatform);
+  const [format, setFormat] = useState(row.contentFormat ?? "");
+
+  const packaged = Boolean(format);
+  const defaultCost = packaged ? row.packageCostMinor : row.costMinorPerContent;
+  const defaultCurrency = row.costCurrency ?? "EUR";
+
+  return (
+    <form
+      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.packageCostMinor ?? ""}-${row.costMinorPerContent ?? ""}-${row.contentPlatform ?? ""}-${row.contentFormat ?? ""}-${row.costCurrency ?? ""}`}
+      action={formAction}
+      className="flex flex-wrap items-end gap-2"
+    >
+      <input type="hidden" name="talentId" value={row.id} />
+      <Field id={`${row.id}-contentPlatform`} label="Red" className="gap-1">
+        <select
+          name="contentPlatform"
+          value={platform}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (!isCostPlatform(next)) return;
+            setPlatform(next);
+            const formats = formatsForPlatform(next);
+            if (format && !formats.some((item) => item.code === format)) {
+              setFormat("");
+            }
+          }}
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          {Object.values(COST_PLATFORM).map((value) => (
+            <option key={value} value={value}>
+              {COST_PLATFORM_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field id={`${row.id}-contentFormat`} label="Formato" className="gap-1">
+        <select
+          name="contentFormat"
+          value={format}
+          onChange={(event) => setFormat(event.target.value)}
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          <option value="">Sin formato</option>
+          {formatsForPlatform(platform).map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field id={`${row.id}-deliverableCount`} label="Piezas" className="gap-1">
+        <Input
+          name="deliverableCount"
+          defaultValue={row.deliverableCount ?? ""}
+          placeholder="3"
+          className="w-16"
+        />
+      </Field>
+      <Field id={`${row.id}-saleUsd`} label="Venta USD / pieza" className="gap-1">
+        <Input
+          name="saleUsd"
+          defaultValue={
+            row.salePriceCentsPerContent != null
+              ? String(row.salePriceCentsPerContent / 100)
+              : ""
+          }
+          placeholder="250"
+          className="w-24"
+        />
+      </Field>
+      <Field
+        id={`${row.id}-cost`}
+        label={packaged || row.contentFormat ? "Coste del paquete" : "Coste / pieza"}
+        className="gap-1"
+      >
+        <Input
+          name="cost"
+          defaultValue={
+            defaultCost != null
+              ? String(fromMinorUnits(defaultCost, defaultCurrency))
+              : ""
+          }
+          placeholder="80"
+          className="w-20"
+        />
+      </Field>
+      <Field id={`${row.id}-currency`} label="Moneda" className="gap-1">
+        <select
+          name="currency"
+          defaultValue={defaultCurrency}
+          className="h-8 w-24 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          {CURRENCIES.some((item) => item.code === defaultCurrency) ? null : (
+            <option value={defaultCurrency}>{defaultCurrency}</option>
+          )}
+          {CURRENCIES.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.code}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Button type="submit" size="sm" variant="outline" disabled={pending}>
+        {pending ? "…" : "Guardar línea"}
+      </Button>
+      {format ? (
+        <p className="w-full text-xs text-muted-foreground">
+          Paquete a medida: el coste es el total cerrado, no la tarifa básica
+          multiplicada por las piezas.
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export function CampaignRosterPanel({
+  campaignId,
+  canWrite,
+  rows,
+  picks,
+  catalog,
+  approvalMode,
+  engagementKind,
+  budgetSaleCents,
+  drafts,
+  hasClient,
+}: {
+  campaignId: string;
+  canWrite: boolean;
+  rows: CampaignRosterRow[];
+  picks: RosterPick[];
+  catalog: RosterCatalog;
+  approvalMode: CampaignApproval;
+  engagementKind: CampaignEngagement;
+  budgetSaleCents: number | null;
+  drafts: CampaignProposalRow[];
+  hasClient: boolean;
+}) {
+  const policy = policyFromCampaign({
+    engagementKind,
+    approvalMode,
+    budgetSaleCents,
+  });
+  const clientApproves = approvalMode === CAMPAIGN_APPROVAL.CLIENT_APPROVES;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Mesa de la campaña</CardTitle>
+        <CardDescription>
+          Para ver a todo el roster con views, tarifas y marcas, abre la{" "}
+          <Link
+            href={`/campanas/${campaignId}/planilla`}
+            className="underline underline-offset-4"
+          >
+            planilla
+          </Link>
+          . Aquí puedes marcar unos pocos o pegar handles. Entran sin precio.
+          Para activar hacen falta piezas, venta y coste.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-6">
+        {canWrite ? (
+          <AddTalentPicker
+            campaignId={campaignId}
+            picks={picks}
+            catalog={catalog}
+          />
+        ) : null}
+
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Todavía no hay perfiles en esta campaña.
+          </p>
+        ) : (
+          <ul className="grid gap-4">
+            {rows.map((row) => {
+              const activate = canActivateLine(row, policy, rows);
+              const inDraft = draftTitleFor(row.proposalId, drafts);
+              const saleText =
+                row.saleLabel && row.salePriceCentsPerContent != null
+                  ? row.deliverableCount && row.deliverableCount > 1
+                    ? `venta ${row.saleLabel}/pieza · ${formatMoney(
+                        row.salePriceCentsPerContent * row.deliverableCount,
+                        "USD"
+                      )} la línea`
+                    : `venta ${row.saleLabel}/pieza`
+                  : null;
+              return (
+                <li key={row.id} className="grid gap-2 rounded-lg border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <Link
+                        href={`/creators/${row.creator.id}`}
+                        className="font-medium underline underline-offset-4"
+                      >
+                        @{row.creator.handle}
+                      </Link>
+                      {row.contract ? (
+                        <p className="text-xs">
+                          <Link
+                            href={`/contratos/${row.contract.id}`}
+                            className="underline underline-offset-4"
+                          >
+                            Contrato {row.contract.code}
+                          </Link>
+                        </p>
+                      ) : null}
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          labelForSlug(catalog.countries, row.creator.country),
+                          labelForSlug(
+                            catalog.profileTypes,
+                            row.creator.profileType
+                          ),
+                          row.contentFormat && row.deliverableCount
+                            ? (quotePackageText(
+                                row.contentPlatform,
+                                row.contentFormat,
+                                row.deliverableCount
+                              ) ?? `${row.deliverableCount} piezas`)
+                            : row.deliverableCount
+                              ? `${row.deliverableCount} piezas`
+                              : null,
+                          saleText,
+                          row.packageCostMinor != null && row.costLabel
+                            ? `paquete ${row.costLabel}`
+                            : row.costLabel
+                              ? `coste ${row.costLabel}`
+                              : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Sin país, tipo ni precios"}
+                      </p>
+                      {row.creator.costQuotes.length > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Tarifas básicas:{" "}
+                          {row.creator.costQuotes
+                            .map((quote) => `${quote.label} ${quote.amountLabel}`)
+                            .join(" · ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Badge variant="outline">
+                      {
+                        CAMPAIGN_TALENT_STATUS_LABELS[
+                          row.status as CampaignTalentStatus
+                        ]
+                      }
+                    </Badge>
+                  </div>
+
+                  {row.others.length > 0 ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      También está en{" "}
+                      {row.others
+                        .map(
+                          (item) =>
+                            `${item.clientName ? `${item.clientName} · ` : ""}${item.campaignName} (${CAMPAIGN_TALENT_STATUS_LABELS[item.talentStatus]})`
+                        )
+                        .join(", ")}
+                      .
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No aparece en otra campaña.
+                    </p>
+                  )}
+
+                  {canWrite && !quoteIsFrozen(row.status) ? (
+                    <div className="grid gap-3">
+                      <QuoteForm row={row} />
+                      {row.status === CAMPAIGN_TALENT_STATUS.READY ||
+                      row.status === CAMPAIGN_TALENT_STATUS.ROSTER ? (
+                        inDraft ? null : (
+                          <AddToProposalForm
+                            talentId={row.id}
+                            drafts={drafts}
+                          />
+                        )
+                      ) : null}
+                      {activate.ok && hasClient ? (
+                        <form action={activateCampaignTalent}>
+                          <input type="hidden" name="talentId" value={row.id} />
+                          <Button type="submit" size="sm">
+                            Activar contrato
+                          </Button>
+                        </form>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {waitingCopy(row.status, inDraft, clientApproves) ??
+                            (activate.ok
+                              ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
+                              : activate.error)}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {canWrite &&
+                  clientApproves &&
+                  canMarkClientDecision(approvalMode, row.status) ? (
+                    <div className="grid gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Esto lo anota el equipo, con lo que se dijo en el hilo.
+                        El cliente no pulsa estos botones.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          CAMPAIGN_TALENT_STATUS.APPROVED,
+                          CAMPAIGN_TALENT_STATUS.REJECTED,
+                        ] as const
+                      ).map((status) => (
+                        <form key={status} action={setCampaignTalentStatus}>
+                          <input
+                            type="hidden"
+                            name="talentId"
+                            value={row.id}
+                          />
+                          <input type="hidden" name="status" value={status} />
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant={
+                              row.status === status ? "default" : "ghost"
+                            }
+                          >
+                            {CAMPAIGN_TALENT_STATUS_LABELS[status]}
+                          </Button>
+                        </form>
+                      ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {canWrite &&
+                  quoteIsFrozen(row.status) &&
+                  row.status !== CAMPAIGN_TALENT_STATUS.REJECTED ? (
+                    <div className="grid gap-3">
+                      {row.status === CAMPAIGN_TALENT_STATUS.APPROVED &&
+                      activate.ok &&
+                      hasClient ? (
+                        <form action={activateCampaignTalent}>
+                          <input type="hidden" name="talentId" value={row.id} />
+                          <Button type="submit" size="sm">
+                            Activar contrato
+                          </Button>
+                        </form>
+                      ) : row.status !== CAMPAIGN_TALENT_STATUS.ACTIVE &&
+                        (activate.ok ? !hasClient : true) ? (
+                        <p className="text-xs text-muted-foreground">
+                          {activate.ok
+                            ? "Esta campaña no tiene cliente. Elígilo arriba antes de activar."
+                            : activate.error}
+                        </p>
+                      ) : null}
+                      <p className="text-xs text-muted-foreground">
+                        Cotización fijada. Para cambiarla, abre otra línea.
+                      </p>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

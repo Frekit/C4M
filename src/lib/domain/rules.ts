@@ -155,7 +155,7 @@ export function resolveDeliverableState(
         ok: false,
         error:
           status === DELIVERABLE_STATUS.SUBMITTED
-            ? "Para marcarlo como submitted hace falta la fecha."
+            ? "Para marcarlo en plataforma hace falta la fecha."
             : "Para marcarlo como publicado hace falta la fecha.",
       };
     }
@@ -165,7 +165,7 @@ export function resolveDeliverableState(
         ok: false,
         error:
           status === DELIVERABLE_STATUS.SUBMITTED
-            ? "Para marcarlo como submitted hace falta el enlace del contenido."
+            ? "Para marcarlo en plataforma hace falta el enlace del contenido."
             : "Para marcarlo como publicado hace falta el enlace del contenido.",
       };
     }

@@ -18,19 +18,19 @@ export function CreatorCombobox({
   const listId = useId();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<CreatorOption | null>(selected ?? null);
+  const [seenSelected, setSeenSelected] = useState(selected);
   const [items, setItems] = useState<CreatorOption[]>([]);
   const [open, setOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  if (selected !== seenSelected) {
+    setSeenSelected(selected);
     setPicked(selected ?? null);
-  }, [selected]);
+    setItems([]);
+  }
 
   useEffect(() => {
-    if (picked || query.trim().length < 1) {
-      setItems([]);
-      return;
-    }
+    if (picked || query.trim().length < 1) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -85,13 +85,19 @@ export function CreatorCombobox({
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setQuery(next);
+            if (next.trim().length < 1) setItems([]);
+          }}
           onFocus={() => items.length > 0 && setOpen(true)}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
           placeholder="Buscar handle…"
           autoComplete="off"
+          role="combobox"
           aria-autocomplete="list"
-          aria-controls={listId}
+          aria-expanded={open && items.length > 0}
+          aria-controls={open && items.length > 0 ? listId : undefined}
           className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
         />
       )}
@@ -106,6 +112,7 @@ export function CreatorCombobox({
               <button
                 type="button"
                 role="option"
+                aria-selected={false}
                 className="flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {

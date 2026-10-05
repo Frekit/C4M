@@ -1,4 +1,4 @@
-import { extractInstagramHandle } from "@/lib/domain/validation";
+import { extractInstagramHandle } from "@/lib/domain/instagram-handle";
 
 export type CreatorImportRow = {
   line: number;
