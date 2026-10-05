@@ -24,14 +24,14 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-// El saludo (display-30, peso 500) es el LCP de /. Un solo corte latin
-// se precarga; Geist no. `optional` evita que un swap tardío en 4G lento
-// retrase el LCP: si el archivo llega antes del primer pintado, se usa.
+// El saludo (display-30, peso 500) es el LCP de /. Se precarga solo ese
+// corte latin; Geist no. `swap` pinta el fallback de inmediato: `optional`
+// dejaba el titular invisible hasta la fuente y el LCP de laboratorio subía.
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
   weight: "500",
-  display: "optional",
+  display: "swap",
   preload: true,
   adjustFontFallback: true,
 });
