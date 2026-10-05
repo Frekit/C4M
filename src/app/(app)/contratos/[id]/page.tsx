@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { PageShell } from "@/components/page-shell";
+import { SetCrumbs } from "@/components/shell-context";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { FileTextIcon, RefreshCwIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 
 import { ContractChain } from "@/components/contract-chain";
 import { CopyButton } from "@/components/copy-button";
 import { PayeeCard } from "@/components/payee-card";
-import {
-  ContractStatusBadge,
-  SignatureStatusBadge,
-} from "@/components/status-badge";
+import { SignatureStatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,8 +34,10 @@ import {
   CONTRACT_KIND,
   CONTRACT_KIND_LABELS,
   CONTRACT_STATUS,
+  CONTRACT_STATUS_LABELS,
   SETTLEMENT_MODE,
   type ContractKind,
+  type ContractStatus,
 } from "@/lib/domain/enums";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
 import { loadPackSummaries } from "@/lib/domain/pack-sync";
@@ -48,21 +47,45 @@ import { formatMoney, formatPercent } from "@/lib/money";
 
 import { revokeSignature } from "../actions";
 import { ConditionsAnnexForm } from "./conditions-annex-form";
+import { ContractCta } from "./contract-cta";
+import { ContractFrame } from "./contract-frame";
 import { DangerZone } from "./danger-zone";
 import { DeliverableList } from "./deliverable-list";
 import { ParticularsForm } from "./particulars-form";
 import { SendSignatureCard } from "./send-signature-card";
+import type { StatusTone } from "@/components/status-pill";
 
 export const metadata: Metadata = {
   title: "Contrato",
 };
 
+const TABS = ["resumen", "contenidos", "firma", "historial"] as const;
+type ContractTab = (typeof TABS)[number];
+
+function contractTone(status: string): StatusTone {
+  if (status === CONTRACT_STATUS.SIGNED) return "success";
+  if (status === CONTRACT_STATUS.SENT) return "info";
+  if (status === CONTRACT_STATUS.CANCELLED) return "destructive";
+  return "neutral";
+}
+
+function contractStep(status: string) {
+  if (status === CONTRACT_STATUS.DRAFT) return 0;
+  if (status === CONTRACT_STATUS.SENT) return 1;
+  if (status === CONTRACT_STATUS.SIGNED) return 2;
+  if (status === CONTRACT_STATUS.COMPLETED || status === CONTRACT_STATUS.RENEWED) return 3;
+  return -1;
+}
+
 export default async function ContractPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pestana?: string; pagina?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const user = await requireUser(`/contratos/${id}`);
 
   const contract = await getContractDetail(id);
@@ -116,70 +139,181 @@ export default async function ContractPage({
     },
   });
 
-  return (
-    <PageShell width="default">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-heading-24">
-              {contract.code}
-            </h1>
-            <ContractStatusBadge status={contract.status} />
-            <Badge variant="outline">
-              {CONTRACT_KIND_LABELS[contract.kind as ContractKind]}
-            </Badge>
-            {contract.client ? (
-              <Badge variant="secondary">{contract.client.name}</Badge>
-            ) : null}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            <Link
-              href={`/creators/${contract.creatorId}`}
-              className="hover:underline"
-            >
-              @{contract.creator.handle}
-            </Link>
-            {isAnnex && contract.parent
-              ? ` · anexo de contenidos de ${contract.parent.code}`
-              : isConditionsAnnex && contract.parent
-                ? ` · anexo de condiciones de ${contract.parent.code}`
-                : ""}
-            {" · creado el "}
-            {formatDate(contract.createdAt)}
-          </p>
-        </div>
+  const tab: ContractTab = TABS.includes(query.pestana as ContractTab)
+    ? (query.pestana as ContractTab)
+    : "resumen";
+  const page = Math.max(1, Number.parseInt(query.pagina ?? "1", 10) || 1);
+  const pageSize = 20;
+  const [siblings, history] = await Promise.all([
+    prisma.contract.findMany({
+      where: contract.clientId
+        ? { clientId: contract.clientId, status: { not: CONTRACT_STATUS.CANCELLED } }
+        : { id: contract.id },
+      orderBy: { code: "asc" },
+      select: { id: true, code: true },
+      take: 80,
+    }),
+    prisma.auditEvent.findMany({
+      where: {
+        OR: [
+          { entityType: "Contract", entityId: contract.id },
+          {
+            entityType: "Deliverable",
+            entityId: { in: contract.deliverables.map((item) => item.id) },
+          },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
+  ]);
+  const siblingIndex = Math.max(
+    0,
+    siblings.findIndex((item) => item.id === contract.id)
+  );
+  const previous = siblingIndex > 0 ? siblings[siblingIndex - 1] : null;
+  const following =
+    siblingIndex < siblings.length - 1 ? siblings[siblingIndex + 1] : null;
+  const dated = contract.deliverables.filter(
+    (item) => item.scheduledFor || item.publishedAt
+  ).length;
+  const checklist = [
+    {
+      ok: contract.deliverables.length > 0 && dated === contract.deliverables.length,
+      label:
+        contract.deliverables.length > 0
+          ? `${dated} de ${contract.deliverables.length} contenidos con fecha`
+          : "Sin contenidos",
+      href: `/contratos/${contract.id}?pestana=contenidos`,
+    },
+    {
+      ok: contract.salePriceCentsPerContent > 0 && contract.costMinorPerContent > 0,
+      label: "Venta y coste definidos",
+      href: `/contratos/${contract.id}?pestana=resumen`,
+    },
+    {
+      ok: (view.totals.marginRatio ?? 0) > 0,
+      label: "Margen > 0",
+      href: `/contratos/${contract.id}?pestana=resumen`,
+    },
+    {
+      ok: Boolean(contract.startsAt && contract.endsAt),
+      label: "Vigencia",
+      href: `/contratos/${contract.id}?pestana=resumen`,
+    },
+    {
+      ok: Boolean(contract.creator.contactEmail),
+      label: "Email del creator",
+      href: `/creators/${contract.creatorId}`,
+    },
+  ];
+  const missing = checklist.find((item) => !item.ok);
+  const blockReason =
+    contract.status === CONTRACT_STATUS.DRAFT && missing
+      ? `Antes de enviar falta: ${missing.label}`
+      : null;
+  const campaignName =
+    contract.deliverables.find((item) => item.campaign)?.campaign?.name ?? null;
+  const party = `${contract.creator.displayName || `@${contract.creator.handle}`} × ${contract.client?.name ?? "sin cliente"}`;
+  const mapped = contract.deliverables.map((item) => ({
+    id: item.id,
+    position: item.position,
+    status: item.status,
+    campaignId: item.campaignId,
+    contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
+    paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
+    postUrl: item.postUrl,
+    isLate: isDeliverableLate(item),
+    costMinor: contract.costMinorPerContent,
+    costCurrency: contract.costCurrency,
+    contractSigned: isSigned,
+    pack:
+      item.campaignId &&
+      settlementPolicyOf({
+        client: contract.client,
+        campaign: item.campaign,
+      })?.settlementMode === SETTLEMENT_MODE.PACK
+        ? (packs.get(packKey(item.campaignId, contract.creatorId)) ?? null)
+        : null,
+  }));
+  const pageItems = mapped.slice((page - 1) * pageSize, page * pageSize);
+  const pageCount = Math.max(1, Math.ceil(mapped.length / pageSize));
+  const activeSignature = view.activeSignature;
 
-        <div className="flex flex-wrap gap-2">
+  return (
+    <PageShell width="default" className="pb-0">
+      <SetCrumbs
+        crumbs={[
+          { label: "Contratos", href: "/contratos" },
+          { label: contract.code },
+        ]}
+      />
+      <ContractFrame
+        code={contract.code}
+        title={party}
+        meta={[
+          campaignName,
+          `${contract.deliverableCount} contenidos`,
+          `venta ${formatMoney(view.totals.saleTotalCents, "USD")}`,
+          isAnnex && contract.parent
+            ? `anexo de ${contract.parent.code}`
+            : isConditionsAnnex && contract.parent
+              ? `anexo de condiciones de ${contract.parent.code}`
+              : null,
+          `${CONTRACT_KIND_LABELS[contract.kind as ContractKind]} · creado el ${formatDate(contract.createdAt)}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        statusLabel={CONTRACT_STATUS_LABELS[contract.status as ContractStatus]}
+        tone={contractTone(contract.status)}
+        step={contractStep(contract.status)}
+        tab={tab}
+        basePath={`/contratos/${contract.id}`}
+        contentCount={contract.deliverables.length}
+        prevHref={previous ? `/contratos/${previous.id}?pestana=${tab}` : null}
+        nextHref={following ? `/contratos/${following.id}?pestana=${tab}` : null}
+        positionLabel={
+          siblings.length > 1 ? `${siblingIndex + 1}/${siblings.length}` : null
+        }
+        checklist={checklist}
+        hint={
+          blockReason ??
+          (activeSignature
+            ? `Enlace para ${activeSignature.recipientEmail}`
+            : "Un solo paso principal, según el estado del contrato.")
+        }
+        secondary={
           <Button
             variant="outline"
-            size="sm"
             nativeButton={false}
             render={
-              <a
-                href={`/contratos/${contract.id}/documento`}
-                target="_blank"
-                rel="noreferrer"
-              />
+              <a href={`/contratos/${contract.id}/documento`} target="_blank" rel="noreferrer" />
             }
           >
             <FileTextIcon />
             Ver PDF
           </Button>
-          {can(user.role, "contracts:renew") &&
-          !isCancelled &&
-          !isConditionsAnnex ? (
-            <Button
-              size="sm"
-              nativeButton={false}
-              render={<Link href={`/contratos/${contract.id}/renovar`} />}
-            >
-              <RefreshCwIcon />
-              Ampliar o renovar
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
+        }
+        primary={
+          <ContractCta
+            status={contract.status}
+            contractId={contract.id}
+            canSend={can(user.role, "signature:send") && !isCancelled}
+            canRenew={can(user.role, "contracts:renew") && !isConditionsAnnex}
+            blockReason={blockReason}
+            defaultEmail={contract.creator.contactEmail}
+            signatureUrl={
+              activeSignature ? `${baseUrl}/firmar/${activeSignature.token}` : null
+            }
+            requestId={activeSignature?.id ?? null}
+            renewHref={`/contratos/${contract.id}/renovar`}
+            pdfHref={`/contratos/${contract.id}/documento`}
+            contentsHref={`/contratos/${contract.id}?pestana=contenidos`}
+          />
+        }
+      >
+      {tab === "resumen" ? (
+      <>
       {isCancelled ? (
         <Alert variant="destructive">
           <AlertTitle>Contrato cancelado</AlertTitle>
@@ -359,8 +493,10 @@ export default async function ContractPage({
           )}
         </CardContent>
       </Card>
+      </>
+      ) : null}
 
-      {isConditionsAnnex ? null : (
+      {tab === "contenidos" && !isConditionsAnnex ? (
       <Card>
         <CardHeader>
           <CardTitle>Contenidos</CardTitle>
@@ -380,33 +516,51 @@ export default async function ContractPage({
               name: campaign.name,
               clientName: campaign.client?.name ?? null,
             }))}
-            deliverables={contract.deliverables.map((item) => ({
-              id: item.id,
-              position: item.position,
-              status: item.status,
-              campaignId: item.campaignId,
-              contentDate: toInputDate(item.publishedAt ?? item.scheduledFor),
-              paymentDueAt: item.paymentDueAt?.toISOString() ?? null,
-              postUrl: item.postUrl,
-              isLate: isDeliverableLate(item),
-              costMinor: contract.costMinorPerContent,
-              costCurrency: contract.costCurrency,
-              contractSigned: isSigned,
-              pack:
-                item.campaignId &&
-                settlementPolicyOf({
-                  client: contract.client,
-                  campaign: item.campaign,
-                })?.settlementMode === SETTLEMENT_MODE.PACK
-                  ? (packs.get(packKey(item.campaignId, contract.creatorId)) ??
-                    null)
-                  : null,
-            }))}
+            deliverables={pageItems}
           />
+          {pageCount > 1 ? (
+            <div className="mt-3 flex items-center justify-between text-copy-13">
+              <span>
+                {page} de {pageCount}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    nativeButton={false}
+                    render={
+                      <Link
+                        href={`/contratos/${contract.id}?pestana=contenidos&pagina=${page - 1}`}
+                      />
+                    }
+                  >
+                    Anterior
+                  </Button>
+                ) : null}
+                {page < pageCount ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    nativeButton={false}
+                    render={
+                      <Link
+                        href={`/contratos/${contract.id}?pestana=contenidos&pagina=${page + 1}`}
+                      />
+                    }
+                  >
+                    Siguiente
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
-      )}
+      ) : null}
 
+      {tab === "firma" ? (
+      <>
       {view.signedSignature ? (
         <Card>
           <CardHeader>
@@ -502,8 +656,10 @@ export default async function ContractPage({
           parentCode={contract.code}
         />
       ) : null}
+      </>
+      ) : null}
 
-      {chain.length > 1 ? (
+      {tab === "resumen" && chain.length > 1 ? (
         <Card>
           <CardHeader>
             <CardTitle>Cadena de contratos</CardTitle>
@@ -517,7 +673,7 @@ export default async function ContractPage({
         </Card>
       ) : null}
 
-      {can(user.role, "contracts:cancel") && !isCancelled ? (
+      {tab === "resumen" && can(user.role, "contracts:cancel") && !isCancelled ? (
         <DangerZone
           contractId={contract.id}
           canDelete={view.canDelete}
@@ -528,6 +684,29 @@ export default async function ContractPage({
           }
         />
       ) : null}
+
+      {tab === "historial" ? (
+        history.length === 0 ? (
+          <div className="rounded-xl border border-dashed px-6 py-8 text-center">
+            <h2 className="font-serif text-[22px] leading-7">Sin actividad</h2>
+            <p className="mt-1 text-copy-13 text-muted-foreground">
+              Aquí verás quién creó, envió y firmó este contrato.
+            </p>
+          </div>
+        ) : (
+          <ol className="grid gap-2">
+            {history.map((event) => (
+              <li key={event.id} className="rounded-lg border bg-card px-3 py-2">
+                <p className="text-label-13">
+                  {event.actorEmail ?? "Alguien"} · {event.action}
+                </p>
+                <p className="text-copy-12 text-fg-subtle">{formatDateTime(event.createdAt)}</p>
+              </li>
+            ))}
+          </ol>
+        )
+      ) : null}
+      </ContractFrame>
     </PageShell>
   );
 }
