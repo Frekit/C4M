@@ -24,13 +24,14 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-// El saludo del Centro de acciones es el texto más grande de /.
-// Solo se precarga este corte (latin, 400). El resto llega sin preload.
+// El saludo (display-30, peso 500) es el LCP de /. Un solo corte latin
+// se precarga; Geist no. `optional` evita que un swap tardío en 4G lento
+// retrase el LCP: si el archivo llega antes del primer pintado, se usa.
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
-  weight: "400",
-  display: "swap",
+  weight: "500",
+  display: "optional",
   preload: true,
   adjustFontFallback: true,
 });
