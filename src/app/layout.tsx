@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { EnvironmentBanner } from "@/components/environment-banner";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 
 import "./globals.css";
@@ -16,6 +18,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -37,19 +46,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <a
-          href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
-        >
-          Saltar al contenido
-        </a>
-        <EnvironmentBanner />
-        {children}
-        <Toaster position="top-right" />
-        <SpeedInsights />
+        <ThemeProvider>
+          <TooltipProvider delay={400}>
+            <a
+              href="#contenido"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+            >
+              Saltar al contenido
+            </a>
+            <EnvironmentBanner />
+            {children}
+            <Toaster position="top-right" />
+            <SpeedInsights />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -14,6 +14,7 @@ import {
 import { can } from "@/lib/auth/permissions";
 import type { AppUser } from "@/lib/auth/types";
 import { getLogoutHref } from "@/lib/auth/urls";
+import { ThemeMenuItems } from "@/components/theme-toggle";
 import { ROLE_LABELS, ROLES } from "@/lib/domain/enums";
 
 function initials(name: string) {
@@ -143,6 +144,8 @@ export function AppNav({ user }: { user: AppUser | null }) {
               <DropdownMenuItem render={<Link href="/auditoria" />}>
                 Auditoría
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <ThemeMenuItems />
               <DropdownMenuSeparator />
               <DropdownMenuItem render={<a href={getLogoutHref()} />}>
                 <LogOutIcon />

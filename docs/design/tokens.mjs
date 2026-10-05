@@ -1,4 +1,9 @@
-import { wcagContrast, parse, converter, formatHex } from 'culori'; import fs from 'fs';
+import { wcagContrast, parse, converter, formatHex } from 'culori';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const root = path.dirname(fileURLToPath(import.meta.url));
 export const T = {
  light: {
   'bg':'oklch(0.985 0.004 80)', 'surface':'oklch(0.997 0.002 85)', 'surface-2':'oklch(0.968 0.006 80)', 'surface-3':'oklch(0.945 0.008 78)',
@@ -43,9 +48,9 @@ const toHex=c=>formatHex(converter('rgb')(parse(c)));
 if (process.argv[2]==='check'){
  let fails=0; const rows=[];
  for (const mode of ['light','dark']) for (const [a,b,min,u] of PAIRS){ const r=wcagContrast(T[mode][a],T[mode][b]); const ok=r>=min; if(!ok)fails++; rows.push({mode,a,b,r:r.toFixed(2),min,ok,u}); if(!ok||process.argv[3]) console.log(mode.padEnd(6),(a+' / '+b).padEnd(30),r.toFixed(2),ok?'OK':'FAIL <'+min,u); }
- console.log('fails',fails,'of',rows.length); fs.writeFileSync('/workspace/c4m-audit/tokens-contrast.json',JSON.stringify(rows,null,1));
+ console.log('fails',fails,'of',rows.length); fs.writeFileSync(path.join(root,'tokens-contrast.json'),JSON.stringify(rows,null,1));
  // CSS
  const css=m=>Object.entries(T[m]).map(([k,v])=>`  --${k}: ${v};`).join('\n');
- fs.writeFileSync('/workspace/c4m-audit/mockups/tokens.css',`:root{\n${css('light')}\n}\n.dark{\n${css('dark')}\n}\n`);
- fs.writeFileSync('/workspace/c4m-audit/tokens-hex.json',JSON.stringify(Object.fromEntries(['light','dark'].map(m=>[m,Object.fromEntries(Object.entries(T[m]).map(([k,v])=>[k,toHex(v)]))])),null,1));
+ fs.writeFileSync(path.join(root,'mockups/tokens.css'),`:root{\n${css('light')}\n}\n.dark{\n${css('dark')}\n}\n`);
+ fs.writeFileSync(path.join(root,'tokens-hex.json'),JSON.stringify(Object.fromEntries(['light','dark'].map(m=>[m,Object.fromEntries(Object.entries(T[m]).map(([k,v])=>[k,toHex(v)]))])),null,1));
 }
