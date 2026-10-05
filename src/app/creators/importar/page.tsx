@@ -44,8 +44,8 @@ export default async function ImportCreatorsPage() {
         <CardHeader>
           <CardTitle>Roster desde Excel</CardTitle>
           <CardDescription>
-            Hasta {ROSTER_IMPORT_MAX_ROWS} filas. Columnas típicas:{" "}
-            {ROSTER_CSV_HEADER}. País y tipo tienen que existir en{" "}
+            Hasta {ROSTER_IMPORT_MAX_ROWS} filas. Columnas: {ROSTER_CSV_HEADER}.
+            El precio no va en este archivo. País y tipo tienen que existir en{" "}
             <Link href="/creators/catalogo" className="underline underline-offset-4">
               Listas
             </Link>

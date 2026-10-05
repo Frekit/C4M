@@ -96,8 +96,6 @@ export async function addTalentToCampaign(
         campaignId,
         creatorId: creator.id,
         status: CAMPAIGN_TALENT_STATUS.ROSTER,
-        costMinorPerContent: creator.defaultCostMinor,
-        costCurrency: creator.defaultCostCurrency,
         createdBy: user.email,
       },
     });
@@ -227,7 +225,6 @@ export async function saveCampaignTalentPrices(
 
   const existing = await prisma.campaignTalent.findUnique({
     where: { id },
-    include: { creator: true },
   });
   if (!existing) return { ok: false, error: "Esa línea no existe." };
   if (quoteIsFrozen(existing.status)) {
@@ -270,20 +267,6 @@ export async function saveCampaignTalentPrices(
   }
 
   const row = await prisma.campaignTalent.findUniqueOrThrow({ where: { id } });
-
-  if (
-    costMinorPerContent != null &&
-    !contentFormat &&
-    !existing.creator.defaultCostMinor
-  ) {
-    await prisma.creator.update({
-      where: { id: existing.creatorId },
-      data: {
-        defaultCostMinor: costMinorPerContent,
-        defaultCostCurrency: currency,
-      },
-    });
-  }
 
   await recordAudit({
     entityType: "CampaignTalent",

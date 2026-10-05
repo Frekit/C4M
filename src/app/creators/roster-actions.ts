@@ -3,11 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requirePermission } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import { isSupportedCurrency } from "@/lib/currencies";
 import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
-import { parseAmountToMinorUnits } from "@/lib/money";
 import {
   loadRosterCatalog,
   resolveRosterFields,
@@ -95,52 +92,6 @@ export async function addRosterCreator(
   };
 }
 
-export async function setCreatorRate(
-  _prev: RosterWriteResult | null,
-  formData: FormData
-): Promise<RosterWriteResult> {
-  const user = await requirePermission("creators:write", "/creators");
-  const creatorId = String(formData.get("creatorId") ?? "");
-  const costRaw = optionalField(formData.get("defaultCost"));
-  const currency = (optionalField(formData.get("defaultCostCurrency")) ?? "EUR")
-    .toUpperCase();
-  if (!creatorId) return { ok: false, error: "Falta el perfil." };
-
-  const creator = await prisma.creator.findUnique({ where: { id: creatorId } });
-  if (!creator) return { ok: false, error: "Ese perfil no existe." };
-
-  if (!costRaw) {
-    await prisma.creator.update({
-      where: { id: creatorId },
-      data: { defaultCostMinor: null, defaultCostCurrency: null },
-    });
-  } else {
-    if (!isSupportedCurrency(currency)) {
-      return { ok: false, error: `Moneda ${currency} no soportada.` };
-    }
-    const defaultCostMinor = parseAmountToMinorUnits(costRaw, currency);
-    if (defaultCostMinor === null || defaultCostMinor <= 0) {
-      return { ok: false, error: "Revisa la tarifa del perfil." };
-    }
-    await prisma.creator.update({
-      where: { id: creatorId },
-      data: { defaultCostMinor, defaultCostCurrency: currency },
-    });
-  }
-
-  await recordAudit({
-    entityType: "Creator",
-    entityId: creatorId,
-    action: "RATE_SET",
-    actor: user,
-    metadata: { costRaw, currency },
-  });
-
-  revalidatePath("/creators");
-  revalidatePath(`/creators/${creatorId}`);
-  return { ok: true, creatorId };
-}
-
 export async function importRosterFile(
   _prev: RosterWriteResult | null,
   formData: FormData
@@ -179,34 +130,10 @@ export async function importRosterFile(
       continue;
     }
 
-    let defaultCostMinor: number | null = null;
-    let defaultCostCurrency: string | null = null;
-    if (row.cost) {
-      const currency = (row.currency ?? "EUR").toUpperCase();
-      if (!isSupportedCurrency(currency)) {
-        issues.push({
-          line: row.line,
-          message: `Moneda ${currency} no soportada.`,
-        });
-        continue;
-      }
-      defaultCostMinor = parseAmountToMinorUnits(row.cost, currency);
-      if (defaultCostMinor === null || defaultCostMinor <= 0) {
-        issues.push({
-          line: row.line,
-          message: "Revisa la tarifa del perfil.",
-        });
-        continue;
-      }
-      defaultCostCurrency = currency;
-    }
-
     const result = await upsertRosterCreator({
       handle: row.handle,
       country: resolved.country,
       profileType: resolved.profileType,
-      defaultCostMinor,
-      defaultCostCurrency,
       createdBy: user.email,
     });
     if (result.created) created += 1;

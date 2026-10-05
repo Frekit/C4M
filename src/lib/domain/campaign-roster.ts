@@ -35,8 +35,6 @@ export type CampaignRosterRow = {
     country: string | null;
     profileType: string | null;
     instagramUrl: string;
-    defaultCostMinor: number | null;
-    defaultCostCurrency: string | null;
     costQuotes: { label: string; amountLabel: string }[];
   };
   others: CreatorCampaignPresence[];
@@ -64,8 +62,6 @@ export async function loadCampaignRoster(
           country: true,
           profileType: true,
           instagramUrl: true,
-          defaultCostMinor: true,
-          defaultCostCurrency: true,
           costQuotes: {
             select: {
               format: true,
@@ -158,8 +154,6 @@ export async function loadCampaignRoster(
         country: row.creator.country,
         profileType: row.creator.profileType,
         instagramUrl: row.creator.instagramUrl,
-        defaultCostMinor: row.creator.defaultCostMinor,
-        defaultCostCurrency: row.creator.defaultCostCurrency,
         costQuotes: sortCostQuotes(row.creator.costQuotes).flatMap((quote) => {
           if (!isIgCostFormat(quote.format)) return [];
           return [

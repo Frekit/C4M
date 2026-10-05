@@ -14,12 +14,12 @@ export type RosterImportIssue = {
   message: string;
 };
 
-export const ROSTER_CSV_HEADER = "instagram,pais,tipo,tarifa,moneda";
+export const ROSTER_CSV_HEADER = "instagram,pais,tipo";
 
 export const ROSTER_CSV_EXAMPLE = `${ROSTER_CSV_HEADER}
-https://www.instagram.com/marcosrouder,España,Micro,120,EUR
-@anagarcia,México,UGC,,
-sofia.tech,,Tech,80,USD
+https://www.instagram.com/marcosrouder,España,Micro
+@anagarcia,México,UGC
+sofia.tech,,Tech
 `;
 
 const INSTAGRAM_HEADERS = [

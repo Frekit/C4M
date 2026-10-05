@@ -6,7 +6,6 @@ import {
   LIST_PAGE_SIZE,
 } from "@/lib/domain/enums";
 import { parsePage, queryHref } from "@/lib/domain/paging";
-import { formatMoney } from "@/lib/money";
 import {
   catalogSearchValues,
   loadRosterCatalog,
@@ -18,7 +17,6 @@ export type CreatorListFilters = {
   q?: string;
   pais?: string;
   tipo?: string;
-  tarifa?: string;
   pagina?: string;
 };
 
@@ -30,7 +28,7 @@ const liveStatuses = [
 export function creatorsHref(filters: CreatorListFilters, page = 1) {
   return queryHref(
     "/creators",
-    { q: filters.q, pais: filters.pais, tipo: filters.tipo, tarifa: filters.tarifa },
+    { q: filters.q, pais: filters.pais, tipo: filters.tipo },
     page
   );
 }
@@ -40,7 +38,6 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
   const query = filters.q?.trim() ?? "";
   const country = filters.pais?.trim() ?? "";
   const profileType = filters.tipo?.trim() ?? "";
-  const tarifa = filters.tarifa?.trim() ?? "";
   const catalog = await loadRosterCatalog();
   await remapCreatorCatalogValues(catalog);
   const searchValues = query ? catalogSearchValues(catalog, query) : [];
@@ -65,8 +62,6 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
           },
         }
       : {}),
-    ...(tarifa === "con" ? { defaultCostMinor: { not: null } } : {}),
-    ...(tarifa === "sin" ? { defaultCostMinor: null } : {}),
   };
 
   const [rows, total] = await Promise.all([
@@ -81,8 +76,6 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
         displayName: true,
         country: true,
         profileType: true,
-        defaultCostMinor: true,
-        defaultCostCurrency: true,
         createdAt: true,
         campaignTalents: {
           select: {
@@ -174,11 +167,6 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
         displayName: creator.displayName,
         country: creator.country,
         profileType: creator.profileType,
-        hasRate: creator.defaultCostMinor != null,
-        rateLabel:
-          creator.defaultCostMinor != null && creator.defaultCostCurrency
-            ? formatMoney(creator.defaultCostMinor, creator.defaultCostCurrency)
-            : null,
         createdAt: creator.createdAt,
         campaigns,
         contractCount: creator.contracts.length,

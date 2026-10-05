@@ -150,11 +150,8 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
   const [format, setFormat] = useState(row.contentFormat ?? "");
 
   const packaged = Boolean(format);
-  const defaultCost = packaged
-    ? row.packageCostMinor
-    : (row.costMinorPerContent ?? row.creator.defaultCostMinor);
-  const defaultCurrency =
-    row.costCurrency ?? row.creator.defaultCostCurrency ?? "EUR";
+  const defaultCost = packaged ? row.packageCostMinor : row.costMinorPerContent;
+  const defaultCurrency = row.costCurrency ?? "EUR";
 
   return (
     <form
@@ -345,13 +342,8 @@ export function CampaignRosterPanel({
                           row.packageCostMinor != null && row.costLabel
                             ? `paquete ${row.costLabel}`
                             : row.costLabel
-                            ? `coste ${row.costLabel}`
-                            : row.creator.defaultCostMinor != null
-                              ? `tarifa ${formatMoney(
-                                  row.creator.defaultCostMinor,
-                                  row.creator.defaultCostCurrency ?? "EUR"
-                                )}`
-                              : "sin tarifa",
+                              ? `coste ${row.costLabel}`
+                              : null,
                         ]
                           .filter(Boolean)
                           .join(" · ") || "Sin país, tipo ni precios"}

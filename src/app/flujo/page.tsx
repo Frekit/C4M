@@ -91,15 +91,14 @@ export default async function WorkflowPage() {
         <CardHeader>
           <CardTitle>En una frase</CardTitle>
           <CardDescription>
-            Roster (con o sin tarifa) → mesa de campaña → línea con piezas y
-            precios → (oleada si el cliente aprueba) → contrato → firma →
-            publicar → pagar.
+            Roster → mesa de campaña → línea con piezas y precios → (oleada
+            si el cliente aprueba) → contrato → firma → publicar → pagar.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           <p>
-            El Excel trae Instagram, país, tipo y, si la tienes, la tarifa
-            del creador. En la ficha, el coste de Instagram se parte por
+            El Excel trae Instagram, país y tipo. En la ficha, el coste de
+            Instagram se parte por
             formato: 1 reel, 3 reels, story o carrusel. En la campaña, un
             paquete a medida (8 reels) lleva su propio coste cerrado. La venta y las piezas
             son de la línea en campaña. El
@@ -156,8 +155,9 @@ export default async function WorkflowPage() {
             </Step>
             <Arrow />
             <Step n="4" title="Completar la línea">
-              Piezas + venta USD + coste. Pasa a Listo. Si el perfil no tenía
-              tarifa, se guarda. Sin eso no se propone ni se activa.
+              Piezas + venta USD + coste del paquete. Pasa a Listo. El coste
+              de la línea no se copia al perfil. Sin precios no se propone
+              ni se activa.
             </Step>
             <Arrow />
             <Step n="5" title="Oleada (opcional)">
