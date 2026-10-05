@@ -7,7 +7,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from "@/lib/domain/enums";
@@ -38,7 +37,12 @@ export default async function InvitationPage({
         <Card>
           <CardHeader>
             <MailCheckIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Te han invitado al equipo</CardTitle>
+            <h1
+              data-slot="card-title"
+              className="font-heading text-base leading-snug font-medium"
+            >
+              Te han invitado al equipo
+            </h1>
             <CardDescription>
               Entrarás como <strong>{invitation.email}</strong>.
             </CardDescription>
@@ -59,7 +63,12 @@ export default async function InvitationPage({
         <Card>
           <CardHeader>
             <TriangleAlertIcon className="size-5 text-muted-foreground" />
-            <CardTitle>Esta invitación no sirve</CardTitle>
+            <h1
+              data-slot="card-title"
+              className="font-heading text-base leading-snug font-medium"
+            >
+              Esta invitación no sirve
+            </h1>
             <CardDescription>
               O ya se usó, o se revocó, o ha caducado. Pide una nueva a quien te
               invitó.
