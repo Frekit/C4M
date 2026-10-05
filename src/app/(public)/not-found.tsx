@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <main
-      id="contenido"
-      tabIndex={-1}
-      className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-16 text-center outline-none"
-    >
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-16 text-center">
       <h1 className="font-heading text-2xl font-medium">Página no encontrada</h1>
       <p className="text-sm text-muted-foreground">
         Esa ruta no existe en esta base.

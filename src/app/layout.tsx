@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { AppNav } from "@/components/app-nav";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { Toaster } from "@/components/ui/sonner";
-import { getCurrentUser } from "@/lib/auth/session";
 import { getRuntimeEnv } from "@/lib/runtime-env";
 
 import "./globals.css";
@@ -34,9 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const user = await getCurrentUser();
-
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
@@ -50,10 +46,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           Saltar al contenido
         </a>
         <EnvironmentBanner />
-        <AppNav user={user} />
-        <div id="contenido" tabIndex={-1} className="flex flex-1 flex-col outline-none">
-          {children}
-        </div>
+        {children}
         <Toaster position="top-right" />
       </body>
     </html>
