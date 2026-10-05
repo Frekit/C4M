@@ -53,8 +53,9 @@ export default async function CreatorsPage({
             Creators
           </h1>
           <p className="text-sm text-muted-foreground">
-            Roster único: Instagram, país, tipo y, si ya la tienes, la tarifa
-            del creador. La venta al cliente se cierra en la campaña.
+            Roster único: Instagram, país y tipo. El precio aún no está;
+            el coste se pone después en la ficha. La venta al cliente se
+            cierra en la campaña.
           </p>
         </div>
         {canWrite ? (
@@ -87,8 +88,8 @@ export default async function CreatorsPage({
           <CardHeader>
             <CardTitle>Añadir al roster</CardTitle>
             <CardDescription>
-              Sin contrato. La tarifa es lo que le pagamos al creador: puedes
-              ponerla ahora o dejarla en blanco y completarla en su ficha.
+              Sin contrato y sin precio. Entran solo con Instagram, país y
+              tipo. El coste se completa en la ficha cuando lo tengamos.
             </CardDescription>
           </CardHeader>
           <CardContent>

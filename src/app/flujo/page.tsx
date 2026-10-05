@@ -141,9 +141,8 @@ export default async function WorkflowPage() {
               hrefLabel="Creators"
             >
               Alta suelta o importar Excel/CSV. Queda el Instagram, el país y el
-              tipo. La tarifa del creador se puede poner en el alta, en el
-              Excel (columna tarifa) o después en su ficha. Si aún no la
-              tienes, el perfil entra igual.
+              tipo. El precio no va en el alta: estos perfiles todavía no lo
+              tienen. El coste se pone después en la ficha.
             </Step>
             <Arrow />
             <Step

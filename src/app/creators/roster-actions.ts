@@ -70,26 +70,10 @@ export async function addRosterCreator(
   });
   if (!resolved.ok) return { ok: false, error: resolved.error };
 
-  const costRaw = optionalField(formData.get("defaultCost"));
-  const currency = (optionalField(formData.get("defaultCostCurrency")) ?? "EUR")
-    .toUpperCase();
-  let defaultCostMinor: number | null = null;
-  if (costRaw) {
-    if (!isSupportedCurrency(currency)) {
-      return { ok: false, error: `Moneda ${currency} no soportada.` };
-    }
-    defaultCostMinor = parseAmountToMinorUnits(costRaw, currency);
-    if (defaultCostMinor === null) {
-      return { ok: false, error: "Revisa la tarifa del perfil." };
-    }
-  }
-
   const result = await upsertRosterCreator({
     handle,
     country: resolved.country,
     profileType: resolved.profileType,
-    defaultCostMinor,
-    defaultCostCurrency: defaultCostMinor ? currency : null,
     createdBy: user.email,
   });
 

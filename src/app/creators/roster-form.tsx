@@ -8,7 +8,6 @@ import { CatalogSelect } from "@/components/catalog-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CURRENCIES } from "@/lib/currencies";
 import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 
 export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
@@ -26,7 +25,7 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
     } else if (state?.ok) {
       toast.message(
         state.updated
-          ? "Ese Instagram ya estaba. Actualicé tarifa, país o tipo."
+          ? "Ese Instagram ya estaba. Actualicé país o tipo."
           : "Ese Instagram ya estaba. No había nada nuevo que guardar."
       );
       setFormEpoch((epoch) => epoch + 1);
@@ -38,7 +37,7 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
     <form
       key={formEpoch}
       action={formAction}
-      className="grid gap-3 sm:grid-cols-6 sm:items-end"
+      className="grid gap-3 sm:grid-cols-4 sm:items-end"
     >
       <div className="grid gap-1.5 sm:col-span-2">
         <Label htmlFor="instagram">Instagram</Label>
@@ -65,26 +64,7 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
           options={catalog.profileTypes}
         />
       </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="defaultCost">Tarifa del creador</Label>
-        <Input id="defaultCost" name="defaultCost" placeholder="120" />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="defaultCostCurrency">Moneda</Label>
-        <select
-          id="defaultCostCurrency"
-          name="defaultCostCurrency"
-          defaultValue="EUR"
-          className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
-        >
-          {CURRENCIES.map((item) => (
-            <option key={item.code} value={item.code}>
-              {item.code}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="sm:col-span-6">
+      <div className="sm:col-span-4">
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando…" : "Añadir al roster"}
         </Button>
