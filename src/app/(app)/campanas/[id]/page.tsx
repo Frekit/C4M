@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -109,7 +110,7 @@ export default async function CampaignWorkbenchPage({
     : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="wide">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           <Link href="/campanas" className="hover:underline">
@@ -117,7 +118,7 @@ export default async function CampaignWorkbenchPage({
           </Link>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             {data.name}
           </h1>
           <Button
@@ -387,7 +388,7 @@ export default async function CampaignWorkbenchPage({
         talkUrl={talkUrl}
       />
       </div>
-    </main>
+    </PageShell>
   );
 }
 

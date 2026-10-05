@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import type { Metadata } from "next";
 
 import { archiveRosterOption } from "@/app/(app)/creators/catalog-actions";
@@ -88,14 +89,14 @@ export default async function RosterCatalogPage() {
   const catalog = await loadRosterCatalogAdmin();
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="default">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           <Link href="/creators" className="hover:underline">
             Creators
           </Link>
         </p>
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
+        <h1 className="text-heading-24">
           Listas cerradas
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -119,6 +120,6 @@ export default async function RosterCatalogPage() {
         kind="PROFILE_TYPE"
         options={catalog.profileTypes}
       />
-    </main>
+    </PageShell>
   );
 }

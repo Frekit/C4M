@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { PageShell } from "@/components/page-shell";
 import type { Metadata } from "next";
 import { AlertCircleIcon, InfoIcon } from "lucide-react";
 
@@ -49,7 +50,7 @@ export default async function LoginPage({
     params.error === "auth0" ? auth0LoginAlert(params.detalle) : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-12 sm:px-6">
+    <PageShell width="narrow" className="justify-center py-16 gap-5">
       <div className="space-y-1 text-center">
         <h1 className="font-heading text-xl font-medium tracking-tight">
           Contratos con creators
@@ -112,6 +113,6 @@ export default async function LoginPage({
           )}
         </CardContent>
       </Card>
-    </main>
+    </PageShell>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/page-shell";
 import type { Metadata } from "next";
 import { FilterIcon, LayoutListIcon } from "lucide-react";
 
@@ -56,10 +57,10 @@ export default async function ContentsPage({
   const data = await loadContentsPage(filters);
 
   return (
-    <main className="mx-auto flex w-full max-w-full flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
+    <PageShell width="full" className="gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-medium tracking-tight">
+          <h1 className="text-heading-24">
             Contenidos
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -324,6 +325,6 @@ export default async function ContentsPage({
         pack, no se cobra ni se paga hasta completar todos los contenidos de
         ese perfil en la campaña.
       </p>
-    </main>
+    </PageShell>
   );
 }

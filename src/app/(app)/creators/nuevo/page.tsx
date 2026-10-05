@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -31,9 +32,9 @@ export default async function NewCreatorPage() {
   ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <PageShell width="default">
       <div className="space-y-1">
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
+        <h1 className="text-heading-24">
           Registrar influencer
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -43,6 +44,6 @@ export default async function NewCreatorPage() {
       </div>
 
       <CreatorForm fxRates={fxRates} clients={clients} campaigns={campaigns} />
-    </main>
+    </PageShell>
   );
 }

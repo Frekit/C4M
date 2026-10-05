@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageShell } from "@/components/page-shell";
 import {
   CircleCheckBigIcon,
   FileTextIcon,
@@ -50,7 +51,7 @@ export default async function SignPage({
 
   if (!request) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
+      <PageShell width="narrow" className="justify-center py-16">
         <Card>
           <CardHeader>
             <TriangleAlertIcon className="size-5 text-muted-foreground" />
@@ -61,7 +62,7 @@ export default async function SignPage({
             </CardDescription>
           </CardHeader>
         </Card>
-      </main>
+      </PageShell>
     );
   }
 
@@ -125,10 +126,10 @@ export default async function SignPage({
   ) : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
+    <PageShell width="narrow" className="gap-5">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{company.legalName}</p>
-        <h1 className="font-heading text-2xl font-medium tracking-tight">
+        <h1 className="text-heading-24">
           {isConditionsAnnex
             ? `Anexo de condiciones al contrato ${contract.parent?.code ?? ""}`
             : isAnnex
@@ -257,6 +258,6 @@ export default async function SignPage({
           />
         </>
       )}
-    </main>
+    </PageShell>
   );
 }
