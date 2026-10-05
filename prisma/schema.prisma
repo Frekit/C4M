@@ -70,6 +70,7 @@ model Creator {
   payees           PayeeProfile[]
   campaignTalents  CampaignTalent[]
   costQuotes       CreatorCostQuote[]
+  curations        CampaignCuration[]
 
   @@index([country])
   @@index([profileType])
@@ -258,10 +259,21 @@ model Campaign {
   budgetSaleCents Int?
   defaultPaymentTermDays Int @default(30)
 
+  // Encargo que leen la mesa, la planilla y el hilo. No es un brief público.
+  briefObjective String?
+  briefAudience  String?
+  briefNetworks  String?
+  briefFormats   String?
+  briefNotes     String?
+  // Enlace para que el cliente hable. No abre la mesa.
+  clientAccessToken String? @unique
+
   client       Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   deliverables Deliverable[]
   talents      CampaignTalent[]
   proposals    CampaignProposal[]
+  curations    CampaignCuration[]
+  messages     CampaignMessage[]
 
   @@index([status])
   @@index([clientId])
@@ -318,6 +330,39 @@ model CampaignTalent {
   @@index([creatorId])
   @@index([campaignId, status])
   @@index([proposalId])
+}
+
+// Apartado o descartado en la curación, antes de que haya una línea abierta.
+model CampaignCuration {
+  id         String   @id @default(cuid())
+  campaignId String
+  creatorId  String
+  // SAVED | DISMISSED
+  stance     String
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorId])
+  @@index([campaignId, stance])
+}
+
+// Hilo de la campaña. Lo ven la agencia y, por el enlace, el cliente.
+model CampaignMessage {
+  id          String   @id @default(cuid())
+  campaignId  String
+  // AGENCY | CLIENT | ASSISTANT
+  authorKind  String
+  authorLabel String
+  body        String
+  createdAt   DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
 }
 
 // --- Firma del contrato por el talento o su agencia ---

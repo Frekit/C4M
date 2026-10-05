@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/db";
-import { OPEN_TALENT_STATUSES } from "@/lib/domain/campaign-desk";
+import {
+  OPEN_TALENT_STATUSES,
+  budgetRemainingCents,
+  committedSaleCents,
+  isCampaignEngagement,
+  type CampaignLineQuote,
+} from "@/lib/domain/campaign-desk";
 import {
   COST_PLATFORM_LABELS,
   isCostPlatform,
@@ -19,7 +25,15 @@ import { formatMoney } from "@/lib/money";
 
 const OPEN = new Set<string>(OPEN_TALENT_STATUSES);
 
-export type SheetPlace = "out" | "open" | "active" | "rejected";
+export type SheetPlace =
+  | "out"
+  | "open"
+  | "active"
+  | "rejected"
+  | "saved"
+  | "dismissed";
+
+export type SheetCuration = "SAVED" | "DISMISSED" | null;
 
 export type SheetRateLine = {
   platform: string;
@@ -36,6 +50,7 @@ export type CampaignSheetRow = {
   countryLabel: string;
   profileType: string | null;
   profileTypeLabel: string;
+  views: number | null;
   viewsLabel: string;
   viewsWhen: string;
   viewsStale: boolean;
@@ -44,7 +59,9 @@ export type CampaignSheetRow = {
   platforms: string[];
   place: SheetPlace;
   selectable: boolean;
+  removable: boolean;
   statusLabel: string;
+  others: string[];
   formatLabel: string;
   piecesLabel: string;
   saleLabel: string;
@@ -98,6 +115,17 @@ export type SheetCreatorInput = {
   igMedianViewsAt: Date | null;
   quotes: SheetQuote[];
   talents: SheetTalent[];
+  curation: SheetCuration;
+};
+
+export type SheetPulse = {
+  onDesk: number;
+  saved: number;
+  dismissed: number;
+  freshViews: number | null;
+  committedSaleCents: number;
+  remainingCents: number | null;
+  budgetSaleCents: number | null;
 };
 
 function isTalentStatus(value: string): value is CampaignTalentStatus {
@@ -182,10 +210,17 @@ export function buildCampaignSheetRow(
     }
   }
 
+  if (place === "out" && creator.curation === "SAVED") place = "saved";
+  else if (place === "out" && creator.curation === "DISMISSED") place = "dismissed";
+
   const statusLabel =
-    chosen && isTalentStatus(chosen.status)
-      ? CAMPAIGN_TALENT_STATUS_LABELS[chosen.status]
-      : "Fuera";
+    place === "saved"
+      ? "Apartado"
+      : place === "dismissed"
+        ? "No entra"
+        : chosen && isTalentStatus(chosen.status)
+          ? CAMPAIGN_TALENT_STATUS_LABELS[chosen.status]
+          : "Fuera";
 
   const seen = new Set<string>();
   const others: string[] = [];
@@ -213,6 +248,7 @@ export function buildCampaignSheetRow(
     countryLabel: creator.countryLabel || "—",
     profileType: creator.profileType,
     profileTypeLabel: creator.profileTypeLabel || "—",
+    views: creator.igMedianViews,
     viewsLabel:
       creator.igMedianViews == null
         ? "Sin mediana"
@@ -230,7 +266,12 @@ export function buildCampaignSheetRow(
     ],
     place,
     selectable: place !== "open",
+    removable:
+      place === "open" &&
+      (chosen?.status === CAMPAIGN_TALENT_STATUS.ROSTER ||
+        chosen?.status === CAMPAIGN_TALENT_STATUS.READY),
     statusLabel,
+    others,
     othersLabel: others.join("; ") || "—",
     ...lineLabels(chosen),
   };
@@ -270,16 +311,68 @@ export function filterCampaignSheet(
     if (mesa === "abierta" && row.place !== "open") return false;
     if (mesa === "activa" && row.place !== "active") return false;
     if (mesa === "descartada" && row.place !== "rejected") return false;
+    if (mesa === "apartada" && row.place !== "saved") return false;
+    if (mesa === "no" && row.place !== "dismissed") return false;
     if (red === "sin" && row.platforms.length > 0) return false;
     if (red && red !== "sin" && !row.platforms.includes(red)) return false;
     return true;
   });
 }
 
+export function buildSheetPulse(
+  rows: Pick<CampaignSheetRow, "place" | "views" | "viewsStale">[],
+  lines: CampaignLineQuote[],
+  policy: { engagementKind: string; budgetSaleCents: number | null }
+): SheetPulse {
+  let onDesk = 0;
+  let saved = 0;
+  let dismissed = 0;
+  let freshViews = 0;
+  let freshCount = 0;
+  for (const row of rows) {
+    if (row.place === "open") {
+      onDesk += 1;
+      if (!row.viewsStale && row.views != null) {
+        freshViews += row.views;
+        freshCount += 1;
+      }
+    } else if (row.place === "saved") saved += 1;
+    else if (row.place === "dismissed") dismissed += 1;
+  }
+  const engagementKind = isCampaignEngagement(policy.engagementKind)
+    ? policy.engagementKind
+    : "ALWAYS_ON";
+  return {
+    onDesk,
+    saved,
+    dismissed,
+    freshViews: freshCount > 0 ? freshViews : null,
+    committedSaleCents: committedSaleCents(lines),
+    remainingCents: budgetRemainingCents(
+      { engagementKind, budgetSaleCents: policy.budgetSaleCents },
+      lines
+    ),
+    budgetSaleCents:
+      engagementKind === "BUDGET" ? policy.budgetSaleCents : null,
+  };
+}
+
 export async function loadCampaignSheet(campaignId: string, now = new Date()) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      engagementKind: true,
+      budgetSaleCents: true,
+      briefObjective: true,
+      briefAudience: true,
+      briefNetworks: true,
+      briefFormats: true,
+      briefNotes: true,
+      clientAccessToken: true,
+      client: { select: { name: true } },
+    },
   });
   if (!campaign) return null;
 
@@ -320,11 +413,28 @@ export async function loadCampaignSheet(campaignId: string, now = new Date()) {
           },
         },
       },
+      curations: {
+        where: { campaignId },
+        select: { stance: true },
+        take: 1,
+      },
     },
   });
 
-  const rows = creators.map((creator) =>
-    buildCampaignSheetRow(
+  const lines: CampaignLineQuote[] = [];
+  const rows = creators.map((creator) => {
+    for (const talent of creator.campaignTalents) {
+      if (talent.campaignId !== campaignId) continue;
+      lines.push({
+        status: talent.status,
+        salePriceCentsPerContent: talent.salePriceCentsPerContent,
+        costMinorPerContent: talent.costMinorPerContent,
+        costCurrency: talent.costCurrency,
+        deliverableCount: talent.deliverableCount,
+      });
+    }
+    const stance = creator.curations[0]?.stance;
+    return buildCampaignSheetRow(
       {
         id: creator.id,
         handle: creator.handle,
@@ -337,6 +447,7 @@ export async function loadCampaignSheet(campaignId: string, now = new Date()) {
         igMedianViews: creator.igMedianViews,
         igMedianViewsAt: creator.igMedianViewsAt,
         quotes: creator.costQuotes,
+        curation: stance === "SAVED" || stance === "DISMISSED" ? stance : null,
         talents: creator.campaignTalents.map((talent) => ({
           status: talent.status,
           createdAt: talent.createdAt,
@@ -354,8 +465,13 @@ export async function loadCampaignSheet(campaignId: string, now = new Date()) {
       },
       campaignId,
       now
-    )
-  );
+    );
+  });
 
-  return { campaign, catalog, rows };
+  return {
+    campaign,
+    catalog,
+    rows,
+    pulse: buildSheetPulse(rows, lines, campaign),
+  };
 }

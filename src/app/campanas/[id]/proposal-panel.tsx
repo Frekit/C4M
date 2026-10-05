@@ -59,9 +59,12 @@ export function CampaignProposalPanel({
       <CardHeader>
         <CardTitle>Oleadas</CardTitle>
         <CardDescription>
+          Un lote de 1 o 50 perfiles. Marcar enviada deja constancia de que el
+          equipo cerró el lote. El cliente no entra aquí: si hay que hablar, es
+          en el hilo.
           {clientSees
-            ? "Un envío de 1 o 50 perfiles. La campaña sigue abierta: puedes mandar otra mañana."
-            : "Agrupáis un lote interno. Este cliente no aprueba perfiles; no hay envío."}
+            ? ""
+            : " En esta campaña el contrato sale de la línea lista, sin ese registro."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

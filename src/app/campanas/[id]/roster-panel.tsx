@@ -75,7 +75,7 @@ function waitingCopy(
     return `Ya está en «${inDraft}», sin enviar. Márcala enviada cuando el lote esté cerrado.`;
   }
   if (clientApproves && status === CAMPAIGN_TALENT_STATUS.READY) {
-    return "Lista para una oleada. El cliente la ve cuando la marques enviada.";
+    return "Lista para una oleada. Márcala enviada cuando el lote esté cerrado. El cliente no la ve: se habla en el hilo.";
   }
   return null;
 }
@@ -404,7 +404,12 @@ export function CampaignRosterPanel({
                   {canWrite &&
                   clientApproves &&
                   canMarkClientDecision(approvalMode, row.status) ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Esto lo anota el equipo, con lo que se dijo en el hilo.
+                        El cliente no pulsa estos botones.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
                       {(
                         [
                           CAMPAIGN_TALENT_STATUS.APPROVED,
@@ -429,6 +434,7 @@ export function CampaignRosterPanel({
                           </Button>
                         </form>
                       ))}
+                      </div>
                     </div>
                   ) : null}
 

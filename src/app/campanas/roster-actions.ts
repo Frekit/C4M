@@ -44,19 +44,29 @@ export type CampaignRosterResult = {
   skipped?: number;
 };
 
-function revalidateCampaign(campaignId: string, creatorId?: string) {
+export async function revalidateCampaign(campaignId: string, creatorId?: string) {
   revalidatePath("/campanas");
   revalidatePath(`/campanas/${campaignId}`);
   revalidatePath(`/campanas/${campaignId}/planilla`);
   revalidatePath("/creators");
   if (creatorId) revalidatePath(`/creators/${creatorId}`);
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { clientAccessToken: true },
+  });
+  if (campaign?.clientAccessToken) {
+    revalidatePath(`/hablar/${campaign.clientAccessToken}`);
+  }
 }
 
-async function placeCreatorOnCampaign(
+export async function placeCreatorOnCampaign(
   campaignId: string,
   creatorId: string,
   email: string
 ) {
+  await prisma.campaignCuration.deleteMany({
+    where: { campaignId, creatorId },
+  });
   const open = await prisma.campaignTalent.findFirst({
     where: {
       campaignId,

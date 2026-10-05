@@ -162,12 +162,13 @@ export type CampaignApproval =
 
 export const CAMPAIGN_APPROVAL_LABELS: Record<CampaignApproval, string> = {
   INTERNAL: "Uso interno",
-  CLIENT_APPROVES: "El cliente aprueba perfiles",
+  CLIENT_APPROVES: "La agencia anota el sí",
 };
 
 export const CAMPAIGN_APPROVAL_HINTS: Record<CampaignApproval, string> = {
   INTERNAL: "No hay ok del cliente. Si la línea está lista, se puede activar.",
-  CLIENT_APPROVES: "Se manda una oleada. El contrato solo sale de lo aprobado.",
+  CLIENT_APPROVES:
+    "El sí o el no se escribe aquí porque se habló en el hilo. El cliente no entra a la mesa.",
 };
 
 export const PROPOSAL_STATUS = {
@@ -211,8 +212,8 @@ export const CAMPAIGN_TALENT_STATUS_HINTS: Record<CampaignTalentStatus, string> 
   {
     ROSTER: "En la campaña, todavía sin piezas o precios.",
     READY: "Piezas y precios puestos. Se puede activar o meter en una oleada.",
-    PROPOSED: "Está en una oleada enviada al cliente.",
-    APPROVED: "El cliente dijo que sí. Falta activar el contrato.",
+    PROPOSED: "Oleada marcada como enviada. El cliente no la abre.",
+    APPROVED: "La agencia registró el sí. Falta activar el contrato.",
     ACTIVE: "Ya opera en esta pasada.",
     REJECTED: "No entra en esta pasada.",
   };

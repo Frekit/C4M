@@ -36,11 +36,19 @@ import {
 } from "@/lib/domain/enums";
 import { formatDate } from "@/lib/format";
 
+import { getBaseUrl } from "@/lib/base-url";
+import { assembleBriefing, renderClientStatus } from "@/lib/domain/campaign-briefing";
+import { loadCampaignResults } from "@/lib/domain/campaign-results";
+import { loadCampaignSheet } from "@/lib/domain/campaign-sheet";
+
+import { CampaignBriefForm } from "./brief-form";
 import { CampaignBulkSignature } from "./bulk-signature";
 import { CampaignClientForm } from "./client-form";
 import { CampaignPolicyCard } from "./policy-form";
 import { CampaignProposalPanel } from "./proposal-panel";
+import { CampaignResultsTable } from "./results-table";
 import { CampaignRosterPanel } from "./roster-panel";
+import { CampaignThread } from "./thread-panel";
 
 export const metadata: Metadata = {
   title: "Campaña",
@@ -55,7 +63,8 @@ export default async function CampaignWorkbenchPage({
   const user = await requireUser(`/campanas/${id}`);
   const canSign = can(user.role, "signature:send");
   const canWrite = can(user.role, "campaigns:manage");
-  const [data, roster, picks, catalog, proposals, clients] = await Promise.all([
+  const [data, roster, picks, catalog, proposals, clients, sheet, results, messages, baseUrl] =
+    await Promise.all([
     loadCampaignWorkbench(id),
     loadCampaignRoster(id),
     loadRosterPicks(id),
@@ -65,12 +74,41 @@ export default async function CampaignWorkbenchPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    loadCampaignSheet(id),
+    loadCampaignResults(id),
+    prisma.campaignMessage.findMany({
+      where: { campaignId: id },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        authorKind: true,
+        authorLabel: true,
+        body: true,
+        createdAt: true,
+      },
+    }),
+    getBaseUrl(),
   ]);
 
-  if (!data) notFound();
+  if (!data || !sheet) notFound();
+  const packet = assembleBriefing({
+    campaignName: sheet.campaign.name,
+    clientName: sheet.campaign.client?.name ?? null,
+    objective: sheet.campaign.briefObjective,
+    audience: sheet.campaign.briefAudience,
+    networks: sheet.campaign.briefNetworks,
+    formats: sheet.campaign.briefFormats,
+    notes: sheet.campaign.briefNotes,
+    rows: sheet.rows,
+    pulse: sheet.pulse,
+    results,
+  });
+  const talkUrl = sheet.campaign.clientAccessToken
+    ? `${baseUrl}/hablar/${sheet.campaign.clientAccessToken}`
+    : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           <Link href="/campanas" className="hover:underline">
@@ -130,6 +168,8 @@ export default async function CampaignWorkbenchPage({
         </p>
       </div>
 
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-6">
       {canWrite ? (
         <CampaignClientForm
           campaignId={data.id}
@@ -137,6 +177,16 @@ export default async function CampaignWorkbenchPage({
           clients={clients}
         />
       ) : null}
+
+      <CampaignBriefForm
+        campaignId={data.id}
+        canWrite={canWrite}
+        objective={sheet.campaign.briefObjective}
+        audience={sheet.campaign.briefAudience}
+        networks={sheet.campaign.briefNetworks}
+        formats={sheet.campaign.briefFormats}
+        notes={sheet.campaign.briefNotes}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -292,6 +342,8 @@ export default async function CampaignWorkbenchPage({
         proposals={proposals}
       />
 
+      <CampaignResultsTable results={results} />
+
       <CampaignRosterPanel
         campaignId={data.id}
         canWrite={canWrite}
@@ -315,6 +367,25 @@ export default async function CampaignWorkbenchPage({
       {data.description ? (
         <p className="text-sm text-muted-foreground">{data.description}</p>
       ) : null}
+      </div>
+      <CampaignThread
+        campaignId={data.id}
+        canWrite={canWrite}
+        messages={messages.map((message) => ({
+          ...message,
+          createdAt: message.createdAt.toISOString(),
+        }))}
+        statusLine={renderClientStatus(packet)}
+        onDesk={packet.onDesk.length}
+        priced={packet.priced}
+        active={packet.active}
+        published={packet.published}
+        total={packet.total}
+        remainingLabel={packet.remainingLabel}
+        budgetLabel={packet.budgetLabel}
+        talkUrl={talkUrl}
+      />
+      </div>
     </main>
   );
 }

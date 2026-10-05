@@ -16,6 +16,7 @@ const PUBLIC_PREFIXES = [
   "/iniciar-sesion",
   "/sin-acceso",
   "/firmar",
+  "/hablar",
   "/auth",
   "/api/salud",
 ];

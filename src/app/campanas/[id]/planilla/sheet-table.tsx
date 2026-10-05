@@ -5,6 +5,10 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import {
+  removeFromCampaignDesk,
+  setCampaignCuration,
+} from "@/app/campanas/curation-actions";
+import {
   addCreatorsToCampaign,
   pasteTalentToCampaign,
   type CampaignRosterResult,
@@ -13,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { CampaignSheetRow, SheetRateLine } from "@/lib/domain/campaign-sheet";
+
+const sectionLabel = "text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground";
 
 function ratesByNetwork(rates: SheetRateLine[]) {
   const groups: { platform: string; lines: SheetRateLine[] }[] = [];
@@ -32,6 +38,9 @@ function CurationPanel({
   pending,
   onToggle,
   action,
+  curateAction,
+  removeAction,
+  curatePending,
 }: {
   row: CampaignSheetRow | null;
   campaignId: string;
@@ -40,6 +49,9 @@ function CurationPanel({
   pending: boolean;
   onToggle: (id: string) => void;
   action: (payload: FormData) => void;
+  curateAction: (payload: FormData) => void;
+  removeAction: (payload: FormData) => void;
+  curatePending: boolean;
 }) {
   if (!row) {
     return (
@@ -47,8 +59,8 @@ function CurationPanel({
         id="curacion"
         className="rounded-lg border bg-card p-4 lg:sticky lg:top-4"
       >
-        <h2 className="text-sm font-medium">Curación</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className={sectionLabel}>Curación</h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Abre un perfil de la tabla. Aquí se ve la mediana, las tarifas por
           red y las marcas con las que ya ha trabajado, para decidir si entra.
         </p>
@@ -57,9 +69,20 @@ function CurationPanel({
   }
 
   const networks = ratesByNetwork(row.rates);
+  const brands = row.others.slice(0, 6);
   const meta = [row.countryLabel, row.profileTypeLabel]
     .filter((part) => part && part !== "—")
     .join(" · ");
+  const campaignLine =
+    row.place === "out"
+      ? "Todavía fuera de la mesa."
+      : row.place === "saved"
+        ? "Apartado. Todavía no está en la mesa."
+        : row.place === "dismissed"
+          ? "No entra en esta campaña."
+          : [row.formatLabel, row.piecesLabel !== "—" ? `${row.piecesLabel} piezas` : null, row.saleLabel, row.costLabel]
+              .filter((part) => part && part !== "—")
+              .join(" · ") || row.statusLabel;
 
   return (
     <aside
@@ -68,7 +91,7 @@ function CurationPanel({
     >
       <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-medium">@{row.handle}</h2>
+          <h2 className="font-heading text-lg font-medium tracking-tight">@{row.handle}</h2>
           <Badge variant={row.place === "open" ? "default" : "outline"}>
             {row.statusLabel}
           </Badge>
@@ -80,8 +103,10 @@ function CurationPanel({
       </div>
 
       <section className="grid gap-1">
-        <h3 className="text-xs font-medium text-muted-foreground">Views de Instagram</h3>
-        <p className="text-sm tabular-nums">{row.viewsLabel}</p>
+        <h3 className={sectionLabel}>Views de Instagram</h3>
+        <p className="font-heading text-3xl font-medium tabular-nums tracking-tight">
+          {row.viewsLabel}
+        </p>
         {row.viewsStale ? (
           <p className="text-xs text-amber-700 dark:text-amber-400">
             Hay que actualizar la mediana antes de fiarse del alcance.
@@ -92,7 +117,7 @@ function CurationPanel({
       </section>
 
       <section className="grid gap-2">
-        <h3 className="text-xs font-medium text-muted-foreground">Tarifas básicas</h3>
+        <h3 className={sectionLabel}>Tarifas básicas</h3>
         {networks.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin tarifas todavía.</p>
         ) : (
@@ -118,30 +143,82 @@ function CurationPanel({
       </section>
 
       <section className="grid gap-1">
-        <h3 className="text-xs font-medium text-muted-foreground">En esta campaña</h3>
-        {row.place === "out" ? (
-          <p className="text-sm text-muted-foreground">Todavía fuera de la mesa.</p>
-        ) : (
-          <p className="text-sm">
-            {[row.formatLabel, row.piecesLabel !== "—" ? `${row.piecesLabel} piezas` : null, row.saleLabel, row.costLabel]
-              .filter((part) => part && part !== "—")
-              .join(" · ") || row.statusLabel}
+        <h3 className={sectionLabel}>En esta campaña</h3>
+        <p className={`text-sm ${row.place === "out" || row.place === "saved" || row.place === "dismissed" ? "text-muted-foreground" : ""}`}>
+          {campaignLine}
+        </p>
+        {row.place === "open" && !row.removable ? (
+          <p className="text-xs text-muted-foreground">
+            Esta línea ya está cerrada.
           </p>
-        )}
+        ) : null}
       </section>
 
       <section className="grid gap-1">
-        <h3 className="text-xs font-medium text-muted-foreground">Otras marcas</h3>
-        <p className="text-sm">{row.othersLabel}</p>
+        <h3 className={sectionLabel}>Otras marcas</h3>
+        {brands.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Ninguna todavía.</p>
+        ) : (
+          <ul className="grid gap-1 text-sm">
+            {brands.map((brand) => (
+              <li key={brand}>{brand}</li>
+            ))}
+          </ul>
+        )}
+        {row.others.length > 6 ? (
+          <Link
+            href={`/creators/${row.id}`}
+            className="text-sm underline underline-offset-4"
+          >
+            Ver todas
+          </Link>
+        ) : null}
       </section>
 
       <div className="flex flex-wrap gap-2">
+        {canWrite && row.removable ? (
+          <form action={removeAction}>
+            <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="creatorId" value={row.id} />
+            <Button type="submit" variant="outline" disabled={curatePending}>
+              Quitar de la mesa
+            </Button>
+          </form>
+        ) : null}
         {canWrite && row.selectable ? (
           <form action={action}>
             <input type="hidden" name="campaignId" value={campaignId} />
             <input type="hidden" name="creatorId" value={row.id} />
             <Button type="submit" disabled={pending}>
-              {pending ? "Metiendo…" : "Meter este perfil"}
+              {pending ? "Metiendo…" : "Meter en la mesa"}
+            </Button>
+          </form>
+        ) : null}
+        {canWrite ? (
+          <form action={curateAction}>
+            <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="creatorId" value={row.id} />
+            <input type="hidden" name="stance" value="SAVED" />
+            <Button
+              type="submit"
+              variant={row.place === "saved" ? "secondary" : "outline"}
+              disabled={curatePending || row.place === "saved"}
+            >
+              Apartar
+            </Button>
+          </form>
+        ) : null}
+        {canWrite ? (
+          <form action={curateAction}>
+            <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="creatorId" value={row.id} />
+            <input type="hidden" name="stance" value="DISMISSED" />
+            <Button
+              type="submit"
+              variant="ghost"
+              disabled={curatePending || row.place === "dismissed"}
+            >
+              Descartar
             </Button>
           </form>
         ) : null}
@@ -193,6 +270,14 @@ export function CampaignSheet({
     CampaignRosterResult | null,
     FormData
   >(pasteTalentToCampaign, null);
+  const [curateState, curateAction, curatePending] = useActionState<
+    CampaignRosterResult | null,
+    FormData
+  >(setCampaignCuration, null);
+  const [removeState, removeAction, removePending] = useActionState<
+    CampaignRosterResult | null,
+    FormData
+  >(removeFromCampaignDesk, null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [pasteEpoch, setPasteEpoch] = useState(0);
@@ -208,6 +293,18 @@ export function CampaignSheet({
     resultToast(pasteState);
     if (pasteState.ok) setPasteEpoch((epoch) => epoch + 1);
   }, [pasteState]);
+
+  useEffect(() => {
+    if (!curateState) return;
+    if (curateState.ok) toast.success("Curación guardada.");
+    else if (curateState.error) toast.error(curateState.error);
+  }, [curateState]);
+
+  useEffect(() => {
+    if (!removeState) return;
+    if (removeState.ok) toast.success("Fuera de la mesa.");
+    else if (removeState.error) toast.error(removeState.error);
+  }, [removeState]);
 
   const openRow = rows.find((row) => row.id === openId) ?? null;
 
@@ -420,6 +517,9 @@ export function CampaignSheet({
         pending={pickPending}
         onToggle={toggle}
         action={pickAction}
+        curateAction={curateAction}
+        removeAction={removeAction}
+        curatePending={curatePending || removePending}
       />
       </div>
 

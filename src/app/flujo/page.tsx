@@ -163,8 +163,8 @@ export default async function WorkflowPage() {
             </Step>
             <Arrow />
             <Step n="5" title="Oleada (opcional)">
-              1 o 50 perfiles en un envío. Solo si la campaña pide ok del
-              cliente. No cierra el encargo: mañana podéis mandar otra.
+              1 o 50 perfiles en un lote interno. No cierra el encargo. El
+              cliente no abre la oleada: habla por el enlace de la campaña.
             </Step>
             <Arrow />
             <Step n="6" title="Activar">
@@ -367,9 +367,9 @@ export default async function WorkflowPage() {
           </li>
           <li>
             <Tension>
-              El cliente sigue sin portal. «Marcar enviada» y Aprobado son
-              botones vuestros. El enlace para que el cliente abra la oleada
-              no está.
+              El cliente habla por /hablar/…, sin mesa ni botones. «Marcar
+              enviada» y Aprobado los pulsa la agencia, con lo que se dijo en
+              el hilo.
             </Tension>
           </li>
           <li>
