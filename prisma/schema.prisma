@@ -76,7 +76,7 @@ model Creator {
   @@index([igMedianViewsAt])
 }
 
-// Precio de coste de un paquete de Instagram: 1 reel, 3 reels, 1 story, 1 carrusel.
+// Precio de coste de un paquete en una red: 1 reel, 3 vídeos de TikTok, 1 hilo de X.
 // Es lo que le pagamos al creador, no la venta al cliente.
 model CreatorCostQuote {
   id        String   @id @default(cuid())
@@ -299,7 +299,8 @@ model CampaignTalent {
   costCurrency             String?
   deliverableCount         Int?
   // Negociación de esta campaña. Si hay formato, packageCostMinor es el coste
-  // del paquete entero (8 reels), no el precio por pieza.
+  // del paquete entero (8 reels, 3 vídeos de TikTok), no el precio por pieza.
+  contentPlatform  String?
   contentFormat    String?
   packageCostMinor Int?
   notes                    String?

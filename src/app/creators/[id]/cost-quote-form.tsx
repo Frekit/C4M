@@ -13,11 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CURRENCIES } from "@/lib/currencies";
 import {
-  IG_COST_FORMAT,
-  IG_COST_FORMAT_LABELS,
+  COST_PLATFORM,
+  COST_PLATFORM_LABELS,
   costPackageLabel,
-  isIgCostFormat,
-  type IgCostFormat,
+  formatsForPlatform,
+  isCostFormat,
+  isCostPlatform,
+  type CostPlatform,
 } from "@/lib/domain/creator-cost-quote";
 import { formatMoney } from "@/lib/money";
 
@@ -26,6 +28,7 @@ const selectClass =
 
 export type CostQuoteRow = {
   id: string;
+  platform: string;
   format: string;
   quantity: number;
   costMinor: number;
@@ -45,38 +48,51 @@ export function CreatorCostQuotes({
     <div className="grid gap-4">
       {quotes.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Todavía no hay paquetes. Un reel, tres reels y una story son tres
-          costes distintos.
+          Todavía no hay tarifas. Elige la red y el formato: un reel no cuesta
+          lo mismo que un vídeo de TikTok, un post de LinkedIn o un hilo de X.
         </p>
       ) : (
-        <ul className="grid gap-2">
-          {quotes.map((quote) => (
-            <li
-              key={quote.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
-            >
-              <p className="text-sm">
-                <span className="font-medium">
-                  {isIgCostFormat(quote.format)
-                    ? costPackageLabel(quote.format, quote.quantity)
-                    : `${quote.quantity} ${quote.format}`}
-                </span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {formatMoney(quote.costMinor, quote.currency)}
-                </span>
-              </p>
-              {canWrite ? (
-                <form action={deleteCreatorCostQuote}>
-                  <input type="hidden" name="quoteId" value={quote.id} />
-                  <Button type="submit" size="sm" variant="ghost">
-                    Quitar
-                  </Button>
-                </form>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="grid gap-4">
+          {Object.values(COST_PLATFORM).map((platform) => {
+            const rows = quotes.filter((quote) => quote.platform === platform);
+            if (rows.length === 0) return null;
+            return (
+              <section key={platform} className="grid gap-2">
+                <h3 className="text-sm font-medium">
+                  {COST_PLATFORM_LABELS[platform]}
+                </h3>
+                <ul className="grid gap-2">
+                  {rows.map((quote) => (
+                    <li
+                      key={quote.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
+                    >
+                      <p className="text-sm">
+                        <span className="font-medium">
+                          {isCostFormat(platform, quote.format)
+                            ? costPackageLabel(platform, quote.format, quote.quantity)
+                            : `${quote.quantity} ${quote.format}`}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {formatMoney(quote.costMinor, quote.currency)}
+                        </span>
+                      </p>
+                      {canWrite ? (
+                        <form action={deleteCreatorCostQuote}>
+                          <input type="hidden" name="quoteId" value={quote.id} />
+                          <Button type="submit" size="sm" variant="ghost">
+                            Quitar
+                          </Button>
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       )}
       {canWrite ? <CostQuoteForm creatorId={creatorId} /> : null}
     </div>
@@ -88,7 +104,8 @@ function CostQuoteForm({ creatorId }: { creatorId: string }) {
     CostQuoteResult | null,
     FormData
   >(saveCreatorCostQuote, null);
-  const [format, setFormat] = useState<IgCostFormat>(IG_COST_FORMAT.REEL);
+  const [platform, setPlatform] = useState<CostPlatform>(COST_PLATFORM.INSTAGRAM);
+  const [format, setFormat] = useState("REEL");
   const [quantity, setQuantity] = useState("1");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EUR");
@@ -109,6 +126,32 @@ function CostQuoteForm({ creatorId }: { creatorId: string }) {
     <form key={epoch} action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="creatorId" value={creatorId} />
       <div className="grid gap-1">
+        <Label htmlFor="cost-platform" className="text-xs">
+          Red
+        </Label>
+        <select
+          id="cost-platform"
+          name="platform"
+          value={platform}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (!isCostPlatform(next)) return;
+            setPlatform(next);
+            const formats = formatsForPlatform(next);
+            if (!formats.some((item) => item.code === format)) {
+              setFormat(formats[0]?.code ?? "");
+            }
+          }}
+          className={selectClass}
+        >
+          {Object.values(COST_PLATFORM).map((value) => (
+            <option key={value} value={value}>
+              {COST_PLATFORM_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1">
         <Label htmlFor="cost-format" className="text-xs">
           Formato
         </Label>
@@ -116,12 +159,12 @@ function CostQuoteForm({ creatorId }: { creatorId: string }) {
           id="cost-format"
           name="format"
           value={format}
-          onChange={(event) => setFormat(event.target.value as IgCostFormat)}
+          onChange={(event) => setFormat(event.target.value)}
           className={selectClass}
         >
-          {Object.values(IG_COST_FORMAT).map((value) => (
-            <option key={value} value={value}>
-              {IG_COST_FORMAT_LABELS[value]}
+          {formatsForPlatform(platform).map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.label}
             </option>
           ))}
         </select>

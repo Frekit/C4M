@@ -10,8 +10,7 @@ import {
   type CreatorCampaignPresence,
 } from "@/lib/domain/campaign-talent";
 import {
-  costPackageLabel,
-  isIgCostFormat,
+  quotePackageText,
   sortCostQuotes,
 } from "@/lib/domain/creator-cost-quote";
 import { formatMoney } from "@/lib/money";
@@ -25,6 +24,7 @@ export type CampaignRosterRow = {
   costMinorPerContent: number | null;
   costCurrency: string | null;
   deliverableCount: number | null;
+  contentPlatform: string | null;
   contentFormat: string | null;
   packageCostMinor: number | null;
   proposalId: string | null;
@@ -64,6 +64,7 @@ export async function loadCampaignRoster(
           instagramUrl: true,
           costQuotes: {
             select: {
+              platform: true,
               format: true,
               quantity: true,
               costMinor: true,
@@ -139,6 +140,7 @@ export async function loadCampaignRoster(
       costMinorPerContent: row.costMinorPerContent,
       costCurrency: row.costCurrency,
       deliverableCount: row.deliverableCount,
+      contentPlatform: row.contentPlatform,
       contentFormat: row.contentFormat,
       packageCostMinor: row.packageCostMinor,
       proposalId: row.proposalId,
@@ -155,10 +157,11 @@ export async function loadCampaignRoster(
         profileType: row.creator.profileType,
         instagramUrl: row.creator.instagramUrl,
         costQuotes: sortCostQuotes(row.creator.costQuotes).flatMap((quote) => {
-          if (!isIgCostFormat(quote.format)) return [];
+          const label = quotePackageText(quote.platform, quote.format, quote.quantity);
+          if (!label) return [];
           return [
             {
-              label: costPackageLabel(quote.format, quote.quantity),
+              label,
               amountLabel: formatMoney(quote.costMinor, quote.currency),
             },
           ];

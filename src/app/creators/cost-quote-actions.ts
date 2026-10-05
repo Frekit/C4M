@@ -5,10 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
-import {
-  COST_PLATFORM,
-  parseCostQuoteInput,
-} from "@/lib/domain/creator-cost-quote";
+import { parseCostQuoteInput } from "@/lib/domain/creator-cost-quote";
 
 export type CostQuoteResult = {
   ok: boolean;
@@ -30,6 +27,7 @@ export async function saveCreatorCostQuote(
   if (!creator) return { ok: false, error: "Ese perfil no existe." };
 
   const parsed = parseCostQuoteInput({
+    platform: String(formData.get("platform") ?? ""),
     format: String(formData.get("format") ?? ""),
     quantity: String(formData.get("quantity") ?? ""),
     amount: String(formData.get("amount") ?? ""),
@@ -41,14 +39,14 @@ export async function saveCreatorCostQuote(
     where: {
       creatorId_platform_format_quantity: {
         creatorId,
-        platform: COST_PLATFORM.INSTAGRAM,
+        platform: parsed.platform,
         format: parsed.format,
         quantity: parsed.quantity,
       },
     },
     create: {
       creatorId,
-      platform: COST_PLATFORM.INSTAGRAM,
+      platform: parsed.platform,
       format: parsed.format,
       quantity: parsed.quantity,
       costMinor: parsed.costMinor,
@@ -67,6 +65,7 @@ export async function saveCreatorCostQuote(
     actor: user,
     metadata: {
       creatorId,
+      platform: parsed.platform,
       format: parsed.format,
       quantity: parsed.quantity,
       currency: parsed.currency,
@@ -98,6 +97,7 @@ export async function deleteCreatorCostQuote(formData: FormData) {
     actor: user,
     metadata: {
       creatorId: quote.creatorId,
+      platform: quote.platform,
       format: quote.format,
       quantity: quote.quantity,
     },

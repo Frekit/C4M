@@ -266,10 +266,9 @@ export default async function CreatorPage({
         <CardHeader>
           <CardTitle>Tarifas básicas</CardTitle>
           <CardDescription>
-            Precio de coste de referencia, en Instagram. Un reel no cuesta lo
-            mismo que tres reels, ni que una story o un carrusel. En una
-            campaña el paquete puede ser otro: 8 reels a un precio cerrado no
-            tiene que salir de estas tarifas.
+            Precio de coste de referencia, por red. Instagram, TikTok, LinkedIn
+            y X no comparten formato ni precio. En una campaña el paquete
+            puede cerrarse a otro coste.
           </CardDescription>
         </CardHeader>
         <CardContent>

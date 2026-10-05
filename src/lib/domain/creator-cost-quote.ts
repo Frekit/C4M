@@ -3,9 +3,53 @@ import { parseAmountToMinorUnits } from "@/lib/money";
 
 export const COST_PLATFORM = {
   INSTAGRAM: "INSTAGRAM",
+  TIKTOK: "TIKTOK",
+  LINKEDIN: "LINKEDIN",
+  X: "X",
 } as const;
 
 export type CostPlatform = (typeof COST_PLATFORM)[keyof typeof COST_PLATFORM];
+
+export const COST_PLATFORM_LABELS: Record<CostPlatform, string> = {
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  LINKEDIN: "LinkedIn",
+  X: "X",
+};
+
+const PLATFORM_ORDER: Record<CostPlatform, number> = {
+  INSTAGRAM: 0,
+  TIKTOK: 1,
+  LINKEDIN: 2,
+  X: 3,
+};
+
+type FormatSpec = {
+  label: string;
+  one: string;
+  many: string;
+};
+
+const PLATFORM_FORMATS: Record<CostPlatform, Record<string, FormatSpec>> = {
+  INSTAGRAM: {
+    REEL: { label: "Reel", one: "reel", many: "reels" },
+    STORY: { label: "Story", one: "story", many: "stories" },
+    CAROUSEL: { label: "Carrusel", one: "carrusel", many: "carruseles" },
+  },
+  TIKTOK: {
+    VIDEO: { label: "Vídeo", one: "vídeo", many: "vídeos" },
+    PHOTO: { label: "Foto", one: "foto", many: "fotos" },
+  },
+  LINKEDIN: {
+    POST: { label: "Post", one: "post", many: "posts" },
+    VIDEO: { label: "Vídeo", one: "vídeo", many: "vídeos" },
+    CAROUSEL: { label: "Carrusel", one: "carrusel", many: "carruseles" },
+  },
+  X: {
+    POST: { label: "Post", one: "post", many: "posts" },
+    THREAD: { label: "Hilo", one: "hilo", many: "hilos" },
+  },
+};
 
 export const IG_COST_FORMAT = {
   REEL: "REEL",
@@ -21,34 +65,69 @@ export const IG_COST_FORMAT_LABELS: Record<IgCostFormat, string> = {
   CAROUSEL: "Carrusel",
 };
 
-const PACKAGE_WORDS: Record<IgCostFormat, [string, string]> = {
-  REEL: ["reel", "reels"],
-  STORY: ["story", "stories"],
-  CAROUSEL: ["carrusel", "carruseles"],
-};
-
-export const IG_COST_FORMAT_ORDER: Record<IgCostFormat, number> = {
-  REEL: 0,
-  STORY: 1,
-  CAROUSEL: 2,
-};
+export function isCostPlatform(value: string): value is CostPlatform {
+  return Object.values(COST_PLATFORM).includes(value as CostPlatform);
+}
 
 export function isIgCostFormat(value: string): value is IgCostFormat {
   return Object.values(IG_COST_FORMAT).includes(value as IgCostFormat);
 }
 
-export function costPackageLabel(format: IgCostFormat, quantity: number) {
-  const [one, many] = PACKAGE_WORDS[format];
-  return `${quantity} ${quantity === 1 ? one : many}`;
+export function formatsForPlatform(platform: CostPlatform) {
+  return Object.entries(PLATFORM_FORMATS[platform]).map(([code, spec]) => ({
+    code,
+    label: spec.label,
+  }));
+}
+
+export function isCostFormat(platform: string, format: string): boolean {
+  if (!isCostPlatform(platform)) return false;
+  return Object.prototype.hasOwnProperty.call(PLATFORM_FORMATS[platform], format);
+}
+
+export function costPackageLabel(
+  platform: CostPlatform,
+  format: string,
+  quantity: number
+) {
+  const spec = PLATFORM_FORMATS[platform][format];
+  if (!spec) return `${quantity} ${format}`;
+  return `${quantity} ${quantity === 1 ? spec.one : spec.many}`;
+}
+
+export function quotePackageText(
+  platform: string | null | undefined,
+  format: string | null | undefined,
+  quantity: number
+) {
+  const resolved =
+    platform && isCostPlatform(platform)
+      ? platform
+      : format && isIgCostFormat(format)
+        ? COST_PLATFORM.INSTAGRAM
+        : null;
+  if (!resolved || !format || !isCostFormat(resolved, format)) return null;
+  return `${COST_PLATFORM_LABELS[resolved]} · ${costPackageLabel(resolved, format, quantity)}`;
 }
 
 export function sortCostQuotes<
-  T extends { format: string; quantity: number },
+  T extends { platform?: string; format: string; quantity: number },
 >(quotes: T[]): T[] {
   return [...quotes].sort((a, b) => {
+    const platformA =
+      a.platform && isCostPlatform(a.platform) ? PLATFORM_ORDER[a.platform] : 0;
+    const platformB =
+      b.platform && isCostPlatform(b.platform) ? PLATFORM_ORDER[b.platform] : 0;
+    if (platformA !== platformB) return platformA - platformB;
+    const formatsA = a.platform && isCostPlatform(a.platform)
+      ? Object.keys(PLATFORM_FORMATS[a.platform])
+      : Object.keys(PLATFORM_FORMATS.INSTAGRAM);
+    const formatsB = b.platform && isCostPlatform(b.platform)
+      ? Object.keys(PLATFORM_FORMATS[b.platform])
+      : Object.keys(PLATFORM_FORMATS.INSTAGRAM);
     const formatDelta =
-      (isIgCostFormat(a.format) ? IG_COST_FORMAT_ORDER[a.format] : 9) -
-      (isIgCostFormat(b.format) ? IG_COST_FORMAT_ORDER[b.format] : 9);
+      (formatsA.indexOf(a.format) === -1 ? 9 : formatsA.indexOf(a.format)) -
+      (formatsB.indexOf(b.format) === -1 ? 9 : formatsB.indexOf(b.format));
     if (formatDelta !== 0) return formatDelta;
     return a.quantity - b.quantity;
   });
@@ -72,6 +151,7 @@ export function perContentFromPackage(totalMinor: number, quantity: number) {
 }
 
 export function parseCostQuoteInput(input: {
+  platform?: string;
   format: string;
   quantity: string;
   amount: string;
@@ -79,14 +159,19 @@ export function parseCostQuoteInput(input: {
 }):
   | {
       ok: true;
-      format: IgCostFormat;
+      platform: CostPlatform;
+      format: string;
       quantity: number;
       costMinor: number;
       currency: string;
     }
   | { ok: false; error: string } {
-  if (!isIgCostFormat(input.format)) {
-    return { ok: false, error: "Elige reel, story o carrusel." };
+  const platform = (input.platform ?? COST_PLATFORM.INSTAGRAM).trim().toUpperCase();
+  if (!isCostPlatform(platform)) {
+    return { ok: false, error: "Elige Instagram, TikTok, LinkedIn o X." };
+  }
+  if (!isCostFormat(platform, input.format)) {
+    return { ok: false, error: "Ese formato no existe en esa red." };
   }
 
   const quantity = Number.parseInt(input.quantity.trim(), 10);
@@ -104,5 +189,5 @@ export function parseCostQuoteInput(input: {
     return { ok: false, error: "Revisa el coste del paquete." };
   }
 
-  return { ok: true, format: input.format, quantity, costMinor, currency };
+  return { ok: true, platform, format: input.format, quantity, costMinor, currency };
 }

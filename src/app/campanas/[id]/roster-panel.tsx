@@ -45,10 +45,11 @@ import type { RosterCatalog } from "@/lib/domain/roster-catalog";
 import { labelForSlug } from "@/lib/domain/roster-labels";
 import { CURRENCIES } from "@/lib/currencies";
 import {
-  IG_COST_FORMAT,
-  IG_COST_FORMAT_LABELS,
-  costPackageLabel,
-  isIgCostFormat,
+  COST_PLATFORM,
+  COST_PLATFORM_LABELS,
+  formatsForPlatform,
+  isCostPlatform,
+  quotePackageText,
 } from "@/lib/domain/creator-cost-quote";
 import { formatMoney, fromMinorUnits } from "@/lib/money";
 
@@ -147,6 +148,11 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
   >(saveCampaignTalentPrices, null);
 
   useEffect(() => toastResult(state), [state]);
+  const initialPlatform =
+    row.contentPlatform && isCostPlatform(row.contentPlatform)
+      ? row.contentPlatform
+      : COST_PLATFORM.INSTAGRAM;
+  const [platform, setPlatform] = useState(initialPlatform);
   const [format, setFormat] = useState(row.contentFormat ?? "");
 
   const packaged = Boolean(format);
@@ -155,11 +161,34 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
 
   return (
     <form
-      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.packageCostMinor ?? ""}-${row.costMinorPerContent ?? ""}-${row.contentFormat ?? ""}-${row.costCurrency ?? ""}`}
+      key={`${row.deliverableCount ?? ""}-${row.salePriceCentsPerContent ?? ""}-${row.packageCostMinor ?? ""}-${row.costMinorPerContent ?? ""}-${row.contentPlatform ?? ""}-${row.contentFormat ?? ""}-${row.costCurrency ?? ""}`}
       action={formAction}
       className="flex flex-wrap items-end gap-2"
     >
       <input type="hidden" name="talentId" value={row.id} />
+      <div className="grid gap-1">
+        <Label className="text-xs">Red</Label>
+        <select
+          name="contentPlatform"
+          value={platform}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (!isCostPlatform(next)) return;
+            setPlatform(next);
+            const formats = formatsForPlatform(next);
+            if (format && !formats.some((item) => item.code === format)) {
+              setFormat("");
+            }
+          }}
+          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+        >
+          {Object.values(COST_PLATFORM).map((value) => (
+            <option key={value} value={value}>
+              {COST_PLATFORM_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="grid gap-1">
         <Label className="text-xs">Formato</Label>
         <select
@@ -169,9 +198,9 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
         >
           <option value="">Sin formato</option>
-          {Object.values(IG_COST_FORMAT).map((value) => (
-            <option key={value} value={value}>
-              {IG_COST_FORMAT_LABELS[value]}
+          {formatsForPlatform(platform).map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.label}
             </option>
           ))}
         </select>
@@ -331,10 +360,12 @@ export function CampaignRosterPanel({
                             catalog.profileTypes,
                             row.creator.profileType
                           ),
-                          row.contentFormat &&
-                          isIgCostFormat(row.contentFormat) &&
-                          row.deliverableCount
-                            ? costPackageLabel(row.contentFormat, row.deliverableCount)
+                          row.contentFormat && row.deliverableCount
+                            ? (quotePackageText(
+                                row.contentPlatform,
+                                row.contentFormat,
+                                row.deliverableCount
+                              ) ?? `${row.deliverableCount} piezas`)
                             : row.deliverableCount
                               ? `${row.deliverableCount} piezas`
                               : null,

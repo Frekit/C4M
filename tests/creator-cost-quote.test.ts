@@ -5,16 +5,24 @@ import {
   costPackageLabel,
   parseCostQuoteInput,
   perContentFromPackage,
+  quotePackageText,
   sortCostQuotes,
 } from "../src/lib/domain/creator-cost-quote";
 
 test("1 reel, 3 reels, 1 story y 2 carruseles se leen como paquetes", () => {
-  assert.equal(costPackageLabel("REEL", 1), "1 reel");
-  assert.equal(costPackageLabel("REEL", 3), "3 reels");
-  assert.equal(costPackageLabel("STORY", 1), "1 story");
-  assert.equal(costPackageLabel("STORY", 4), "4 stories");
-  assert.equal(costPackageLabel("CAROUSEL", 1), "1 carrusel");
-  assert.equal(costPackageLabel("CAROUSEL", 2), "2 carruseles");
+  assert.equal(costPackageLabel("INSTAGRAM", "REEL", 1), "1 reel");
+  assert.equal(costPackageLabel("INSTAGRAM", "REEL", 3), "3 reels");
+  assert.equal(costPackageLabel("INSTAGRAM", "STORY", 1), "1 story");
+  assert.equal(costPackageLabel("INSTAGRAM", "STORY", 4), "4 stories");
+  assert.equal(costPackageLabel("INSTAGRAM", "CAROUSEL", 1), "1 carrusel");
+  assert.equal(costPackageLabel("INSTAGRAM", "CAROUSEL", 2), "2 carruseles");
+  assert.equal(costPackageLabel("TIKTOK", "VIDEO", 3), "3 vídeos");
+  assert.equal(costPackageLabel("X", "THREAD", 1), "1 hilo");
+  assert.equal(
+    quotePackageText("LINKEDIN", "POST", 2),
+    "LinkedIn · 2 posts"
+  );
+  assert.equal(quotePackageText(null, "REEL", 1), "Instagram · 1 reel");
 });
 
 test("el coste es el del paquete y ordena reel, story, carrusel", () => {
@@ -49,6 +57,40 @@ test("8 reels a 1.000 € parten exacto; un total que no cuadra no entra", () =>
 
   const odd = perContentFromPackage(99900, 8);
   assert.equal(odd.ok, false);
+});
+
+test("cada red solo acepta sus formatos", () => {
+  const tiktok = parseCostQuoteInput({
+    platform: "tiktok",
+    format: "VIDEO",
+    quantity: "1",
+    amount: "200",
+    currency: "EUR",
+  });
+  assert.equal(tiktok.ok, true);
+  if (!tiktok.ok) return;
+  assert.equal(tiktok.platform, "TIKTOK");
+
+  assert.equal(
+    parseCostQuoteInput({
+      platform: "INSTAGRAM",
+      format: "POST",
+      quantity: "1",
+      amount: "100",
+      currency: "EUR",
+    }).ok,
+    false
+  );
+  assert.equal(
+    parseCostQuoteInput({
+      platform: "X",
+      format: "THREAD",
+      quantity: "1",
+      amount: "90",
+      currency: "EUR",
+    }).ok,
+    true
+  );
 });
 
 test("un formato desconocido o un coste vacío no entra", () => {

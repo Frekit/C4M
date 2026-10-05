@@ -30,7 +30,8 @@ import {
 import { resolveFxRate } from "@/lib/domain/fx";
 import { isSupportedCurrency } from "@/lib/currencies";
 import {
-  isIgCostFormat,
+  isCostFormat,
+  isCostPlatform,
   perContentFromPackage,
 } from "@/lib/domain/creator-cost-quote";
 import { parseAmountToMinorUnits } from "@/lib/money";
@@ -180,14 +181,16 @@ export async function saveCampaignTalentPrices(
     return { ok: false, error: `Moneda ${currency} no soportada.` };
   }
 
+  const platformRaw = String(formData.get("contentPlatform") ?? "")
+    .trim()
+    .toUpperCase();
   const formatRaw = String(formData.get("contentFormat") ?? "").trim();
-  const contentFormat = formatRaw
-    ? isIgCostFormat(formatRaw)
-      ? formatRaw
-      : null
-    : null;
+  const contentPlatform =
+    formatRaw && isCostPlatform(platformRaw) ? platformRaw : null;
+  const contentFormat =
+    contentPlatform && isCostFormat(contentPlatform, formatRaw) ? formatRaw : null;
   if (formatRaw && !contentFormat) {
-    return { ok: false, error: "Elige reel, story o carrusel." };
+    return { ok: false, error: "Ese formato no existe en esa red." };
   }
 
   const salePriceCentsPerContent = saleUsd
@@ -254,6 +257,7 @@ export async function saveCampaignTalentPrices(
       costMinorPerContent,
       costCurrency: quote.costCurrency,
       deliverableCount,
+      contentPlatform,
       contentFormat,
       packageCostMinor,
       status: statusAfterSavingQuote(lineQuoteComplete(quote)),
