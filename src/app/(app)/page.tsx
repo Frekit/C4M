@@ -305,9 +305,8 @@ export default async function DashboardPage() {
           <CardContent className="grid gap-2">
             {upcomingPayments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Todavía no hay pagos a perfiles. En plataforma hace falta
-                marcarlos como enviados; en packs, que el perfil termine la
-                campaña.
+                Todavía no hay pagos a perfiles. Hace falta marcarlos en
+                plataforma; en packs, que el perfil termine la campaña.
               </p>
             ) : (
               upcomingPayments.map((item) => {
