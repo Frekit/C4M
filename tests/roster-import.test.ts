@@ -53,6 +53,15 @@ test("la columna de tarifa entra con el perfil", () => {
   assert.equal(parsed.rows[1]?.cost, null);
 });
 
+test("la mediana de views entra si la columna viene", () => {
+  const parsed = parseRosterTable(`instagram,pais,tipo,mediana_views
+@ana.garcia,México,UGC,12.500
+@sin.views,España,Micro,
+`);
+  assert.equal(parsed.rows[0]?.medianViews, "12.500");
+  assert.equal(parsed.rows[1]?.medianViews, null);
+});
+
 test("acepta solo la columna de Instagram", () => {
   const parsed = parseRosterTable(`handle
 sofia.tech

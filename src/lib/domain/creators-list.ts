@@ -5,6 +5,11 @@ import {
   DELIVERABLE_STATUS,
   LIST_PAGE_SIZE,
 } from "@/lib/domain/enums";
+import {
+  formatMedianViews,
+  isMedianViewsStale,
+  staleMedianViewsWhere,
+} from "@/lib/domain/median-views";
 import { parsePage, queryHref } from "@/lib/domain/paging";
 import {
   catalogSearchValues,
@@ -17,6 +22,7 @@ export type CreatorListFilters = {
   q?: string;
   pais?: string;
   tipo?: string;
+  views?: string;
   pagina?: string;
 };
 
@@ -28,7 +34,12 @@ const liveStatuses = [
 export function creatorsHref(filters: CreatorListFilters, page = 1) {
   return queryHref(
     "/creators",
-    { q: filters.q, pais: filters.pais, tipo: filters.tipo },
+    {
+      q: filters.q,
+      pais: filters.pais,
+      tipo: filters.tipo,
+      views: filters.views,
+    },
     page
   );
 }
@@ -38,6 +49,7 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
   const query = filters.q?.trim() ?? "";
   const country = filters.pais?.trim() ?? "";
   const profileType = filters.tipo?.trim() ?? "";
+  const viewsDue = filters.views?.trim() === "pendientes";
   const catalog = await loadRosterCatalog();
   await remapCreatorCatalogValues(catalog);
   const searchValues = query ? catalogSearchValues(catalog, query) : [];
@@ -62,6 +74,7 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
           },
         }
       : {}),
+    ...(viewsDue ? staleMedianViewsWhere() : {}),
   };
 
   const [rows, total] = await Promise.all([
@@ -76,6 +89,8 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
         displayName: true,
         country: true,
         profileType: true,
+        igMedianViews: true,
+        igMedianViewsAt: true,
         createdAt: true,
         campaignTalents: {
           select: {
@@ -167,6 +182,16 @@ export async function loadCreatorsPage(filters: CreatorListFilters) {
         displayName: creator.displayName,
         country: creator.country,
         profileType: creator.profileType,
+        igMedianViews: creator.igMedianViews,
+        igMedianViewsAt: creator.igMedianViewsAt,
+        viewsLabel:
+          creator.igMedianViews != null
+            ? formatMedianViews(creator.igMedianViews)
+            : null,
+        viewsStale: isMedianViewsStale({
+          views: creator.igMedianViews,
+          recordedAt: creator.igMedianViewsAt,
+        }),
         createdAt: creator.createdAt,
         campaigns,
         contractCount: creator.contracts.length,

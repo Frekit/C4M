@@ -41,9 +41,15 @@ import {
 } from "@/lib/domain/settlement";
 import { formatDate } from "@/lib/format";
 import { sortCostQuotes } from "@/lib/domain/creator-cost-quote";
+import {
+  formatMedianViews,
+  isMedianViewsStale,
+  medianViewsDueAt,
+} from "@/lib/domain/median-views";
 import { formatMoney } from "@/lib/money";
 
 import { CreatorCostQuotes } from "./cost-quote-form";
+import { MedianViewsForm } from "./median-views-form";
 
 export const metadata: Metadata = {
   title: "Ficha del creator",
@@ -163,6 +169,14 @@ export default async function CreatorPage({
   const canRenew = can(user.role, "contracts:renew");
   const canAddClient = can(user.role, "contracts:write");
   const canSetRate = can(user.role, "creators:write");
+  const viewsStale = isMedianViewsStale({
+    views: creator.igMedianViews,
+    recordedAt: creator.igMedianViewsAt,
+  });
+  const viewsLabel =
+    creator.igMedianViews != null
+      ? formatMedianViews(creator.igMedianViews)
+      : null;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -210,6 +224,43 @@ export default async function CreatorPage({
           ) : null}
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle>Mediana de views</CardTitle>
+            {viewsStale ? <Badge variant="outline">Actualizar</Badge> : null}
+          </div>
+          <CardDescription>
+            {viewsLabel && creator.igMedianViewsAt
+              ? `Registrada el ${formatDate(creator.igMedianViewsAt)}. ${
+                  viewsStale
+                    ? "Han pasado 15 días: hay que volver a mirar Instagram."
+                    : `Toca revisarla el ${formatDate(medianViewsDueAt(creator.igMedianViewsAt))}.`
+                }`
+              : "Todavía no está. Al registrarla se guarda la fecha, y a los 15 días el panel avisa para actualizarla."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <p className="text-2xl font-medium tracking-tight">
+            {viewsLabel ? (
+              <>
+                {viewsLabel}
+                <span className="ml-2 text-base text-muted-foreground">views</span>
+              </>
+            ) : (
+              <span className="text-base text-muted-foreground">Sin mediana</span>
+            )}
+          </p>
+          {canSetRate ? (
+            <MedianViewsForm
+              key={`${viewsLabel ?? ""}-${creator.igMedianViewsAt?.toISOString() ?? ""}`}
+              creatorId={creator.id}
+              amount={viewsLabel ?? ""}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

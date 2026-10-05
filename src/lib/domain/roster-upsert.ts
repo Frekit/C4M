@@ -7,6 +7,7 @@ export async function upsertRosterCreator(input: {
   profileType?: string | null;
   defaultCostMinor?: number | null;
   defaultCostCurrency?: string | null;
+  igMedianViews?: number | null;
   createdBy: string;
 }) {
   const existing = await prisma.creator.findUnique({
@@ -23,6 +24,9 @@ export async function upsertRosterCreator(input: {
         defaultCostMinor: input.defaultCostMinor || null,
         defaultCostCurrency: input.defaultCostCurrency || null,
         payoutCurrency: input.defaultCostCurrency || "EUR",
+        igMedianViews: input.igMedianViews ?? null,
+        igMedianViewsAt:
+          input.igMedianViews == null ? null : new Date(),
         createdBy: input.createdBy,
       },
     });
@@ -34,10 +38,16 @@ export async function upsertRosterCreator(input: {
     profileType?: string;
     defaultCostMinor?: number;
     defaultCostCurrency?: string;
+    igMedianViews?: number;
+    igMedianViewsAt?: Date;
   } = {};
   if (!existing.country && input.country) data.country = input.country;
   if (!existing.profileType && input.profileType) {
     data.profileType = input.profileType;
+  }
+  if (input.igMedianViews != null) {
+    data.igMedianViews = input.igMedianViews;
+    data.igMedianViewsAt = new Date();
   }
   if (input.defaultCostMinor) {
     data.defaultCostMinor = input.defaultCostMinor;

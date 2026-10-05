@@ -25,7 +25,7 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
     } else if (state?.ok) {
       toast.message(
         state.updated
-          ? "Ese Instagram ya estaba. Actualicé país o tipo."
+          ? "Ese Instagram ya estaba. Actualicé país, tipo o la mediana de views."
           : "Ese Instagram ya estaba. No había nada nuevo que guardar."
       );
       setFormEpoch((epoch) => epoch + 1);
@@ -63,6 +63,20 @@ export function RosterCreatorForm({ catalog }: { catalog: RosterCatalog }) {
           name="profileType"
           options={catalog.profileTypes}
         />
+      </div>
+      <div className="grid gap-1.5 sm:col-span-2">
+        <Label htmlFor="igMedianViews">Mediana de views (IG)</Label>
+        <Input
+          id="igMedianViews"
+          name="igMedianViews"
+          inputMode="numeric"
+          required
+          placeholder="12.500"
+        />
+        <p className="text-xs text-muted-foreground">
+          Se anota con la fecha de hoy. A los 15 días avisamos para
+          actualizarla.
+        </p>
       </div>
       <div className="sm:col-span-4">
         <Button type="submit" disabled={pending}>

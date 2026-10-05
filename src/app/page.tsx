@@ -15,6 +15,7 @@ import {
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { loadDashboard } from "@/lib/domain/dashboard";
+import { formatMedianViews } from "@/lib/domain/median-views";
 import { formatDate, relativeDueLabel } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
@@ -29,6 +30,8 @@ export default async function DashboardPage() {
     awaitingSignatureCount,
     upcomingPayments,
     opsAlerts,
+    medianViewsDue,
+    medianViewsDueCount,
   } = await loadDashboard();
 
   if (creatorCount === 0) {
@@ -87,7 +90,8 @@ export default async function DashboardPage() {
       {opsAlerts.expiredCount > 0 ||
       opsAlerts.unsignedPublishedCount > 0 ||
       opsAlerts.missingLinkCount > 0 ||
-      opsAlerts.platformErrorCount > 0 ? (
+      opsAlerts.platformErrorCount > 0 ||
+      medianViewsDueCount > 0 ? (
         <div className="grid gap-3">
           {opsAlerts.expiredCount > 0 ? (
             <Alert>
@@ -145,6 +149,41 @@ export default async function DashboardPage() {
                   className="underline underline-offset-4"
                 >
                   Revisar en Contenidos
+                </Link>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {medianViewsDueCount > 0 ? (
+            <Alert>
+              <AlertTitle>
+                Mediana de views por actualizar ({medianViewsDueCount})
+              </AlertTitle>
+              <AlertDescription>
+                <span className="block">
+                  A los 15 días de anotarla hay que volver a mirar Instagram.
+                </span>
+                <span className="mt-2 flex flex-col gap-1">
+                  {medianViewsDue.map((creator) => (
+                    <Link
+                      key={creator.id}
+                      href={`/creators/${creator.id}`}
+                      className="underline underline-offset-4"
+                    >
+                      @{creator.handle}
+                      {creator.igMedianViews != null
+                        ? ` · ${formatMedianViews(creator.igMedianViews)} views`
+                        : " · sin mediana"}
+                      {creator.igMedianViewsAt
+                        ? ` · registrada el ${formatDate(creator.igMedianViewsAt)}`
+                        : ""}
+                    </Link>
+                  ))}
+                </span>
+                <Link
+                  href="/creators?views=pendientes"
+                  className="mt-2 inline-block underline underline-offset-4"
+                >
+                  Ver todas
                 </Link>
               </AlertDescription>
             </Alert>

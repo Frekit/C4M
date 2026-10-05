@@ -53,9 +53,9 @@ export default async function CreatorsPage({
             Creators
           </h1>
           <p className="text-sm text-muted-foreground">
-            Roster único: Instagram, país y tipo. El precio aún no está;
-            el coste se pone después en la ficha. La venta al cliente se
-            cierra en la campaña.
+            Roster único: Instagram, país, tipo y mediana de views. El
+            precio aún no está; el coste se pone después en la ficha. La
+            venta al cliente se cierra en la campaña.
           </p>
         </div>
         {canWrite ? (
@@ -88,8 +88,9 @@ export default async function CreatorsPage({
           <CardHeader>
             <CardTitle>Añadir al roster</CardTitle>
             <CardDescription>
-              Sin contrato y sin precio. Entran solo con Instagram, país y
-              tipo. El coste se completa en la ficha cuando lo tengamos.
+              Sin contrato y sin precio. Entran con Instagram, país, tipo y
+              la mediana de views de Instagram. Esa cifra queda con la fecha
+              de hoy; a los 15 días el panel avisa para actualizarla.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -127,6 +128,17 @@ export default async function CreatorsPage({
             emptyLabel="Todos"
           />
         </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Views
+          <select
+            name="views"
+            defaultValue={filters.views ?? ""}
+            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+          >
+            <option value="">Todas</option>
+            <option value="pendientes">Por actualizar</option>
+          </select>
+        </label>
         <Button type="submit" size="sm">
           Buscar
         </Button>
@@ -137,7 +149,7 @@ export default async function CreatorsPage({
           <CardHeader>
             <UserPlusIcon className="size-5 text-muted-foreground" />
             <CardTitle>
-              {data.query
+              {data.query || filters.pais || filters.tipo || filters.views
                 ? "Nadie coincide con esa búsqueda"
                 : "Todavía no hay nadie en el roster"}
             </CardTitle>
@@ -195,6 +207,18 @@ export default async function CreatorsPage({
                             {creator.displayName}
                           </p>
                         ) : null}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                          <span>
+                            {creator.viewsLabel
+                              ? `${creator.viewsLabel} views`
+                              : "Sin mediana"}
+                          </span>
+                          {creator.viewsStale ? (
+                            <Badge variant="outline" className="font-normal">
+                              Actualizar
+                            </Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm">
                         {labelForSlug(catalog.countries, creator.country) ?? "—"}

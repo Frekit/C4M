@@ -3,6 +3,7 @@ import {
   CONTRACT_STATUS,
   DELIVERABLE_STATUS,
 } from "@/lib/domain/enums";
+import { staleMedianViewsWhere } from "@/lib/domain/median-views";
 import { loadOpsAlerts } from "@/lib/domain/ops-alerts";
 import { loadPackCampaignIds, loadPackSummaries } from "@/lib/domain/pack-sync";
 import {
@@ -21,6 +22,7 @@ const liveStatus = [
 
 export async function loadDashboard() {
   const packCampaignIdsPromise = loadPackCampaignIds();
+  const staleViews = staleMedianViewsWhere();
 
   const [
     creatorCount,
@@ -33,6 +35,8 @@ export async function loadDashboard() {
     liveDeliverables,
     upcomingPayments,
     opsAlerts,
+    medianViewsDue,
+    medianViewsDueCount,
   ] = await Promise.all([
     prisma.creator.count(),
     prisma.deliverable.count({ where: { contract: liveContract } }),
@@ -129,6 +133,18 @@ export async function loadDashboard() {
       })
     ),
     loadOpsAlerts(),
+    prisma.creator.findMany({
+      where: staleViews,
+      orderBy: { igMedianViewsAt: "asc" },
+      take: 6,
+      select: {
+        id: true,
+        handle: true,
+        igMedianViews: true,
+        igMedianViewsAt: true,
+      },
+    }),
+    prisma.creator.count({ where: staleViews }),
   ]);
 
   const marginUsdCents = liveContracts.reduce((total, contract) => {
@@ -166,5 +182,7 @@ export async function loadDashboard() {
     awaitingSignatureCount,
     upcomingPayments,
     opsAlerts,
+    medianViewsDue,
+    medianViewsDueCount,
   };
 }

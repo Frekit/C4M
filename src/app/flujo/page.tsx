@@ -139,9 +139,10 @@ export default async function WorkflowPage() {
               href="/creators"
               hrefLabel="Creators"
             >
-              Alta suelta o importar Excel/CSV. Queda el Instagram, el país y el
-              tipo. El precio no va en el alta: estos perfiles todavía no lo
-              tienen. El coste se pone después en la ficha.
+              Alta suelta o importar Excel/CSV. Queda el Instagram, el país, el
+              tipo y la mediana de views. Esa cifra se anota con la fecha del
+              alta; a los 15 días el panel pide actualizarla. El precio no va
+              en el alta.
             </Step>
             <Arrow />
             <Step

@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 
 import { requirePermission } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/domain/audit";
 import { ROSTER_IMPORT_MAX_ROWS } from "@/lib/domain/enums";
 import {
   loadRosterCatalog,
   resolveRosterFields,
 } from "@/lib/domain/roster-catalog";
+import { parseMedianViews } from "@/lib/domain/median-views";
 import { parseRosterTable } from "@/lib/domain/roster-import";
 import { upsertRosterCreator } from "@/lib/domain/roster-upsert";
 import { extractInstagramHandle } from "@/lib/domain/validation";
@@ -67,10 +69,14 @@ export async function addRosterCreator(
   });
   if (!resolved.ok) return { ok: false, error: resolved.error };
 
+  const views = parseMedianViews(String(formData.get("igMedianViews") ?? ""));
+  if (!views.ok) return { ok: false, error: views.error };
+
   const result = await upsertRosterCreator({
     handle,
     country: resolved.country,
     profileType: resolved.profileType,
+    igMedianViews: views.views,
     createdBy: user.email,
   });
 
@@ -79,17 +85,51 @@ export async function addRosterCreator(
     entityId: result.creator.id,
     action: result.created ? "ROSTER_CREATED" : "ROSTER_UPDATED",
     actor: user,
-    metadata: { handle },
+    metadata: { handle, igMedianViews: views.views },
   });
 
   revalidatePath("/creators");
   revalidatePath(`/creators/${result.creator.id}`);
+  revalidatePath("/");
   return {
     ok: true,
     created: result.created ? 1 : 0,
     updated: result.updated ? 1 : 0,
     creatorId: result.creator.id,
   };
+}
+
+export async function updateCreatorMedianViews(
+  _prev: RosterWriteResult | null,
+  formData: FormData
+): Promise<RosterWriteResult> {
+  const user = await requirePermission("creators:write", "/creators");
+  const creatorId = String(formData.get("creatorId") ?? "");
+  if (!creatorId) return { ok: false, error: "Falta el perfil." };
+
+  const views = parseMedianViews(String(formData.get("igMedianViews") ?? ""));
+  if (!views.ok) return { ok: false, error: views.error };
+
+  const creator = await prisma.creator.findUnique({ where: { id: creatorId } });
+  if (!creator) return { ok: false, error: "Ese perfil no existe." };
+
+  await prisma.creator.update({
+    where: { id: creatorId },
+    data: { igMedianViews: views.views, igMedianViewsAt: new Date() },
+  });
+
+  await recordAudit({
+    entityType: "Creator",
+    entityId: creatorId,
+    action: "MEDIAN_VIEWS_SET",
+    actor: user,
+    metadata: { igMedianViews: views.views },
+  });
+
+  revalidatePath("/creators");
+  revalidatePath(`/creators/${creatorId}`);
+  revalidatePath("/");
+  return { ok: true, creatorId };
 }
 
 export async function importRosterFile(
@@ -130,10 +170,21 @@ export async function importRosterFile(
       continue;
     }
 
+    let igMedianViews: number | undefined;
+    if (row.medianViews) {
+      const views = parseMedianViews(row.medianViews);
+      if (!views.ok) {
+        issues.push({ line: row.line, message: views.error });
+        continue;
+      }
+      igMedianViews = views.views;
+    }
+
     const result = await upsertRosterCreator({
       handle: row.handle,
       country: resolved.country,
       profileType: resolved.profileType,
+      igMedianViews,
       createdBy: user.email,
     });
     if (result.created) created += 1;
