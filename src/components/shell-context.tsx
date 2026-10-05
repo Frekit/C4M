@@ -32,6 +32,8 @@ type ShellContextValue = {
   aiSeed: string | null;
   helpOpen: boolean;
   setHelpOpen: (open: boolean) => void;
+  aiFlash: string[];
+  markAiFlash: (handles: string[]) => void;
 };
 
 const ShellContext = createContext<ShellContextValue | null>(null);
@@ -59,6 +61,11 @@ export function ShellProvider({
 }) {
   const [crumbs, setCrumbsState] = useState<Crumb[]>([]);
   const [autosave, setAutosaveState] = useState<AutosaveStatus | null>(null);
+  const [aiFlash, setAiFlash] = useState<string[]>([]);
+  const markAiFlash = useCallback((handles: string[]) => {
+    setAiFlash(handles);
+    window.setTimeout(() => setAiFlash([]), 4000);
+  }, []);
   const setCrumbs = useCallback((next: Crumb[]) => setCrumbsState(next), []);
   const setAutosave = useCallback(
     (next: AutosaveStatus | null) => setAutosaveState(next),
@@ -83,6 +90,8 @@ export function ShellProvider({
       aiSeed,
       helpOpen,
       setHelpOpen,
+      aiFlash,
+      markAiFlash,
     }),
     [
       crumbs,
@@ -97,6 +106,8 @@ export function ShellProvider({
       setHelpOpen,
       setCrumbs,
       setAutosave,
+      aiFlash,
+      markAiFlash,
     ]
   );
 

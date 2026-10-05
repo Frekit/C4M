@@ -254,7 +254,8 @@ export function TalentSheet({
                     className={cn(
                       "h-11 border-t border-border",
                       selected.includes(row.id) && "bg-brand-muted/70",
-                      flash === row.id && "bg-ai-muted",
+                      (flash === row.id || shell.aiFlash.includes(row.handle.replace(/^@/, ""))) &&
+                        "bg-ai-muted",
                       active && "outline outline-1 outline-ring"
                     )}
                   >
