@@ -62,6 +62,7 @@ export type CampaignSheetRow = {
   removable: boolean;
   statusLabel: string;
   others: string[];
+  brands: string[];
   formatLabel: string;
   piecesLabel: string;
   saleLabel: string;
@@ -76,6 +77,7 @@ export type CampaignSheetFilters = {
   views?: string;
   mesa?: string;
   red?: string;
+  marca?: string;
   countryValues?: string[];
   typeValues?: string[];
 };
@@ -224,7 +226,11 @@ export function buildCampaignSheetRow(
 
   const seen = new Set<string>();
   const others: string[] = [];
+  const brands = new Set<string>();
   for (const talent of creator.talents) {
+    if (talent.clientName && talent.status !== CAMPAIGN_TALENT_STATUS.REJECTED) {
+      brands.add(talent.clientName);
+    }
     if (talent.campaignId === campaignId || seen.has(talent.campaignId)) continue;
     seen.add(talent.campaignId);
     others.push(
@@ -272,6 +278,7 @@ export function buildCampaignSheetRow(
         chosen?.status === CAMPAIGN_TALENT_STATUS.READY),
     statusLabel,
     others,
+    brands: [...brands].sort((a, b) => a.localeCompare(b, "es")),
     othersLabel: others.join("; ") || "—",
     ...lineLabels(chosen),
   };
@@ -285,6 +292,7 @@ export function filterCampaignSheet(
   const views = filters.views?.trim() ?? "";
   const mesa = filters.mesa?.trim() ?? "";
   const red = filters.red?.trim() ?? "";
+  const marca = filters.marca?.trim() ?? "";
   const countries = filters.countryValues;
   const types = filters.typeValues;
 
@@ -297,6 +305,7 @@ export function filterCampaignSheet(
         row.profileTypeLabel,
         row.quotesLabel,
         row.othersLabel,
+        row.brands.join(" "),
         row.statusLabel,
       ]
         .join(" ")
@@ -313,6 +322,7 @@ export function filterCampaignSheet(
     if (mesa === "descartada" && row.place !== "rejected") return false;
     if (mesa === "apartada" && row.place !== "saved") return false;
     if (mesa === "no" && row.place !== "dismissed") return false;
+    if (marca && !row.brands.includes(marca)) return false;
     if (red === "sin" && row.platforms.length > 0) return false;
     if (red && red !== "sin" && !row.platforms.includes(red)) return false;
     return true;

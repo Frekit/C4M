@@ -72,11 +72,15 @@ export default async function CampaignSheetPage({
 
   const pais = filters.pais?.trim() ?? "";
   const tipo = filters.tipo?.trim() ?? "";
+  const brands = [
+    ...new Set(data.rows.flatMap((row) => row.brands)),
+  ].sort((a, b) => a.localeCompare(b, "es"));
   const visible = filterCampaignSheet(data.rows, {
     q: filters.q,
     views: filters.views,
     mesa: filters.mesa,
     red: filters.red,
+    marca: filters.marca,
     countryValues: pais
       ? storedValuesForFilter(data.catalog.countries, pais)
       : undefined,
@@ -87,7 +91,13 @@ export default async function CampaignSheetPage({
   const canWrite = can(user.role, "campaigns:manage");
   const selectable = visible.filter((row) => row.selectable).length;
   const hasFilter = Boolean(
-    filters.q || pais || tipo || filters.views || filters.mesa || filters.red
+    filters.q ||
+      pais ||
+      tipo ||
+      filters.views ||
+      filters.mesa ||
+      filters.red ||
+      filters.marca
   );
 
   return (
@@ -176,6 +186,17 @@ export default async function CampaignSheetPage({
             <option value="descartada">Descartado antes</option>
             <option value="apartada">Apartado</option>
             <option value="no">No entra</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Ha estado con
+          <select name="marca" defaultValue={filters.marca ?? ""} className={fieldClass}>
+            <option value="">Cualquier marca</option>
+            {brands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
           </select>
         </label>
         <label className="grid gap-1 text-xs text-muted-foreground">

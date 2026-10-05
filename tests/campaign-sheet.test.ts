@@ -126,6 +126,15 @@ test("la planilla enseña tarifas, views y deja fuera a quien ya está abierto",
   assert.equal(again.place, "active");
   assert.equal(again.selectable, true);
   assert.equal(again.othersLabel, "Many Chat · Launch");
+  assert.deepEqual(again.brands, ["Many Chat"]);
+  assert.deepEqual(
+    filterCampaignSheet([again], { marca: "Many Chat" }).map((row) => row.handle),
+    ["ana.garcia"]
+  );
+  assert.deepEqual(
+    filterCampaignSheet([again], { marca: "Higgsfield" }).map((row) => row.handle),
+    []
+  );
   assert.match(again.costLabel, /pieza/);
 });
 
