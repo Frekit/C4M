@@ -226,8 +226,26 @@
   --e3: 0 2px 6px oklch(0 0 0 / 0.4), 0 24px 48px -12px oklch(0 0 0 / 0.55);
 }
 
+/* Newsreader 16pt Medium (peso 500) frente a Times / Liberation Serif.
+   El avance medio pediría size-adjust 107.94 %, pero con ese valor el
+   saludo pasa de 2 líneas a 3 por debajo de ~360 px y el swap cambia la
+   caja del h1. Al 100 % las dos líneas se mantienen en el móvil de
+   laboratorio (380 px) y en 358 px, así que el swap no es un LCP nuevo.
+   font-weight 500 hace que el corte coincida con display-30. Liberation
+   Serif es el Times de esta máquina; Times New Roman cubre macOS y Windows. */
+@font-face {
+  font-family: "Newsreader Adjusted";
+  font-style: normal;
+  font-weight: 500;
+  src: local("Liberation Serif"), local("Times New Roman"), local("Times"), local("Nimbus Roman");
+  size-adjust: 100%;
+  ascent-override: 73.5%;
+  descent-override: 26.5%;
+  line-gap-override: 0%;
+}
+
 @utility text-display-30 {
-  font-family: var(--font-newsreader), "Newsreader", serif;
+  font-family: var(--font-newsreader), "Newsreader Adjusted", serif;
   font-weight: 500;
   letter-spacing: -0.01em;
   font-size: 26px;

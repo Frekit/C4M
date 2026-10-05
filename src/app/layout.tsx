@@ -24,16 +24,21 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-// El saludo (display-30, peso 500) es el LCP de /. Se precarga solo ese
-// corte latin; Geist no. `swap` pinta el fallback de inmediato: `optional`
-// dejaba el titular invisible hasta la fuente y el LCP de laboratorio subía.
+// El saludo (display-30, peso 500) es el LCP de /. Se precarga solo el corte
+// latin de ese peso; el saludo no usa latin-ext. `swap` pinta el fallback de
+// inmediato: `optional` dejaba el titular invisible y el LCP subía.
+// El ajuste automático de next/font usa local("Times New Roman") y las
+// métricas del peso 400. En este laboratorio Times no está instalada, el
+// fallback no llega a aplicarse y el swap cambia el tamaño del h1. El
+// fallback calibrado al peso 500 está en globals.css.
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
   weight: "500",
   display: "swap",
   preload: true,
-  adjustFontFallback: true,
+  adjustFontFallback: false,
+  fallback: ["Newsreader Adjusted", "serif"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
