@@ -54,7 +54,7 @@ export function CampaignBriefForm({
       <CardHeader>
         <CardTitle>Brief</CardTitle>
         <CardDescription>
-          Lo leen la mesa, la planilla y el hilo. El cliente lo ve, no lo edita.
+          Lo usa el equipo al elegir perfiles y en el hilo. El cliente lo ve, no lo edita.
         </CardDescription>
       </CardHeader>
       <CardContent>

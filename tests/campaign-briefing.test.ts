@@ -38,7 +38,7 @@ test("el resumen del hilo no lleva el coste del perfil", () => {
   assert.match(text, /@ana/);
   assert.match(text, /200,00 US\$/);
   assert.match(text, /@sofia\.tech/);
-  assert.match(text, /Borrador para meter en la mesa/);
+  assert.match(text, /Borrador para meter en la campaña/);
   assert.doesNotMatch(text, /coste/i);
   assert.doesNotMatch(text, /EUR/);
   assert.equal(handlesFromDraft(text)[0], "sofia.tech");

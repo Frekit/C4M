@@ -21,7 +21,7 @@ import { formatMoney } from "@/lib/money";
 import { CampaignSheet } from "./sheet-table";
 
 export const metadata: Metadata = {
-  title: "Planilla",
+  title: "Elegir perfiles",
 };
 
 const fieldClass =
@@ -104,12 +104,12 @@ export default async function CampaignSheetPage({
             </Link>
           </p>
           <h1 className="font-heading text-2xl font-medium tracking-tight">
-            Planilla
+            Elegir perfiles
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Filtra el roster, marca los que entran y mételos de golpe. Abre
-            una fila si quieres ver views y tarifas antes. Quien ya está en
-            la mesa se ve, pero no se vuelve a marcar.
+            Todo el roster. Filtra, marca y mételos en la campaña. Abre una
+            fila para ver views y tarifas antes de decidir. Quien ya está
+            dentro se ve, pero no se vuelve a marcar.
           </p>
         </div>
         <Button
@@ -117,7 +117,7 @@ export default async function CampaignSheetPage({
           nativeButton={false}
           render={<Link href={`/campanas/${id}`} />}
         >
-          Volver a la mesa
+          Volver a la campaña
         </Button>
       </div>
 
@@ -171,7 +171,7 @@ export default async function CampaignSheetPage({
           >
             <option value="">Todos</option>
             <option value="fuera">Fuera</option>
-            <option value="abierta">En esta mesa</option>
+            <option value="abierta">Ya dentro</option>
             <option value="activa">Ya tuvo una pasada</option>
             <option value="descartada">Descartado antes</option>
             <option value="apartada">Apartado</option>
@@ -207,7 +207,7 @@ export default async function CampaignSheetPage({
       </form>
 
       <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <PulseTile label="En la mesa" value={String(data.pulse.onDesk)} />
+        <PulseTile label="En la campaña" value={String(data.pulse.onDesk)} />
         <PulseTile label="Apartados" value={String(data.pulse.saved)} />
         <PulseTile
           label="Views al día"
@@ -216,7 +216,7 @@ export default async function CampaignSheetPage({
               ? "—"
               : formatMedianViews(data.pulse.freshViews)
           }
-          hint="Suma de quien está en la mesa"
+          hint="Suma de quien ya está dentro"
         />
         <PulseTile
           label="Venta comprometida"
@@ -250,7 +250,7 @@ export default async function CampaignSheetPage({
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Esta campaña todavía no tiene brief. Se escribe en la mesa.
+          Esta campaña todavía no tiene brief. Se escribe en la campaña.
         </p>
       )}
 

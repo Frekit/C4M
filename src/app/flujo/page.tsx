@@ -150,9 +150,9 @@ export default async function WorkflowPage() {
               href="/campanas"
               hrefLabel="Campañas"
             >
-              Abre la planilla de la campaña: ahí está todo el roster, con
-              país, tipo, views, tarifas y si ya están en la mesa. Filtra y
-              marca los que entran. Si falta alguien, pega los handles. Entran
+              En la campaña, Elegir perfiles abre todo el roster: país, tipo,
+              views, tarifas y si ya están dentro. Filtra y marca. Si falta
+              alguien que no está en el roster, se pega al final. Entran
               aunque no tengan precio.
             </Step>
             <Arrow />

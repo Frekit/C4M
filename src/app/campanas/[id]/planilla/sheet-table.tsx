@@ -75,9 +75,9 @@ function CurationPanel({
     .join(" · ");
   const campaignLine =
     row.place === "out"
-      ? "Todavía fuera de la mesa."
+      ? "Todavía no está en la campaña."
       : row.place === "saved"
-        ? "Apartado. Todavía no está en la mesa."
+        ? "Apartado. Todavía no está en la campaña."
         : row.place === "dismissed"
           ? "No entra en esta campaña."
           : [row.formatLabel, row.piecesLabel !== "—" ? `${row.piecesLabel} piezas` : null, row.saleLabel, row.costLabel]
@@ -181,7 +181,7 @@ function CurationPanel({
             <input type="hidden" name="campaignId" value={campaignId} />
             <input type="hidden" name="creatorId" value={row.id} />
             <Button type="submit" variant="outline" disabled={curatePending}>
-              Quitar de la mesa
+              Quitar de la campaña
             </Button>
           </form>
         ) : null}
@@ -190,7 +190,7 @@ function CurationPanel({
             <input type="hidden" name="campaignId" value={campaignId} />
             <input type="hidden" name="creatorId" value={row.id} />
             <Button type="submit" disabled={pending}>
-              {pending ? "Metiendo…" : "Meter en la mesa"}
+              {pending ? "Metiendo…" : "Meter en la campaña"}
             </Button>
           </form>
         ) : null}
@@ -302,7 +302,7 @@ export function CampaignSheet({
 
   useEffect(() => {
     if (!removeState) return;
-    if (removeState.ok) toast.success("Fuera de la mesa.");
+    if (removeState.ok) toast.success("Fuera de la campaña.");
     else if (removeState.error) toast.error(removeState.error);
   }, [removeState]);
 

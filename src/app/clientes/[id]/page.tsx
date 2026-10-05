@@ -85,7 +85,7 @@ export default async function ClientPage({
           <CardTitle>Perfiles en sus campañas</CardTitle>
           <CardDescription>
             Quién está con esta marca, en qué campaña y en qué punto. Entra
-            en cuanto se mete en la mesa, antes del contrato.
+            en cuanto entra en la campaña, antes del contrato.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -105,7 +105,7 @@ export default async function ClientPage({
                   </Link>
                   {campaign.talents.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Sin perfiles en la mesa.
+                      Sin perfiles en la campaña.
                     </p>
                   ) : (
                     <ul className="grid gap-1">

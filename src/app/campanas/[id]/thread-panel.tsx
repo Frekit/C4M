@@ -98,7 +98,7 @@ export function CampaignThread({
   const [noteEpoch, setNoteEpoch] = useState(0);
 
   useEffect(() => {
-    toastTalk(askState, "La mesa respondió.");
+    toastTalk(askState, "Ahí va el resumen.");
     if (askState?.ok) setAskEpoch((epoch) => epoch + 1);
   }, [askState]);
   useEffect(() => {
@@ -106,7 +106,7 @@ export function CampaignThread({
     if (noteState?.ok) setNoteEpoch((epoch) => epoch + 1);
   }, [noteState]);
   useEffect(() => toastTalk(linkState, "Enlace listo."), [linkState]);
-  useEffect(() => toastTalk(applyState, "Borrador en la mesa."), [applyState]);
+  useEffect(() => toastTalk(applyState, "Borrador en la campaña."), [applyState]);
   useEffect(() => toastTalk(dismissState, "Borrador dejado."), [dismissState]);
 
   const shownLink =
@@ -121,7 +121,7 @@ export function CampaignThread({
         </p>
         <p className="mt-2 text-sm leading-relaxed">{statusLine}</p>
         <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <Stat label="En mesa" value={String(onDesk)} />
+          <Stat label="Dentro" value={String(onDesk)} />
           <Stat label="Con precio" value={String(priced)} />
           <Stat label="Activos" value={String(active)} />
           <Stat label="Publicados" value={`${published}/${total}`} />
@@ -139,9 +139,9 @@ export function CampaignThread({
         </p>
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aquí habláis la agencia y el cliente. La mesa resume lo que ya está
+            Aquí habláis la agencia y el cliente. El resumen lee lo que ya está
             escrito y, si se lo pides, deja un borrador. No cambia la campaña
-            sola.
+            solo.
           </p>
         ) : (
           <ol className="grid gap-2">
@@ -157,7 +157,7 @@ export function CampaignThread({
                 }
               >
                 <p className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-70">
-                  {message.authorKind === "ASSISTANT" ? "Mesa" : message.authorLabel}
+                  {message.authorKind === "ASSISTANT" ? "Resumen" : message.authorLabel}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
                   {message.body}
@@ -200,11 +200,11 @@ export function CampaignThread({
           <Textarea
             name="question"
             rows={3}
-            placeholder="Pide un plan o pregunta qué hay en la mesa."
+            placeholder="Pide un plan o pregunta qué hay en la campaña."
           />
           <div>
             <Button type="submit" size="sm" disabled={askPending}>
-              {askPending ? "Leyendo la mesa…" : "Preguntar a la mesa"}
+              {askPending ? "Leyendo la campaña…" : "Preguntar"}
             </Button>
           </div>
         </form>
@@ -227,7 +227,7 @@ export function CampaignThread({
           Enlace del cliente
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Habla en el mismo hilo. No ve la mesa, los costes ni botones de estado.
+          Habla en el mismo hilo. No elige perfiles, no ve costes ni botones de estado.
         </p>
         {shownLink ? (
           <a

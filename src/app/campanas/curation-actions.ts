@@ -251,7 +251,7 @@ export async function askAssistant(
     data: {
       campaignId,
       authorKind: "ASSISTANT",
-      authorLabel: "Mesa",
+      authorLabel: "Resumen",
       body: answer,
       createdAt: new Date(askedAt.getTime() + 1),
     },

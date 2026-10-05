@@ -3,7 +3,7 @@ import type { CampaignResults } from "@/lib/domain/campaign-results";
 import type { CampaignSheetRow, SheetPulse } from "@/lib/domain/campaign-sheet";
 import { formatMoney } from "@/lib/money";
 
-export const DRAFT_MARK = "Borrador para meter en la mesa";
+export const DRAFT_MARK = "Borrador para meter en la campaña";
 
 const PLAN_RE = /\b(plan|brief|shortlist|lista|propón|propon|selecci|curad)/i;
 
@@ -155,8 +155,8 @@ export function renderCampaignBriefing(packet: BriefingPacket, question: string)
 
   lines.push(
     packet.onDesk.length === 0
-      ? "En la mesa: nadie todavía."
-      : `En la mesa: ${packet.onDesk.map(deskLine).join("; ")}.`
+      ? "En la campaña: nadie todavía."
+      : `En la campaña: ${packet.onDesk.map(deskLine).join("; ")}.`
   );
   lines.push(
     packet.savedHandles.length === 0
@@ -173,18 +173,18 @@ export function renderCampaignBriefing(packet: BriefingPacket, question: string)
     lines.push(`Queda ${packet.remainingLabel} de ${packet.budgetLabel}.`);
   }
   lines.push(
-    `Con precio en la mesa: ${packet.priced}. Activos de una pasada anterior: ${packet.active}.`
+    `Con precio en la campaña: ${packet.priced}. Activos de una pasada anterior: ${packet.active}.`
   );
 
   if (PLAN_RE.test(question)) {
     if (packet.shortlist.length === 0) {
       lines.push(
-        "No hay perfiles fuera de la mesa que encajen con las redes del brief. No invento handles."
+        "No hay perfiles fuera de la campaña que encajen con las redes del brief. No invento handles."
       );
     } else {
       lines.push(`${DRAFT_MARK} (no lo he aplicado):`);
       for (const handle of packet.shortlist) lines.push(`@${handle}`);
-      lines.push("La mesa lo aplica si encaja. Yo no escribo la campaña.");
+      lines.push("El equipo lo aplica si encaja. Yo no escribo la campaña.");
     }
   } else {
     lines.push(

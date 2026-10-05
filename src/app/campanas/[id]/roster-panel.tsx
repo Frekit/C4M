@@ -10,7 +10,6 @@ import {
   activateCampaignTalent,
   type CampaignRosterResult,
 } from "@/app/campanas/roster-actions";
-import { AddTalentPicker } from "./add-talent-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +24,6 @@ import { Label } from "@/components/ui/label";
 import type {
   CampaignProposalRow,
   CampaignRosterRow,
-  RosterPick,
 } from "@/lib/domain/campaign-roster";
 import {
   canActivateLine,
@@ -82,7 +80,7 @@ function waitingCopy(
 
 function toastResult(state: CampaignRosterResult | null) {
   if (!state) return;
-  if (state.ok) toast.success("Mesa actualizada.");
+  if (state.ok) toast.success("Campaña actualizada.");
   else if (state.error) toast.error(state.error);
 }
 
@@ -221,7 +219,6 @@ export function CampaignRosterPanel({
   campaignId,
   canWrite,
   rows,
-  picks,
   catalog,
   approvalMode,
   engagementKind,
@@ -232,7 +229,6 @@ export function CampaignRosterPanel({
   campaignId: string;
   canWrite: boolean;
   rows: CampaignRosterRow[];
-  picks: RosterPick[];
   catalog: RosterCatalog;
   approvalMode: CampaignApproval;
   engagementKind: CampaignEngagement;
@@ -250,33 +246,27 @@ export function CampaignRosterPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mesa de la campaña</CardTitle>
+        <CardTitle>En la campaña</CardTitle>
         <CardDescription>
-          Para meter varios, abre la planilla: filtras el roster y marcas.
-          Aquí abajo solo si son uno o dos que ya ves. Entran sin precio.
+          Quien ya está dentro. Aquí se cierra el precio y se activa. Para
+          añadir a alguien se elige del roster, no se busca otra vez aquí.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        <div>
-          <Button
-            nativeButton={false}
-            render={<Link href={`/campanas/${campaignId}/planilla`} />}
-          >
-            Elegir en la planilla
-          </Button>
-        </div>
-        {canWrite ? (
-          <AddTalentPicker
-            campaignId={campaignId}
-            picks={picks}
-            catalog={catalog}
-          />
-        ) : null}
-
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Todavía no hay perfiles en esta campaña.
-          </p>
+          <div className="grid gap-3">
+            <p className="text-sm text-muted-foreground">
+              Todavía no hay nadie en esta campaña.
+            </p>
+            <div>
+              <Button
+                nativeButton={false}
+                render={<Link href={`/campanas/${campaignId}/planilla`} />}
+              >
+                Elegir perfiles
+              </Button>
+            </div>
+          </div>
         ) : (
           <ul className="grid gap-4">
             {rows.map((row) => {

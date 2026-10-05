@@ -58,7 +58,7 @@ export function ClientThreadForm({
             >
               <p className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-70">
                 {message.authorKind === "ASSISTANT"
-                  ? "Mesa"
+                  ? "Resumen"
                   : message.authorKind === "CLIENT"
                     ? message.authorLabel
                     : "Agencia"}
