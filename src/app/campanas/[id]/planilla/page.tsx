@@ -73,9 +73,9 @@ export default async function CampaignSheetPage({
             Planilla
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Todos los perfiles del roster, con views, tarifas y cómo están en
-            esta campaña. Filtra, marca y mételos de golpe. Quien ya está en
-            la mesa se ve, pero no se vuelve a marcar.
+            Filtra la lista y abre un perfil a la derecha para curarlo: views,
+            tarifas y marcas. Marca los que entran y mételos de golpe. Quien
+            ya está en la mesa se ve, pero no se vuelve a marcar.
           </p>
         </div>
         <Button

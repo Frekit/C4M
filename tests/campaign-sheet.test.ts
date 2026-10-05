@@ -51,6 +51,9 @@ test("la planilla enseña tarifas, views y deja fuera a quien ya está abierto",
   assert.equal(fresh.viewsStale, false);
   assert.match(fresh.quotesLabel, /Instagram · 1 reel/);
   assert.match(fresh.quotesLabel, /TikTok · 1 vídeo/);
+  assert.equal(fresh.rates[0]?.platformLabel, "Instagram");
+  assert.equal(fresh.rates[1]?.platformLabel, "TikTok");
+  assert.match(fresh.rates[0]?.amountLabel ?? "", /€/);
 
   const open = buildCampaignSheetRow(
     creator({

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { OPEN_TALENT_STATUSES } from "@/lib/domain/campaign-desk";
 import {
+  COST_PLATFORM_LABELS,
+  isCostPlatform,
   quotePackageText,
   sortCostQuotes,
 } from "@/lib/domain/creator-cost-quote";
@@ -19,6 +21,13 @@ const OPEN = new Set<string>(OPEN_TALENT_STATUSES);
 
 export type SheetPlace = "out" | "open" | "active" | "rejected";
 
+export type SheetRateLine = {
+  platform: string;
+  platformLabel: string;
+  packageLabel: string;
+  amountLabel: string;
+};
+
 export type CampaignSheetRow = {
   id: string;
   handle: string;
@@ -31,6 +40,7 @@ export type CampaignSheetRow = {
   viewsWhen: string;
   viewsStale: boolean;
   quotesLabel: string;
+  rates: SheetRateLine[];
   platforms: string[];
   place: SheetPlace;
   selectable: boolean;
@@ -98,13 +108,27 @@ function latest(rows: SheetTalent[]) {
   return [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
 }
 
-function quotesLabel(quotes: SheetQuote[]) {
-  const parts = sortCostQuotes(quotes).map((quote) => {
+function rateLines(quotes: SheetQuote[]): SheetRateLine[] {
+  return sortCostQuotes(quotes).flatMap((quote) => {
     const pack = quotePackageText(quote.platform, quote.format, quote.quantity);
-    const money = formatMoney(quote.costMinor, quote.currency);
-    return pack ? `${pack} ${money}` : money;
+    const platform = isCostPlatform(quote.platform) ? quote.platform : null;
+    return [
+      {
+        platform: quote.platform,
+        platformLabel: platform ? COST_PLATFORM_LABELS[platform] : quote.platform,
+        packageLabel: pack ?? `${quote.quantity} ${quote.format}`,
+        amountLabel: formatMoney(quote.costMinor, quote.currency),
+      },
+    ];
   });
-  return parts.length > 0 ? parts.join(" · ") : "Sin tarifas";
+}
+
+function quotesLabel(quotes: SheetQuote[]) {
+  const lines = rateLines(quotes);
+  if (lines.length === 0) return "Sin tarifas";
+  return lines
+    .map((line) => `${line.packageLabel} ${line.amountLabel}`)
+    .join(" · ");
 }
 
 function lineLabels(talent: SheetTalent | null) {
@@ -196,6 +220,7 @@ export function buildCampaignSheetRow(
     viewsWhen: creator.igMedianViewsAt ? formatDate(creator.igMedianViewsAt) : "",
     viewsStale,
     quotesLabel: quotesLabel(creator.quotes),
+    rates: rateLines(creator.quotes),
     platforms: [
       ...new Set(
         creator.quotes

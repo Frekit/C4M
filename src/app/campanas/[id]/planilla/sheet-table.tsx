@@ -12,7 +12,155 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { CampaignSheetRow } from "@/lib/domain/campaign-sheet";
+import type { CampaignSheetRow, SheetRateLine } from "@/lib/domain/campaign-sheet";
+
+function ratesByNetwork(rates: SheetRateLine[]) {
+  const groups: { platform: string; lines: SheetRateLine[] }[] = [];
+  for (const rate of rates) {
+    const current = groups.find((group) => group.platform === rate.platformLabel);
+    if (current) current.lines.push(rate);
+    else groups.push({ platform: rate.platformLabel, lines: [rate] });
+  }
+  return groups;
+}
+
+function CurationPanel({
+  row,
+  campaignId,
+  canWrite,
+  marked,
+  pending,
+  onToggle,
+  action,
+}: {
+  row: CampaignSheetRow | null;
+  campaignId: string;
+  canWrite: boolean;
+  marked: boolean;
+  pending: boolean;
+  onToggle: (id: string) => void;
+  action: (payload: FormData) => void;
+}) {
+  if (!row) {
+    return (
+      <aside
+        id="curacion"
+        className="rounded-lg border bg-card p-4 lg:sticky lg:top-4"
+      >
+        <h2 className="text-sm font-medium">Curación</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Abre un perfil de la tabla. Aquí se ve la mediana, las tarifas por
+          red y las marcas con las que ya ha trabajado, para decidir si entra.
+        </p>
+      </aside>
+    );
+  }
+
+  const networks = ratesByNetwork(row.rates);
+  const meta = [row.countryLabel, row.profileTypeLabel]
+    .filter((part) => part && part !== "—")
+    .join(" · ");
+
+  return (
+    <aside
+      id="curacion"
+      className="grid gap-4 rounded-lg border bg-card p-4 lg:sticky lg:top-4"
+    >
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-medium">@{row.handle}</h2>
+          <Badge variant={row.place === "open" ? "default" : "outline"}>
+            {row.statusLabel}
+          </Badge>
+        </div>
+        {row.displayName ? (
+          <p className="text-sm text-muted-foreground">{row.displayName}</p>
+        ) : null}
+        {meta ? <p className="text-xs text-muted-foreground">{meta}</p> : null}
+      </div>
+
+      <section className="grid gap-1">
+        <h3 className="text-xs font-medium text-muted-foreground">Views de Instagram</h3>
+        <p className="text-sm tabular-nums">{row.viewsLabel}</p>
+        {row.viewsStale ? (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            Hay que actualizar la mediana antes de fiarse del alcance.
+          </p>
+        ) : row.viewsWhen ? (
+          <p className="text-xs text-muted-foreground">Anotada el {row.viewsWhen}</p>
+        ) : null}
+      </section>
+
+      <section className="grid gap-2">
+        <h3 className="text-xs font-medium text-muted-foreground">Tarifas básicas</h3>
+        {networks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin tarifas todavía.</p>
+        ) : (
+          networks.map((group) => (
+            <div key={group.platform} className="grid gap-1">
+              <p className="text-xs font-medium">{group.platform}</p>
+              <ul className="grid gap-0.5">
+                {group.lines.map((line) => (
+                  <li
+                    key={`${line.platform}-${line.packageLabel}-${line.amountLabel}`}
+                    className="flex items-baseline justify-between gap-3 text-sm"
+                  >
+                    <span>{line.packageLabel.replace(`${group.platform} · `, "")}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {line.amountLabel}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section className="grid gap-1">
+        <h3 className="text-xs font-medium text-muted-foreground">En esta campaña</h3>
+        {row.place === "out" ? (
+          <p className="text-sm text-muted-foreground">Todavía fuera de la mesa.</p>
+        ) : (
+          <p className="text-sm">
+            {[row.formatLabel, row.piecesLabel !== "—" ? `${row.piecesLabel} piezas` : null, row.saleLabel, row.costLabel]
+              .filter((part) => part && part !== "—")
+              .join(" · ") || row.statusLabel}
+          </p>
+        )}
+      </section>
+
+      <section className="grid gap-1">
+        <h3 className="text-xs font-medium text-muted-foreground">Otras marcas</h3>
+        <p className="text-sm">{row.othersLabel}</p>
+      </section>
+
+      <div className="flex flex-wrap gap-2">
+        {canWrite && row.selectable ? (
+          <form action={action}>
+            <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="creatorId" value={row.id} />
+            <Button type="submit" disabled={pending}>
+              {pending ? "Metiendo…" : "Meter este perfil"}
+            </Button>
+          </form>
+        ) : null}
+        {canWrite && row.selectable ? (
+          <Button type="button" variant="outline" onClick={() => onToggle(row.id)}>
+            {marked ? "Quitar del lote" : "Sumar al lote"}
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          nativeButton={false}
+          render={<Link href={`/creators/${row.id}`} />}
+        >
+          Abrir ficha
+        </Button>
+      </div>
+    </aside>
+  );
+}
 
 function resultToast(state: CampaignRosterResult | null) {
   if (!state) return;
@@ -46,6 +194,7 @@ export function CampaignSheet({
     FormData
   >(pasteTalentToCampaign, null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
   const [pasteEpoch, setPasteEpoch] = useState(0);
 
   useEffect(() => {
@@ -59,6 +208,14 @@ export function CampaignSheet({
     resultToast(pasteState);
     if (pasteState.ok) setPasteEpoch((epoch) => epoch + 1);
   }, [pasteState]);
+
+  const openRow = rows.find((row) => row.id === openId) ?? null;
+
+  useEffect(() => {
+    if (!openId) return;
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    document.getElementById("curacion")?.scrollIntoView({ block: "start" });
+  }, [openId]);
 
   const selectableIds = rows.filter((row) => row.selectable).map((row) => row.id);
   const allSelected =
@@ -87,7 +244,8 @@ export function CampaignSheet({
 
   return (
     <div className="grid gap-3">
-      <form action={pickAction} className="grid gap-3">
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <form action={pickAction} className="grid min-w-0 gap-3">
         <input type="hidden" name="campaignId" value={campaignId} />
         {[...selected].map((id) => (
           <input key={id} type="hidden" name="creatorId" value={id} />
@@ -148,14 +306,24 @@ export function CampaignSheet({
               ) : (
                 rows.map((row) => {
                   const checked = selected.has(row.id);
+                  const active = openId === row.id;
+                  const stickyBg = checked || active ? "bg-muted" : "bg-background";
                   return (
                     <tr
                       key={row.id}
-                      className="border-t hover:bg-muted/40"
                       data-handle={row.handle}
+                      data-open={active ? "true" : "false"}
+                      tabIndex={0}
+                      onClick={() => setOpenId(row.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") setOpenId(row.id);
+                      }}
+                      className={`cursor-pointer border-t hover:bg-muted/40 ${active ? "bg-muted/60" : ""}`}
                     >
                       <td
-                        className={`sticky left-0 z-10 px-2 py-1.5 ${checked ? "bg-muted" : "bg-background"}`}
+                        className={`sticky left-0 z-10 px-2 py-1.5 ${stickyBg}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         {canWrite ? (
                           <input
@@ -168,11 +336,10 @@ export function CampaignSheet({
                           />
                         ) : null}
                       </td>
-                      <td
-                        className={`sticky left-8 z-10 px-2 py-1.5 ${checked ? "bg-muted" : "bg-background"}`}
-                      >
+                      <td className={`sticky left-8 z-10 px-2 py-1.5 ${stickyBg}`}>
                         <Link
                           href={`/creators/${row.id}`}
+                          onClick={(event) => event.stopPropagation()}
                           className="font-medium underline underline-offset-4"
                         >
                           @{row.handle}
@@ -245,6 +412,16 @@ export function CampaignSheet({
           </div>
         ) : null}
       </form>
+      <CurationPanel
+        row={openRow}
+        campaignId={campaignId}
+        canWrite={canWrite}
+        marked={openRow ? selected.has(openRow.id) : false}
+        pending={pickPending}
+        onToggle={toggle}
+        action={pickAction}
+      />
+      </div>
 
       {canWrite ? (
         <form key={pasteEpoch} action={pasteAction} className="grid gap-2">
