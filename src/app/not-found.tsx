@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { aiSetup } from "@/lib/agent/config";
 import { NotFoundMessage } from "@/components/not-found-message";
 import { PublicBrandHeader } from "@/components/public-brand-header";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -36,7 +37,7 @@ export default async function NotFound() {
   ]);
 
   return (
-    <AppShell user={user} urgentCount={center.urgentCount} campaigns={campaigns}>
+    <AppShell user={user} urgentCount={center.urgentCount} campaigns={campaigns} aiSetup={aiSetup()}>
       <NotFoundMessage />
     </AppShell>
   );

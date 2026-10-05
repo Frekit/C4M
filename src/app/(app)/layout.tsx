@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { aiSetup } from "@/lib/agent/config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { CAMPAIGN_STATUS } from "@/lib/domain/enums";
@@ -33,7 +34,7 @@ export default async function AppLayout({
   const urgentCount = center.urgentCount;
 
   return (
-    <AppShell user={user} urgentCount={urgentCount} campaigns={campaigns}>
+    <AppShell user={user} urgentCount={urgentCount} campaigns={campaigns} aiSetup={aiSetup()}>
       {children}
     </AppShell>
   );
