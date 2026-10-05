@@ -13,13 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -35,7 +28,7 @@ import {
 import { formatMoney } from "@/lib/money";
 
 import { BulkCampaignBar } from "./bulk-campaign-bar";
-import { ContentRow } from "./content-row";
+import { ContentsBoard } from "./contents-board";
 import { ContentsPager } from "./pager";
 
 export const metadata: Metadata = {
@@ -64,8 +57,7 @@ export default async function ContentsPage({
             Contenidos
           </h1>
           <p className="text-sm text-muted-foreground">
-            Busca por handle. Asignar campaña puede aplicarse al filtro, no
-            solo a esta página.
+            Todos los contenidos contratados: fecha, publicación, subida al cliente y pago.
           </p>
         </div>
         <Button
@@ -76,6 +68,24 @@ export default async function ContentsPage({
           Campañas
         </Button>
       </div>
+
+      <nav className="flex gap-2 overflow-x-auto text-label-13" aria-label="Vistas">
+        <Button variant={filters.vista === "necesitan" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=necesitan" />}>
+          Necesitan algo
+        </Button>
+        <Button variant={filters.retrasados === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?retrasados=1" />}>
+          Fecha pasada {data.lateCount}
+        </Button>
+        <Button variant={filters.sinEnlace === "1" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?sinEnlace=1" />}>
+          Sin enlace
+        </Button>
+        <Button variant={filters.vista === "pagar" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos?vista=pagar" />}>
+          Listos para pagar
+        </Button>
+        <Button variant={!data.hasFilters ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/contenidos" />}>
+          Todos
+        </Button>
+      </nav>
 
       <div className="flex flex-wrap gap-2">
         {DELIVERABLE_STATUS_ORDER.map((status) => (
@@ -236,15 +246,19 @@ export default async function ContentsPage({
         <Card>
           <CardHeader>
             <LayoutListIcon className="size-5 text-muted-foreground" />
-            <CardTitle>
-              {data.hasFilters
-                ? "Ningún contenido con esos filtros"
-                : "Todavía no hay contenidos"}
+            <CardTitle className="font-serif text-[22px] leading-7">
+              {filters.vista === "necesitan"
+                ? "Todo al día"
+                : data.hasFilters
+                  ? "Nada con estos filtros"
+                  : "Todavía no hay contenidos"}
             </CardTitle>
             <CardDescription>
-              {data.hasFilters
-                ? "Prueba a quitar algún filtro."
-                : "Los contenidos se crean solos al registrar un influencer con sus contenidos pactados."}
+              {filters.vista === "necesitan"
+                ? "Ningún contenido necesita nada ahora mismo."
+                : data.hasFilters
+                  ? "Prueba a quitar algún filtro."
+                  : "Los contenidos se crean solos al registrar un influencer con sus contenidos pactados."}
             </CardDescription>
           </CardHeader>
           {data.hasFilters ? (
@@ -254,7 +268,7 @@ export default async function ContentsPage({
                 nativeButton={false}
                 render={<Link href="/contenidos" />}
               >
-                Limpiar filtros
+                Quitar filtros
               </Button>
             </CardContent>
           ) : null}
@@ -282,31 +296,7 @@ export default async function ContentsPage({
       ) : (
         <Card>
           <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8" />
-                  <TableHead>Creator</TableHead>
-                  <TableHead className="min-w-40">Campaña</TableHead>
-                  <TableHead className="min-w-36">Estado</TableHead>
-                  <TableHead className="min-w-36">Fecha</TableHead>
-                  <TableHead className="min-w-48">Enlace</TableHead>
-                  <TableHead>Coste</TableHead>
-                  <TableHead>Pago previsto</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.rows.map((row) => (
-                  <ContentRow
-                    key={row.id}
-                    item={row}
-                    campaigns={data.campaignOptions}
-                    canEdit={canEdit}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <ContentsBoard rows={data.rows} canEdit={canEdit} />
             <ContentsPager
               page={data.page}
               pageSize={CONTENTS_PAGE_SIZE}

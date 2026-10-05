@@ -43,12 +43,13 @@ test("una URL genérica pierde www, barra final y utm", () => {
   );
 });
 
-test("el mensaje nombra creator, contrato y número", () => {
+test("el mensaje nombra el contrato y el título", () => {
   assert.equal(
     duplicatePostUrlError({
       position: 2,
-      contract: { code: "HF-104", creator: { handle: "ana" } },
+      title: "TikTok 1",
+      contract: { code: "CTR-2026-003", creator: { handle: "ana" } },
     }),
-    "Ese enlace ya está en @ana · HF-104 · contenido nº 2."
+    "Este enlace ya está en otro contenido: CTR-2026-003 · TikTok 1."
   );
 });

@@ -38,6 +38,8 @@ export type ContentRowData = {
   contractSigned: boolean;
   pack: PackProgress | null;
   platformSubmitError: string | null;
+  title: string | null;
+  paidAt: string | null;
 };
 
 export type ContentsCampaignOption = {
@@ -76,7 +78,8 @@ export function hasContentFilters(filters: ContentFilters): boolean {
       filters.retrasados ||
       filters.sinEnlace ||
       filters.errorPlataforma ||
-      filters.sinFirmar
+      filters.sinFirmar ||
+      filters.vista
   );
 }
 
@@ -106,7 +109,9 @@ export async function loadContentsPage(
       select: {
         id: true,
         position: true,
+        title: true,
         status: true,
+        paidAt: true,
         campaignId: true,
         scheduledFor: true,
         publishedAt: true,
@@ -241,6 +246,8 @@ export async function loadContentsPage(
       contractSigned: isSignedContract(item.contract.status),
       pack,
       platformSubmitError: item.platformSubmitError,
+      title: item.title,
+      paidAt: item.paidAt?.toISOString() ?? null,
     };
   });
 

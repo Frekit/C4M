@@ -19,6 +19,7 @@ import {
   type RosterOptionKind,
 } from "@/lib/domain/roster-catalog";
 
+import { CatalogOptionsTable } from "./catalog-table";
 import { AddAliasesForm, AddCatalogOptionForm } from "./option-forms";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ function OptionList({
       </CardHeader>
       <CardContent className="grid gap-6">
         <AddCatalogOptionForm kind={kind} noun={noun} />
+        <CatalogOptionsTable options={options} />
         <ul className="grid gap-3">
           {options.map((option) => (
             <li key={option.id} className="grid gap-2 rounded-lg border p-3">
