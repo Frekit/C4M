@@ -13,7 +13,7 @@ import {
 import { parseMedianViews } from "@/lib/domain/median-views";
 import { parseRosterTable } from "@/lib/domain/roster-import";
 import { upsertRosterCreator } from "@/lib/domain/roster-upsert";
-import { extractInstagramHandle } from "@/lib/domain/validation";
+import { extractInstagramHandle } from "@/lib/domain/instagram-handle";
 
 export type RosterWriteResult = {
   ok: boolean;
