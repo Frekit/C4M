@@ -103,17 +103,26 @@ export function CampaignThread({
   const [askEpoch, setAskEpoch] = useState(0);
   const [noteEpoch, setNoteEpoch] = useState(0);
   const [visibleToClient, setVisibleToClient] = useState(false);
+  const [seenAsk, setSeenAsk] = useState(askState);
+  const [seenNote, setSeenNote] = useState(noteState);
 
-  useEffect(() => {
-    toastTalk(askState, "La mesa respondió.");
+  if (askState !== seenAsk) {
+    setSeenAsk(askState);
     if (askState?.ok) setAskEpoch((epoch) => epoch + 1);
-  }, [askState]);
-  useEffect(() => {
-    toastTalk(noteState, "Nota en el hilo.");
+  }
+  if (noteState !== seenNote) {
+    setSeenNote(noteState);
     if (noteState?.ok) {
       setNoteEpoch((epoch) => epoch + 1);
       setVisibleToClient(false);
     }
+  }
+
+  useEffect(() => {
+    toastTalk(askState, "La mesa respondió.");
+  }, [askState]);
+  useEffect(() => {
+    toastTalk(noteState, "Nota en el hilo.");
   }, [noteState]);
   useEffect(() => toastTalk(linkState, "Enlace listo."), [linkState]);
   useEffect(() => toastTalk(applyState, "Borrador en la mesa."), [applyState]);
