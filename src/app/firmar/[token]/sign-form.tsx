@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import {
   BanknoteIcon,
   BuildingIcon,
@@ -8,6 +8,7 @@ import {
   ReceiptIcon,
 } from "lucide-react";
 
+import { Field as AccessibleField } from "@/components/field";
 import { FormErrorSummary } from "@/components/form-error-summary";
 import { NativeSelectField } from "@/components/native-select-field";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/card";
 import { NativeCheckboxField } from "@/components/native-checkbox-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { CURRENCIES } from "@/lib/currencies";
 import {
   PAYEE_KIND,
@@ -75,19 +75,20 @@ function Field({
   name: string;
   label: string;
   error?: string;
-  children: React.ReactNode;
+  children: React.ReactElement;
   hint?: string;
   className?: string;
 }) {
   return (
-    <div className={className ? `grid gap-2 ${className}` : "grid gap-2"}>
-      <Label htmlFor={name}>{label}</Label>
+    <AccessibleField
+      id={name}
+      label={label}
+      error={error}
+      description={hint}
+      className={className}
+    >
       {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
-      {!error && hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      ) : null}
-    </div>
+    </AccessibleField>
   );
 }
 
@@ -104,13 +105,6 @@ export function SignForm({
     SignResult | null,
     FormData
   >(signContract, null);
-
-  useEffect(() => {
-    if (!state?.error && !state?.fieldErrors) return;
-    document
-      .getElementById("sign-form-errors")
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [state?.attempt, state?.error, state?.fieldErrors]);
 
   // Tras un error, React 19 resetea el <form> a los defaultValue del primer
   // render (vacíos). Remontar con lo que devolvió el servidor conserva lo
@@ -154,7 +148,7 @@ function SignFormFields({
   const errors = state?.fieldErrors ?? {};
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} noValidate className="grid gap-5">
       <input type="hidden" name="token" value={token} />
 
       <FormErrorSummary

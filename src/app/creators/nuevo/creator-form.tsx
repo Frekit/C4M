@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { AtSignIcon } from "lucide-react";
 
 import { ContractEconomicsFields } from "@/components/contract-economics-fields";
+import { Field } from "@/components/field";
 import { FormErrorSummary } from "@/components/form-error-summary";
 import { ParticularsNotesField } from "@/components/particulars-notes-field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 import { ClientCampaignFields, type CampaignChoice, type ClientOption } from "@/components/client-campaign-fields";
 
@@ -53,7 +53,7 @@ export function CreatorForm({
   >(createCreatorWithContract, null);
 
   return (
-    <form action={formAction} className="grid gap-6">
+    <form action={formAction} noValidate className="grid gap-6">
       {state?.error ? (
         <Alert variant="destructive">
           <AlertTitle>No se ha podido registrar</AlertTitle>
@@ -82,38 +82,31 @@ export function CreatorForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
-          <div className="grid gap-2 sm:col-span-3">
-            <Label htmlFor="instagram">Enlace de Instagram o handle</Label>
+          <Field
+            id="instagram"
+            className="sm:col-span-3"
+            label="Enlace de Instagram o handle"
+            error={state?.fieldErrors?.instagram}
+          >
             <Input
-              id="instagram"
               name="instagram"
               placeholder="https://www.instagram.com/handle"
               autoComplete="off"
-              aria-invalid={Boolean(state?.fieldErrors?.instagram)}
               required
             />
-            {state?.fieldErrors?.instagram ? (
-              <p className="text-xs text-destructive">
-                {state.fieldErrors.instagram}
-              </p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="displayName">Nombre (opcional)</Label>
-            <Input id="displayName" name="displayName" autoComplete="off" />
-          </div>
+          <Field id="displayName" className="sm:col-span-2" label="Nombre (opcional)">
+            <Input name="displayName" autoComplete="off" />
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="contactEmail">Email de contacto (opcional)</Label>
-            <Input
-              id="contactEmail"
-              name="contactEmail"
-              type="email"
-              autoComplete="off"
-              aria-invalid={Boolean(state?.fieldErrors?.contactEmail)}
-            />
-          </div>
+          <Field
+            id="contactEmail"
+            label="Email de contacto (opcional)"
+            error={state?.fieldErrors?.contactEmail}
+          >
+            <Input name="contactEmail" type="email" autoComplete="off" />
+          </Field>
         </CardContent>
       </Card>
 

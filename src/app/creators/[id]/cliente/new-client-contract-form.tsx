@@ -76,7 +76,7 @@ export function NewClientContractForm({
   }
 
   return (
-    <form action={formAction} className="grid gap-6">
+    <form action={formAction} noValidate className="grid gap-6">
       <input type="hidden" name="creatorId" value={creatorId} />
       <FormErrorSummary
         error={state?.error}

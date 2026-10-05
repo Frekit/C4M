@@ -12,6 +12,7 @@ import {
 } from "@/app/campanas/roster-actions";
 import { AddTalentPicker } from "./add-talent-picker";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -111,8 +112,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
       className="flex flex-wrap items-end gap-2"
     >
       <input type="hidden" name="talentId" value={row.id} />
-      <div className="grid gap-1">
-        <Label className="text-xs">Red</Label>
+      <Field id={`${row.id}-contentPlatform`} label="Red" className="gap-1">
         <select
           name="contentPlatform"
           value={platform}
@@ -133,9 +133,8 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
             </option>
           ))}
         </select>
-      </div>
-      <div className="grid gap-1">
-        <Label className="text-xs">Formato</Label>
+      </Field>
+      <Field id={`${row.id}-contentFormat`} label="Formato" className="gap-1">
         <select
           name="contentFormat"
           value={format}
@@ -149,7 +148,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
             </option>
           ))}
         </select>
-      </div>
+      </Field>
       <div className="grid gap-1">
         <Label className="text-xs">Piezas</Label>
         <Input
@@ -187,8 +186,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
           className="w-20"
         />
       </div>
-      <div className="grid gap-1">
-        <Label className="text-xs">Moneda</Label>
+      <Field id={`${row.id}-currency`} label="Moneda" className="gap-1">
         <select
           name="currency"
           defaultValue={defaultCurrency}
@@ -203,7 +201,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
             </option>
           ))}
         </select>
-      </div>
+      </Field>
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending ? "…" : "Guardar línea"}
       </Button>

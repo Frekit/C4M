@@ -41,7 +41,7 @@ export function ClientForm({
   >(updateClient, null);
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} noValidate className="grid gap-4">
       <input type="hidden" name="clientId" value={client.id} />
 
       <FormErrorSummary

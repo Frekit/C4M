@@ -4,10 +4,10 @@ import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { Field } from "@/components/field";
 import { FormErrorSummary } from "@/components/form-error-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CAMPAIGN_APPROVAL,
@@ -104,7 +104,7 @@ function CampaignFields({
   const creatingClient = clientId === "__new__";
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} noValidate className="grid gap-4">
       <FormErrorSummary
         error={state?.error}
         fieldErrors={state?.fieldErrors}
@@ -112,22 +112,18 @@ function CampaignFields({
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Nombre de la campaña</Label>
+        <Field id="name" label="Nombre de la campaña" error={state?.fieldErrors?.name}>
           <Input
-            id="name"
             name="name"
             placeholder="Navidad 2026"
             required
             value={name}
             onChange={(event) => setName(event.target.value)}
-            aria-invalid={Boolean(state?.fieldErrors?.name)}
           />
-        </div>
+        </Field>
 
         <div className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="clientId">Cliente</Label>
+          <div className="flex justify-end">
             <Link
               href="/clientes"
               className="text-xs text-muted-foreground underline underline-offset-4"
@@ -135,8 +131,12 @@ function CampaignFields({
               Editar clientes
             </Link>
           </div>
+        <Field
+          id="clientId"
+          label="Cliente"
+          error={state?.fieldErrors?.clientId}
+        >
           <select
-            id="clientId"
             name="clientId"
             value={clientId}
             onChange={(event) => setClientId(event.target.value)}
@@ -155,25 +155,25 @@ function CampaignFields({
             ))}
             <option value="__new__">Nuevo cliente…</option>
           </select>
+        </Field>
         </div>
 
         {creatingClient ? (
           <>
-            <div className="grid gap-2">
-              <Label htmlFor="newClientName">Nombre del cliente</Label>
-              <Input
-                id="newClientName"
-                name="newClientName"
-                placeholder="Many Chat"
-                required
-                aria-invalid={Boolean(state?.fieldErrors?.newClientName)}
-              />
-            </div>
+            <Field
+              id="newClientName"
+              label="Nombre del cliente"
+              error={state?.fieldErrors?.newClientName}
+            >
+              <Input name="newClientName" placeholder="Many Chat" required />
+            </Field>
 
-            <div className="grid gap-2">
-              <Label htmlFor="newSettlementMode">Cómo se liquida</Label>
+            <Field
+              id="newSettlementMode"
+              label="Cómo se liquida"
+              description={SETTLEMENT_MODE_HINTS[newMode]}
+            >
               <select
-                id="newSettlementMode"
                 name="newSettlementMode"
                 className={inputClass}
                 value={newMode}
@@ -187,10 +187,7 @@ function CampaignFields({
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
-                {SETTLEMENT_MODE_HINTS[newMode]}
-              </p>
-            </div>
+            </Field>
 
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input
@@ -208,39 +205,32 @@ function CampaignFields({
           <input type="hidden" name="newClientName" value="" />
         )}
 
-        <div className="grid gap-2">
-          <Label htmlFor="startsAt">Inicio (opcional)</Label>
+        <Field id="startsAt" label="Inicio (opcional)">
           <Input
-            id="startsAt"
             name="startsAt"
             type="date"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
           />
-        </div>
+        </Field>
 
-        <div className="grid gap-2">
-          <Label htmlFor="endsAt">Fin (opcional)</Label>
+        <Field id="endsAt" label="Fin (opcional)" error={state?.fieldErrors?.endsAt}>
           <Input
-            id="endsAt"
             name="endsAt"
             type="date"
             value={endsAt}
             onChange={(event) => setEndsAt(event.target.value)}
-            aria-invalid={Boolean(state?.fieldErrors?.endsAt)}
           />
-        </div>
+        </Field>
 
-        <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="description">Descripción (opcional)</Label>
+        <Field id="description" className="sm:col-span-2" label="Descripción (opcional)">
           <Textarea
-            id="description"
             name="description"
             rows={2}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
-        </div>
+        </Field>
 
         <CampaignPolicyFields />
       </div>
@@ -272,10 +262,12 @@ export function CampaignPolicyFields({
 
   return (
     <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
-      <div className="grid gap-2">
-        <Label htmlFor={`${idPrefix}engagementKind`}>Tipo de encargo</Label>
+      <Field
+        id={`${idPrefix}engagementKind`}
+        label="Tipo de encargo"
+        description={CAMPAIGN_ENGAGEMENT_HINTS[kind]}
+      >
         <select
-          id={`${idPrefix}engagementKind`}
           name="engagementKind"
           className={inputClass}
           value={kind}
@@ -289,14 +281,13 @@ export function CampaignPolicyFields({
             </option>
           ))}
         </select>
-        <p className="text-xs text-muted-foreground">
-          {CAMPAIGN_ENGAGEMENT_HINTS[kind]}
-        </p>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor={`${idPrefix}approvalMode`}>Aprobación</Label>
+      </Field>
+      <Field
+        id={`${idPrefix}approvalMode`}
+        label="Aprobación"
+        description={CAMPAIGN_APPROVAL_HINTS[approval]}
+      >
         <select
-          id={`${idPrefix}approvalMode`}
           name="approvalMode"
           className={inputClass}
           value={approval}
@@ -310,35 +301,26 @@ export function CampaignPolicyFields({
             </option>
           ))}
         </select>
-        <p className="text-xs text-muted-foreground">
-          {CAMPAIGN_APPROVAL_HINTS[approval]}
-        </p>
-      </div>
+      </Field>
       {kind === CAMPAIGN_ENGAGEMENT.BUDGET ? (
-        <div className="grid gap-2">
-          <Label htmlFor={`${idPrefix}budgetUsd`}>Presupuesto USD</Label>
+        <Field id={`${idPrefix}budgetUsd`} label="Presupuesto USD">
           <Input
-            id={`${idPrefix}budgetUsd`}
             name="budgetUsd"
             value={budget}
             onChange={(event) => setBudget(event.target.value)}
             placeholder="50000"
           />
-        </div>
+        </Field>
       ) : (
         <input type="hidden" name="budgetUsd" value="" />
       )}
-      <div className="grid gap-2">
-        <Label htmlFor={`${idPrefix}defaultPaymentTermDays`}>
-          Plazo de pago (días)
-        </Label>
+      <Field id={`${idPrefix}defaultPaymentTermDays`} label="Plazo de pago (días)">
         <Input
-          id={`${idPrefix}defaultPaymentTermDays`}
           name="defaultPaymentTermDays"
           value={termDays}
           onChange={(event) => setTermDays(event.target.value)}
         />
-      </div>
+      </Field>
     </div>
   );
 }

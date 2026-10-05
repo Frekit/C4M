@@ -27,7 +27,7 @@ export function ParticularsForm({
   >(updateContractParticulars, null);
 
   return (
-    <form action={formAction} className="grid gap-3">
+    <form action={formAction} noValidate className="grid gap-3">
       <input type="hidden" name="contractId" value={contractId} />
 
       <FormErrorSummary

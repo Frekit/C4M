@@ -41,7 +41,7 @@ export function ConditionsAnnexForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="grid gap-4">
+        <form action={formAction} noValidate className="grid gap-4">
           <input type="hidden" name="parentId" value={parentId} />
 
           <FormErrorSummary
