@@ -96,10 +96,12 @@ export function SignForm({
   token,
   defaultCurrency,
   defaultEmail,
+  summary,
 }: {
   token: string;
   defaultCurrency: string;
   defaultEmail: string;
+  summary?: string;
 }) {
   const [state, formAction, pending] = useActionState<
     SignResult | null,
@@ -115,6 +117,7 @@ export function SignForm({
       token={token}
       defaultCurrency={defaultCurrency}
       defaultEmail={defaultEmail}
+      summary={summary}
       values={state?.values}
       state={state}
       formAction={formAction}
@@ -127,6 +130,7 @@ function SignFormFields({
   token,
   defaultCurrency,
   defaultEmail,
+  summary,
   values,
   state,
   formAction,
@@ -135,6 +139,7 @@ function SignFormFields({
   token: string;
   defaultCurrency: string;
   defaultEmail: string;
+  summary?: string;
   values?: SignFormValues;
   state: SignResult | null;
   formAction: (payload: FormData) => void;
@@ -146,6 +151,11 @@ function SignFormFields({
   );
 
   const errors = state?.fieldErrors ?? {};
+  const [step, setStep] = useState(() => {
+    if (!state?.fieldErrors) return 1;
+    if (state.fieldErrors.signerFullName || state.fieldErrors.acceptTerms) return 3;
+    return 2;
+  });
 
   return (
     <form action={formAction} noValidate className="grid gap-5">
@@ -158,10 +168,37 @@ function SignFormFields({
         labels={FIELD_LABELS}
       />
 
+      <div className="grid gap-2">
+        <p className="text-label-13">
+          Paso {step} de 3 · {step === 1 ? "Revisa" : step === 2 ? "Tus datos de cobro" : "Firma"}
+        </p>
+        <div className="flex gap-1" aria-hidden>
+          {[1, 2, 3].map((item) => (
+            <span
+              key={item}
+              className={item <= step ? "h-1 flex-1 rounded-full bg-primary" : "h-1 flex-1 rounded-full bg-muted"}
+            />
+          ))}
+        </div>
+        {summary ? <p className="text-heading-20">{summary}</p> : null}
+      </div>
+
+      {step === 1 ? (
+        <div className="grid gap-3">
+          <p className="text-copy-14 text-muted-foreground">
+            Lee el acuerdo. Si algo no cuadra, escríbenos antes de firmar.
+          </p>
+          <Button type="button" onClick={() => setStep(2)}>
+            Continuar
+          </Button>
+        </div>
+      ) : null}
+
+      <div className={step === 2 ? "grid gap-5" : "hidden"}>
       <Card>
         <CardHeader>
           <BuildingIcon className="size-4 text-muted-foreground" />
-          <CardTitle>Datos fiscales</CardTitle>
+          <CardTitle>Quién eres</CardTitle>
           <CardDescription>
             Tal como deben aparecer en el contrato y en las facturas.
           </CardDescription>
@@ -273,7 +310,7 @@ function SignFormFields({
       <Card>
         <CardHeader>
           <BanknoteIcon className="size-4 text-muted-foreground" />
-          <CardTitle>Cobro por Zexel</CardTitle>
+          <CardTitle>Dónde cobras</CardTitle>
           <CardDescription>
             Pagamos en lotes a través de Zexel Pay. Con este email te llega el
             cobro; ellos recogen tu cuenta y el KYC. No hace falta IBAN ni
@@ -316,7 +353,7 @@ function SignFormFields({
       <Card>
         <CardHeader>
           <ReceiptIcon className="size-4 text-muted-foreground" />
-          <CardTitle>Situación fiscal</CardTitle>
+          <CardTitle>Impuestos</CardTitle>
           <CardDescription>
             Determina si tus facturas llevan IVA y si se te practica retención.
           </CardDescription>
@@ -415,7 +452,12 @@ function SignFormFields({
           </Field>
         </CardContent>
       </Card>
+      <Button type="button" className="w-fit" onClick={() => setStep(3)}>
+        Continuar
+      </Button>
+      </div>
 
+      <div className={step === 3 ? "grid gap-3" : "hidden"}>
       <Card>
         <CardHeader>
           <CardTitle>Firma</CardTitle>
@@ -426,7 +468,7 @@ function SignFormFields({
         <CardContent className="grid gap-4">
           <Field
             name="signerFullName"
-            label="Escribe tu nombre completo"
+            label="Nombre completo del firmante"
             error={errors.signerFullName}
             hint="Esto queda registrado como tu firma, junto con la fecha y tu IP."
           >
@@ -447,11 +489,28 @@ function SignFormFields({
             error={errors.acceptTerms}
           />
 
-          <Button type="submit" size="lg" disabled={pending}>
-            {pending ? "Firmando…" : "Firmar contrato"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => setStep(2)}>
+              Editar datos
+            </Button>
+            <Button type="submit" size="lg" disabled={pending} data-primary="true">
+              {pending ? "Firmando…" : "Firmar contrato"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-2 border-t bg-background px-3 py-3 min-[761px]:hidden">
+        <span className="text-label-13">{summary ?? `Paso ${step} de 3`}</span>
+        {step < 3 ? (
+          <Button type="button" onClick={() => setStep((value) => Math.min(3, value + 1))}>
+            Continuar
+          </Button>
+        ) : (
+          <span className="text-copy-12 text-fg-subtle">Paso 3 de 3</span>
+        )}
+      </div>
     </form>
   );
 }

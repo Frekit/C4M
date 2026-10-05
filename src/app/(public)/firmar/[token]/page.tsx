@@ -23,7 +23,7 @@ import {
 } from "@/lib/domain/enums";
 import { signSummaryBullets } from "@/lib/domain/contract-copy";
 import { contractPaymentCopy } from "@/lib/domain/payment-copy";
-import { formatDateTime, formatDateTimeUtc } from "@/lib/format";
+import { formatDateTimeUtc } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 
 import { SignForm } from "./sign-form";
@@ -90,7 +90,9 @@ export default async function SignPage({
     <Card>
       <CardHeader>
         <CircleCheckBigIcon className="size-5 text-muted-foreground" />
-        <CardTitle>Contrato firmado</CardTitle>
+            <CardTitle>
+              Contrato firmado{request.signedAt ? ` el ${formatDateTimeUtc(request.signedAt)}` : ""}
+            </CardTitle>
         <CardDescription>
           Gracias{request.signerFullName ? `, ${request.signerFullName}` : ""}.
           Ya tenemos tus datos para pagarte.
@@ -126,15 +128,16 @@ export default async function SignPage({
   ) : null;
 
   return (
-    <PageShell width="narrow" className="gap-5">
+    <PageShell width="default" className="gap-5 pb-24">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{company.legalName}</p>
-        <h1 className="text-heading-24">
+        <p className="font-mono text-eyebrow-11">Contrato {contract.code}</p>
+        <h1 className="font-serif text-[26px] leading-8">
           {isConditionsAnnex
             ? `Anexo de condiciones al contrato ${contract.parent?.code ?? ""}`
             : isAnnex
               ? `Anexo al contrato ${contract.parent?.code ?? ""}`
-              : "Contrato de creación de contenido orgánico"}
+              : `Hola. Este es tu contrato${contract.client ? ` con ${contract.client.name}` : ""}.`}
         </h1>
         <p className="text-sm text-muted-foreground">
           Referencia {contract.code} · para @{contract.creator.handle}
@@ -236,9 +239,8 @@ export default async function SignPage({
               {contract.status === CONTRACT_STATUS.CANCELLED
                 ? "El contrato se ha cancelado."
                 : isExpired
-                  ? `El enlace caducó el ${formatDateTime(request.expiresAt)}.`
-                  : "El enlace se ha revocado."}{" "}
-              Pide uno nuevo a quien te lo envió.
+                  ? "Este enlace ha caducado. Pide uno nuevo a tu contacto en Creators for Media."
+                  : "El enlace se ha revocado. Pide uno nuevo a tu contacto en Creators for Media."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -255,6 +257,7 @@ export default async function SignPage({
             token={token}
             defaultCurrency={contract.costCurrency}
             defaultEmail={request.recipientEmail}
+            summary={`${formatMoney(totalCost, contract.costCurrency, { withCode: true })} · ${contract.deliverableCount} contenidos`}
           />
         </>
       )}
