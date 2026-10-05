@@ -1,20 +1,43 @@
-import Link from "next/link";
-import { PageShell } from "@/components/page-shell";
+import { AppShell } from "@/components/app-shell";
+import { NotFoundMessage } from "@/components/not-found-message";
+import { PublicBrandHeader } from "@/components/public-brand-header";
+import { getCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { loadActionCenter } from "@/lib/domain/action-center";
+import { CAMPAIGN_STATUS } from "@/lib/domain/enums";
 
-import { Button } from "@/components/ui/button";
+export default async function NotFound() {
+  const user = await getCurrentUser();
 
-export default function NotFound() {
+  if (!user) {
+    return (
+      <>
+        <PublicBrandHeader />
+        <div
+          id="contenido"
+          tabIndex={-1}
+          className="flex flex-1 flex-col outline-none"
+        >
+          <NotFoundMessage />
+        </div>
+      </>
+    );
+  }
+
+  const firstName = user.name.split(" ")[0] || user.name;
+  const [center, campaigns] = await Promise.all([
+    loadActionCenter(firstName),
+    prisma.campaign.findMany({
+      where: { status: CAMPAIGN_STATUS.ACTIVE },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: { id: true, name: true },
+    }),
+  ]);
+
   return (
-    <PageShell width="narrow" id="contenido" tabIndex={-1} className="justify-center text-center py-16 gap-4">
-      <h1 className="text-heading-24">Página no encontrada</h1>
-      <p className="text-sm text-muted-foreground">
-        Esa ruta no existe en esta base.
-      </p>
-      <div>
-        <Button nativeButton={false} render={<Link href="/" />}>
-          Volver al inicio
-        </Button>
-      </div>
-    </PageShell>
+    <AppShell user={user} urgentCount={center.urgentCount} campaigns={campaigns}>
+      <NotFoundMessage />
+    </AppShell>
   );
 }

@@ -22,7 +22,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type {
   CampaignProposalRow,
   CampaignRosterRow,
@@ -149,17 +148,15 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
           ))}
         </select>
       </Field>
-      <div className="grid gap-1">
-        <Label className="text-xs">Piezas</Label>
+      <Field id={`${row.id}-deliverableCount`} label="Piezas" className="gap-1">
         <Input
           name="deliverableCount"
           defaultValue={row.deliverableCount ?? ""}
           placeholder="3"
           className="w-16"
         />
-      </div>
-      <div className="grid gap-1">
-        <Label className="text-xs">Venta USD / pieza</Label>
+      </Field>
+      <Field id={`${row.id}-saleUsd`} label="Venta USD / pieza" className="gap-1">
         <Input
           name="saleUsd"
           defaultValue={
@@ -170,11 +167,12 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
           placeholder="250"
           className="w-24"
         />
-      </div>
-      <div className="grid gap-1">
-        <Label className="text-xs">
-          {packaged || row.contentFormat ? "Coste del paquete" : "Coste / pieza"}
-        </Label>
+      </Field>
+      <Field
+        id={`${row.id}-cost`}
+        label={packaged || row.contentFormat ? "Coste del paquete" : "Coste / pieza"}
+        className="gap-1"
+      >
         <Input
           name="cost"
           defaultValue={
@@ -185,7 +183,7 @@ function QuoteForm({ row }: { row: CampaignRosterRow }) {
           placeholder="80"
           className="w-20"
         />
-      </div>
+      </Field>
       <Field id={`${row.id}-currency`} label="Moneda" className="gap-1">
         <select
           name="currency"

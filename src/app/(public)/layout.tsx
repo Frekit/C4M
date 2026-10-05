@@ -1,3 +1,5 @@
+import { PublicBrandHeader } from "@/components/public-brand-header";
+
 export default function PublicLayout({
   children,
 }: {
@@ -5,13 +7,7 @@ export default function PublicLayout({
 }) {
   return (
     <>
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-[52px] w-full items-center px-4 min-[1024px]:px-6 min-[1181px]:px-8">
-          <p className="font-heading text-sm font-medium tracking-tight">
-            Creators For Media
-          </p>
-        </div>
-      </header>
+      <PublicBrandHeader />
       <div
         id="contenido"
         tabIndex={-1}

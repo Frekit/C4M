@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { fieldDescribedBy } from "@/components/field-described-by";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -15,18 +16,6 @@ type ControlProps = {
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 };
-
-export function fieldDescribedBy(
-  id: string,
-  options: { description?: boolean; error?: boolean }
-) {
-  const descriptionId = options.description ? `${id}-description` : undefined;
-  const errorId = options.error ? `${id}-error` : undefined;
-  const describedBy =
-    [descriptionId, errorId].filter(Boolean).join(" ") || undefined;
-
-  return { descriptionId, errorId, describedBy };
-}
 
 export function Field({
   id,

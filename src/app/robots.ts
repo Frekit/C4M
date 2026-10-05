@@ -15,7 +15,14 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/firmar/", "/iniciar-sesion", "/estado", "/auditoria"],
+      disallow: [
+        "/firmar/",
+        "/hablar/",
+        "/invitacion/",
+        "/iniciar-sesion",
+        "/estado",
+        "/auditoria",
+      ],
     },
   };
 }

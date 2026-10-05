@@ -1,6 +1,6 @@
 import { ChevronDownIcon } from "lucide-react";
 
-import { fieldDescribedBy } from "@/components/field";
+import { fieldDescribedBy } from "@/components/field-described-by";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { EnvironmentBanner } from "@/components/environment-banner";
+import { AppSpeedInsights } from "@/components/speed-insights";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -61,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <EnvironmentBanner />
             {children}
             <Toaster position="top-right" />
-            <SpeedInsights />
+            <AppSpeedInsights />
           </TooltipProvider>
         </ThemeProvider>
       </body>

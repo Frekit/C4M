@@ -39,6 +39,9 @@ test("el correo de firma lleva código, handle y URL", () => {
   assert.match(copy.subject, /dulceida/);
   assert.match(copy.text, /firmar\/abc/);
   assert.match(copy.html, /Abrir y firmar/);
+  assert.match(copy.text, /02:00/);
+  assert.doesNotMatch(copy.text, /UTC/);
+  assert.doesNotMatch(copy.html, /UTC/);
 });
 
 test("el correo de invitación nombra el rol", () => {
@@ -50,6 +53,9 @@ test("el correo de invitación nombra el rol", () => {
 
   assert.match(copy.text, /Gestión de creators/);
   assert.match(copy.html, /invitacion\/xyz/);
+  assert.match(copy.text, /02:00/);
+  assert.doesNotMatch(copy.text, /UTC/);
+  assert.doesNotMatch(copy.html, /UTC/);
 });
 
 test("MAIL_FROM usa la empresa si no hay override", () => {
