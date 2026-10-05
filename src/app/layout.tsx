@@ -13,18 +13,26 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
+// El saludo del Centro de acciones es el texto más grande de /.
+// Solo se precarga este corte (latin, 400). El resto llega sin preload.
 const newsreader = Newsreader({
   variable: "--font-newsreader",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500"],
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 export async function generateMetadata(): Promise<Metadata> {

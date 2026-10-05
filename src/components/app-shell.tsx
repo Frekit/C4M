@@ -20,10 +20,8 @@ import {
   UsersRoundIcon,
   WalletIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 
-import { AiPanel } from "@/components/ai-panel";
-import { CommandPalette } from "@/components/command-palette";
-import { HotkeysDialog } from "@/components/hotkeys-dialog";
 import {
   ShellProvider,
   useShell,
@@ -60,6 +58,19 @@ import { getLogoutHref } from "@/lib/auth/urls";
 import { ROLE_LABELS, ROLES } from "@/lib/domain/enums";
 import { isTypingTarget } from "@/hooks/use-hotkeys";
 import { cn } from "@/lib/utils";
+
+const CommandPalette = dynamic(
+  () => import("@/components/command-palette").then((mod) => mod.CommandPalette),
+  { ssr: false }
+);
+const AiPanel = dynamic(
+  () => import("@/components/ai-panel").then((mod) => mod.AiPanel),
+  { ssr: false }
+);
+const HotkeysDialog = dynamic(
+  () => import("@/components/hotkeys-dialog").then((mod) => mod.HotkeysDialog),
+  { ssr: false }
+);
 
 export type ShellCampaign = { id: string; name: string };
 
@@ -522,8 +533,8 @@ function ShellFrame({
       >
         {children}
       </ShellBody>
-      <CommandPalette />
-      <HotkeysDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      {paletteOpen ? <CommandPalette /> : null}
+      {helpOpen ? <HotkeysDialog open={helpOpen} onOpenChange={setHelpOpen} /> : null}
     </ShellProvider>
   );
 }
