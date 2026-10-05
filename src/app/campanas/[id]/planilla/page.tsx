@@ -107,9 +107,9 @@ export default async function CampaignSheetPage({
             Planilla
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Filtra la lista y abre un perfil a la derecha para curarlo: views,
-            tarifas y marcas. Marca los que entran y mételos de golpe. Quien
-            ya está en la mesa se ve, pero no se vuelve a marcar.
+            Filtra el roster, marca los que entran y mételos de golpe. Abre
+            una fila si quieres ver views y tarifas antes. Quien ya está en
+            la mesa se ve, pero no se vuelve a marcar.
           </p>
         </div>
         <Button

@@ -128,8 +128,7 @@ export function AddTalentPicker({
 
         {picks.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No queda nadie del roster fuera de esta mesa. Pega handles abajo
-            si falta alguien.
+            No queda nadie del roster fuera de esta mesa.
           </p>
         ) : (
           <div className="grid gap-2">
@@ -189,22 +188,27 @@ export function AddTalentPicker({
         )}
       </form>
 
-      <form key={pasteEpoch} action={pasteAction} className="grid gap-2">
-        <input type="hidden" name="campaignId" value={campaignId} />
-        <Label htmlFor="handles">Si no están en el roster, pégalos</Label>
-        <textarea
-          id="handles"
-          name="handles"
-          rows={3}
-          placeholder={"@ana\nhttps://instagram.com/luis\nsofia.tech"}
-          className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm dark:bg-input/30"
-        />
-        <div>
-          <Button type="submit" variant="outline" disabled={pastePending}>
-            {pastePending ? "Metiendo…" : "Meter esta lista"}
-          </Button>
-        </div>
-      </form>
+      <details className="rounded-lg border px-3 py-2">
+        <summary className="cursor-pointer text-sm text-muted-foreground">
+          No está en el roster
+        </summary>
+        <form key={pasteEpoch} action={pasteAction} className="mt-3 grid gap-2">
+          <input type="hidden" name="campaignId" value={campaignId} />
+          <Label htmlFor="handles">Pega los que todavía no tenemos</Label>
+          <textarea
+            id="handles"
+            name="handles"
+            rows={3}
+            placeholder={"@ana\nhttps://instagram.com/luis"}
+            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm dark:bg-input/30"
+          />
+          <div>
+            <Button type="submit" variant="outline" disabled={pastePending}>
+              {pastePending ? "Metiendo…" : "Meter esta lista"}
+            </Button>
+          </div>
+        </form>
+      </details>
     </div>
   );
 }

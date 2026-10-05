@@ -181,7 +181,7 @@ export default async function CampaignsPage() {
                       nativeButton={false}
                       render={<Link href={`/campanas/${campaign.id}/planilla`} />}
                     >
-                      Planilla
+                      Meter perfiles
                     </Button>
                     <Button
                       variant="outline"

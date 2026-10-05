@@ -120,12 +120,11 @@ export default async function CampaignWorkbenchPage({
             {data.name}
           </h1>
           <Button
-            variant="outline"
             size="sm"
             nativeButton={false}
             render={<Link href={`/campanas/${id}/planilla`} />}
           >
-            Planilla
+            Meter perfiles
           </Button>
           <Badge variant="outline">
             {CAMPAIGN_STATUS_LABELS[data.status as CampaignStatus]}

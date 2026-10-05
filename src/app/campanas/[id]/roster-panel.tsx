@@ -252,18 +252,19 @@ export function CampaignRosterPanel({
       <CardHeader>
         <CardTitle>Mesa de la campaña</CardTitle>
         <CardDescription>
-          Para ver a todo el roster con views, tarifas y marcas, abre la{" "}
-          <Link
-            href={`/campanas/${campaignId}/planilla`}
-            className="underline underline-offset-4"
-          >
-            planilla
-          </Link>
-          . Aquí puedes marcar unos pocos o pegar handles. Entran sin precio.
-          Para activar hacen falta piezas, venta y coste.
+          Para meter varios, abre la planilla: filtras el roster y marcas.
+          Aquí abajo solo si son uno o dos que ya ves. Entran sin precio.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
+        <div>
+          <Button
+            nativeButton={false}
+            render={<Link href={`/campanas/${campaignId}/planilla`} />}
+          >
+            Elegir en la planilla
+          </Button>
+        </div>
         {canWrite ? (
           <AddTalentPicker
             campaignId={campaignId}
